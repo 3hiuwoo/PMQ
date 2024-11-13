@@ -1,0 +1,6 @@
+training*/
+test*/
+test*.*
+__pycache__/
+log*/
+data*/
