@@ -1,0 +1,13 @@
+dataset/
+ECGDataDenoised/
+ptb*/
+__pycache__/
+test*/
+test*.*
+Training*/
+training*/
+log*/
+.vscode/
+.DS_Store
+.ipynb*
+*.sh

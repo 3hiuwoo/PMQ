@@ -1,0 +1,12 @@
+torch
+torchmetrics
+numpy
+pandas
+scipy
+wfdb
+neurokit2
+matplotlib
+tqdm
+lightning
+lightning-flash
+openpyxl
