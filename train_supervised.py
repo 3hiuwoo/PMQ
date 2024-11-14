@@ -35,6 +35,7 @@ parser.add_argument('--check', type=int, default=10, help='the interval of epoch
 parser.add_argument('--log', type=str, default='log', help='the directory to save the log')
 parser.add_argument('--pretrain', type=str, default='', help='path to the pretrained model')
 parser.add_argument('--freeze', action='store_true', help='freeze the pretrained part of the model for linear evaluation')
+parser.add_argument('--test', type=str, default='', help='path to the best model to be tested')
 # parser.add_argument('--early_stop', type=int, default=20, help='stop training if the auc does not improve for n epochs')
 
 def main():
@@ -101,10 +102,17 @@ def main():
     print(f'=> dataset contains {len(train_loader.dataset)}|{len(valid_loader.dataset)}|{len(valid_loader.dataset)} samples')
     print(f'=> loaded with batch size of {args.batch_size}')
     
+    if args.test:
+        test_auc = AUROC(task='multiclass', num_classes=4).to(device)
+        print(f'=> testing model from {args.test}')
+        
+        auc = test(test_loader, model, test_auc, device)
+        print(f'=> test auc: {auc}')
+        return
+        
     # track loss
     train_loss = MeanMetric().to(device)
     valid_auc = AUROC(task='multiclass', num_classes=4).to(device)
-    test_auc = AUROC(task='multiclass', num_classes=4).to(device)
     logdir = os.path.join(dir, 'log')
     writer = SummaryWriter(log_dir=logdir)
     criterion = torch.nn.CrossEntropyLoss().to(device)
@@ -141,10 +149,6 @@ def main():
             
     print('=> training finished')
     writer.close()
-    
-    print('=> testing model')
-    test_auc = test(test_loader, model, test_auc, device)
-    print(f'=> test auc: {test_auc}')
 
 
 def train(train_loader, model, optimizer, criterion, epoch, metric, writer, freeze, device):
