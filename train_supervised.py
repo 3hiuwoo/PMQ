@@ -84,7 +84,7 @@ def main():
         
     if args.data == 'chapman':
         trans = transform.Compose([
-            transform.Denoise(),
+            # transform.Denoise(),
             transform.Normalize(),
             transform.ToTensor()
             ])

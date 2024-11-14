@@ -66,7 +66,7 @@ def main():
     
     # for creating views
     trans = transform.Compose([
-        transform.Denoise(),
+        # transform.Denoise(),
         transform.Normalize(),
         transform.CreateView(transform.Segment()),
         transform.ToTensor()
