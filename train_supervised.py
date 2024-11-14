@@ -13,7 +13,7 @@ import argparse
 import torch
 from torch import optim
 from torch.utils.tensorboard import SummaryWriter
-from torchmetrics import MeanMetric, AUROC
+from torchmetrics import MeanMetric, AUROC, Accuracy, MetricCollection
 from tqdm import tqdm
 from dataset.load import load_data
 from model.load import load_model
@@ -109,8 +109,10 @@ def main():
             checkpoint = torch.load(args.test, map_location=device)
             model.load_state_dict(checkpoint['model'])
             
-            test_auc = AUROC(task='multiclass', num_classes=4).to(device)
-            auc = test(test_loader, model, test_auc, device)
+            test_metrics = MetricCollection({
+                'acc': Accuracy(task='multiclass', num_classes=4),
+                'auc': AUROC(task='multiclass', num_classes=4)}).to(device)
+            auc = test(test_loader, model, test_metrics, device)
             print(f'=> test auc: {auc}')
             return
         
@@ -120,7 +122,10 @@ def main():
     
     # track loss
     train_loss = MeanMetric().to(device)
-    valid_auc = AUROC(task='multiclass', num_classes=4).to(device)
+    valid_metrics = MetricCollection({
+        'acc': Accuracy(task='multiclass', num_classes=4), 
+        'auc': AUROC(task='multiclass', num_classes=4)}).to(device)
+    
     logdir = os.path.join(dir, 'log')
     writer = SummaryWriter(log_dir=logdir)
     criterion = torch.nn.CrossEntropyLoss().to(device)
@@ -141,8 +146,9 @@ def main():
         # adjust_lr(optimizer, epoch, args.schedule)
         
         train(train_loader, model, optimizer, criterion, epoch, train_loss, writer, args.freeze, device)
-        auc = validate(valid_loader, model, epoch, valid_auc, writer, device)
+        metrics = validate(valid_loader, model, epoch, valid_metrics, writer, device)
         
+        auc = metrics['auc']
         isbest = auc > best_auc
         best_auc = max(auc, best_auc)
 
@@ -182,7 +188,7 @@ def train(train_loader, model, optimizer, criterion, epoch, metric, writer, free
     metric.reset()
     
     
-def validate(valid_loader, model, epoch, metric, writer, device):
+def validate(valid_loader, model, epoch, metrics, writer, device):
     model.eval()
     
     with torch.no_grad():
@@ -191,16 +197,16 @@ def validate(valid_loader, model, epoch, metric, writer, device):
             labels = labels.to(device)
             outputs = model(signals)
             
-            metric.update(outputs, labels)
+            metrics.update(outputs, labels)
         
-        total_metric = metric.compute()
-        writer.add_scalar('auc', total_metric, epoch)
-        metric.reset()
+        total_metrics = metrics.compute()
+        writer.add_scalars('auc&acc', total_metrics, epoch)
+        metrics.reset()
     
-    return total_metric
+    return total_metrics
 
 
-def test(test_loader, model, metric, device):
+def test(test_loader, model, metrics, device):
     model.eval()
     
     with torch.no_grad():
@@ -209,11 +215,11 @@ def test(test_loader, model, metric, device):
             labels = labels.to(device)
             outputs = model(signals)
             
-            metric.update(outputs, labels)
+            metrics.update(outputs, labels)
         
-        total_metric = metric.compute()
+        total_metrics = metrics.compute()
     
-    return total_metric
+    return total_metrics
 
 
 if __name__ == '__main__':

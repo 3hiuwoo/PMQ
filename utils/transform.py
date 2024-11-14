@@ -233,7 +233,6 @@ class Segment:
     segment the signal sequentially
     '''
     def __init__(self, length=2500):
-        print('segment length:', length)
         self.idx = 0
         self.length = length
         

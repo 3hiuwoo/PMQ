@@ -160,7 +160,7 @@ def cmsc_loss(outputs, heads):
     col_sum = torch.sum(sim_matrix_exp, dim=0)
     
     # calculate diagonal loss symmetrically
-    eps = 1e-8
+    eps = 1e-12
     diags = torch.diagonal(sim_matrix_exp)
     lossd1 = -torch.mean(torch.log((diags + eps)/(row_sum + eps)))
     lossd2 = -torch.mean(torch.log((diags + eps)/(col_sum + eps)))
