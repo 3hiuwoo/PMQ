@@ -24,11 +24,7 @@ class ToTensor:
     def __call__(self, signal):
         signal = torch.from_numpy(signal)
         
-        device = get_device()
-        if device == 'mps':
-            return signal.to(torch.float32)
-        else:
-            return signal
+        return signal.to(torch.float32)
     
 
 class Compose:

@@ -3,6 +3,7 @@ import pandas as pd
 import numpy as np
 from torch.utils.data import Dataset
 from wfdb import rdrecord
+from tqdm import tqdm
 
 
 class CINC2017Dataset(Dataset):
@@ -63,7 +64,7 @@ class CINC2017Dataset(Dataset):
 
         # use wfdb to read .mat file and append the signal to the dataframe
         signals = pd.DataFrame(columns=['head', 'signal'])
-        for h in heads:
+        for h in tqdm(heads, desc=f'Loading {self.split} dataset'):
             signal = rdrecord(os.path.join(self.root, h)).p_signal.reshape(-1)
             signals = pd.concat([signals,
                                  pd.DataFrame({'head': h, 'signal': [signal]})])
