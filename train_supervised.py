@@ -136,11 +136,11 @@ def main():
     criterion = torch.nn.CrossEntropyLoss().to(device)
 
     if len(params) == 2:
-        print('=> running linear evaluation for {args.epochs} epochs')
+        print(f'=> running linear evaluation for {args.epochs} epochs')
     elif args.pretrain:
-        print('=> running finetune for {args.epochs} epochs')
+        print(f'=> running finetune for {args.epochs} epochs')
     else:
-        print('=> running train from scratch for {args.epochs} epochs')
+        print(f'=> running train from scratch for {args.epochs} epochs')
 
     
     best_auc = 0

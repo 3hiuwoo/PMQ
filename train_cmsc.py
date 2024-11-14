@@ -89,7 +89,7 @@ def main():
     logdir = os.path.join(dir, 'log')
     writer = SummaryWriter(log_dir=logdir)
     
-    print('=> running pretrain for {args.epochs} epochs')
+    print(f'=> running pretrain for {args.epochs} epochs')
     for epoch in range(start_epoch, args.epochs):
         # adjust_lr(optimizer, epoch, args.schedule)
         
