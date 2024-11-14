@@ -14,7 +14,7 @@ def load_data(root, task, transform=None, batch_size=256, dataset_name='cinc2017
             valid_dataloader = DataLoader(valid_dataset, batch_size=batch_size, shuffle=False)
             test_dataloader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
         
-        if dataset_name == 'chapman':
+        elif dataset_name == 'chapman':
             train_dataset = ChapmanDataset(root=root, split='train', transform=transform)
             valid_dataset = ChapmanDataset(root=root, split='valid', transform=Compose([Normalize(), ToTensor()]))
             test_dataset = ChapmanDataset(root=root, split='test', transform=Compose([Normalize(), ToTensor()]))
@@ -36,7 +36,7 @@ def load_data(root, task, transform=None, batch_size=256, dataset_name='cinc2017
             valid_dataloader = DataLoader(valid_dataset, batch_size=batch_size, shuffle=False)
             test_dataloader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
         
-        if dataset_name == 'chapman':
+        elif dataset_name == 'chapman':
             # downsample class of transformation is needed and not yet implemented
             train_dataset = ChapmanDataset(root=root, split='train', transform=transform)
             valid_dataset = ChapmanDataset(root=root, split='valid', transform=Compose([Normalize(), ToTensor()]))
