@@ -1,11 +1,12 @@
 '''2024-11-12
 
-This script is used to train the model under the CMSC paradigm.
+This script is used to train the model under the supervised paradigm.
+Run the script for finetuning/linear evaluation with pretrained model or training from scratch.
 
 Run the script with the following command:
-    python train_cmsc.py
+    python train_supervised.py
     
-See python train_cmsc.py -h for training options
+See python train_supervised.py -h for training options
 '''
 import os
 import argparse
@@ -97,7 +98,7 @@ def main():
 
     print(f'=> loading dataset {args.data} from {args.data_root}')
     
-    train_loader, valid_loader, test_loader = load_data(root=args.data_root, dataset_name=args.data, batch_size=args.batch_size, transform=trans)
+    train_loader, valid_loader, test_loader = load_data(root=args.data_root, task='supervised', dataset_name=args.data, batch_size=args.batch_size, transform=trans)
     
     print(f'=> dataset contains {len(train_loader.dataset)}|{len(valid_loader.dataset)}|{len(valid_loader.dataset)} samples')
     print(f'=> loaded with batch size of {args.batch_size}')

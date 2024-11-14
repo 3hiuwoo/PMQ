@@ -10,6 +10,8 @@ def load_model(model_name, task, embeddim):
     elif task == 'supervised':
         if model_name == 'cnn3':
             return SupervisedModel(network=CNN3, embeddim=embeddim)
+    else:
+        raise ValueError(f'Unknown task {task}')
         
 
 class ContrastModel(nn.Module):
