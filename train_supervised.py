@@ -103,13 +103,20 @@ def main():
     print(f'=> loaded with batch size of {args.batch_size}')
     
     if args.test:
-        test_auc = AUROC(task='multiclass', num_classes=4).to(device)
-        print(f'=> testing model from {args.test}')
+        if os.path.isfile(args.test):
+            print(f'=> testing model from {args.test}')
+            checkpoint = torch.load(args.test, map_location=device)
+            model.load_state_dict(checkpoint['model'])
+            
+            test_auc = AUROC(task='multiclass', num_classes=4).to(device)
+            auc = test(test_loader, model, test_auc, device)
+            print(f'=> test auc: {auc}')
+            return
         
-        auc = test(test_loader, model, test_auc, device)
-        print(f'=> test auc: {auc}')
-        return
-        
+        else:
+            print(f'=> no model found at {args.test}')
+            return
+    
     # track loss
     train_loss = MeanMetric().to(device)
     valid_auc = AUROC(task='multiclass', num_classes=4).to(device)
