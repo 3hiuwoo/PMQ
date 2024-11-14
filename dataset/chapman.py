@@ -69,8 +69,14 @@ class ChapmanDataset(Dataset):
         signals = pd.DataFrame(columns=['head', 'signal'])
         for h in tqdm(heads, desc=f'Loading {self.split} dataset'):
             signal = rdrecord(os.path.join(self.root, h)).p_signal.T
+            
+            # drop leads that return empty signal
+            mask = np.any(signal!=0, axis=1)
+            signal = signal[mask]
+            
             signals = pd.concat([signals,
                                  pd.DataFrame({'head': h, 'signal': [signal]})])
+            
         signals.reset_index(drop=True, inplace=True)
         
         if self.leads is None:
