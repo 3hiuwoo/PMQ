@@ -70,6 +70,10 @@ class ChapmanDataset(Dataset):
         for h in tqdm(heads, desc=f'Loading {self.split} dataset'):
             signal = rdrecord(os.path.join(self.root, h)).p_signal.T
             
+            # drop leads that contain NaN
+            mask = np.all(~np.isnan(signal), axis=1)
+            signal = signal[mask]
+            
             # drop leads that return empty signal
             mask = np.any(signal!=0, axis=1)
             signal = signal[mask]

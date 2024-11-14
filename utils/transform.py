@@ -9,7 +9,7 @@ def normalize(arr):
     '''
     normalize the array by x = (x - x.min()) / (x.max() - x.min())
     '''
-    arr = (arr - arr.min()) / (arr.max() - arr.min())
+    arr = (arr - arr.min()) / (arr.max() - arr.min() + 1e-8)
     return arr
 
 
@@ -233,13 +233,14 @@ class Segment:
     segment the signal sequentially
     '''
     def __init__(self, length=2500):
+        print('segment length:', length)
         self.idx = 0
         self.length = length
         
         
     def __call__(self, signal):
         i, l = self.idx, self.length
-        if i*l >= signal.shape[-1] or (i+1)*l >= signal.shape[-1]:
+        if i*l >= signal.shape[-1] or (i+1)*l > signal.shape[-1]:
             i = 0
             self.idx = 0
         self.idx += 1

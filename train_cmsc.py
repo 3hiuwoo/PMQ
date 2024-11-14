@@ -181,7 +181,30 @@ def cmsc_loss(outputs, heads):
     # average across views
     loss /= 2
     
-    return loss
+    # debug
+    # debug_dict = {
+    #     'pos_matrix': pos_matrix,
+    #     'view1': view1,
+    #     'view2': view2,
+    #     'sim_matrix': sim_matrix,
+    #     'sim_matrix_exp': sim_matrix_exp,
+    #     'row_sum': row_sum,
+    #     'col_sum': col_sum,
+    #     'diags': diags,
+    #     'lossd1': lossd1,
+    #     'lossd2': lossd2,
+    #     'upper_rows': upper_rows,
+    #     'upper_cols': upper_cols,
+    #     'lower_rows': lower_rows,
+    #     'lower_cols': lower_cols,
+    #     'loss': loss
+    # }
+    # if len(upper_rows) > 0:
+    #     debug_dict.update({'upper': upper, 'lossou': lossou})
+    # if len(lower_cols) > 0:
+    #     debug_dict.update({'lower': lower, 'lossol': lossol})
+    
+    return loss #, debug_dict
     
 
 if __name__ == '__main__':
