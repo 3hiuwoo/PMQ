@@ -23,6 +23,9 @@ def get_device():
     
     
 def save_checkpoint(checkpoint, is_best, path):
+    if not os.path.exists(os.path.dirname(path)):
+        os.makedirs(os.path.dirname(path))
+        
     torch.save(checkpoint, path)
     if is_best:
         shutil.copyfile(path, os.path.join(os.path.dirname(path), 'model_best.pth'))

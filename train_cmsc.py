@@ -47,14 +47,10 @@ def main():
         
     device = get_device()
     print(f'=> using device {device}')
-    if device == 'cuda':
-        torch.backends.cudnn.benchmark = True
     
     print(f'=> creating model {args.model}')
     model = load_model(args.model, task='contrast', embeddim=args.embedding_dim)
     model.to(device)
-    
-    optimizer = optim.Adam(model.parameters(), args.lr)
     
     if args.resume:
         if os.path.isfile(args.resume):
@@ -76,16 +72,24 @@ def main():
         transform.ToTensor()
         ])
     
+    if device == 'cuda':
+        torch.backends.cudnn.benchmark = True
+        
     print(f'=> loading dataset {args.data} from {args.data_root}')
+    
     train_loader, _, _ = load_data(root=args.data_root, dataset_name=args.data, batch_size=args.batch_size, transform=trans)
+    
     print(f'=> dataset contains {len(train_loader.dataset)} samples')
-    print(f'=> loaded with {len(train_loader)} batches of size {args.batch_size}')
+    print(f'=> loaded with batch size of {args.batch_size}')
     
     # track loss
     loss = MeanMetric().to(device)
     logdir = os.path.join(dir, 'log')
     writer = SummaryWriter(log_dir=logdir)
     
+    optimizer = optim.Adam(model.parameters(), args.lr)
+    
+    print('=> running pretrain for {args.epochs} epochs')
     for epoch in range(start_epoch, args.epochs):
         # adjust_lr(optimizer, epoch, args.schedule)
         
