@@ -143,7 +143,7 @@ def main():
     writer.close()
     
     print('=> testing model')
-    test_auc = test(test_loader, model, epoch, test_auc, writer, device)
+    test_auc = test(test_loader, model, test_auc, device)
     print(f'=> test auc: {test_auc}')
 
 
