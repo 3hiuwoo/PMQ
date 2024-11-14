@@ -56,6 +56,17 @@ def main():
     model = load_model(args.model, task='supervised', embeddim=args.embedding_dim)
     model.to(device)
     
+    if args.freeze:
+        for name, params in model.named_parameters():
+            if name not in ['fc.weight', 'fc.bias']:
+                params.requires_grad = False
+        
+        # model.fc.weight.data.normal_(mean=0.0, std=0.01)
+        # model.fc.bias.data.zero_()
+        
+    params = list(filter(lambda p: p.requires_grad, model.parameters()))
+    optimizer = optim.Adam(params, args.lr)
+    
     if args.resume:
         if os.path.isfile(args.resume):
             print(f'=> loading checkpoint from {args.resume}')
@@ -76,13 +87,7 @@ def main():
         else:
             print(f'=> no pretrained model found at {args.pretrain}')
     
-    if args.freeze:
-        for name, params in model.named_parameters():
-            if name not in ['fc.weight', 'fc.bias']:
-                params.requires_grad = False
-        
-        # model.fc.weight.data.normal_(mean=0.0, std=0.01)
-        # model.fc.bias.data.zero_()
+    
         
     if args.data == 'chapman':
         trans = transform.Compose([
@@ -129,17 +134,14 @@ def main():
     logdir = os.path.join(dir, 'log')
     writer = SummaryWriter(log_dir=logdir)
     criterion = torch.nn.CrossEntropyLoss().to(device)
-    
-    params = list(filter(lambda p: p.requires_grad, model.parameters()))
-    
+
     if len(params) == 2:
         print('=> running linear evaluation for {args.epochs} epochs')
     elif args.pretrain:
         print('=> running finetune for {args.epochs} epochs')
     else:
         print('=> running train from scratch for {args.epochs} epochs')
-        
-    optimizer = optim.Adam(params, args.lr)
+
     
     best_auc = 0
     for epoch in range(start_epoch, args.epochs):

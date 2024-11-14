@@ -51,6 +51,8 @@ def main():
     print(f'=> creating model {args.model}')
     model = load_model(args.model, task='contrast', embeddim=args.embedding_dim)
     model.to(device)
+
+    optimizer = optim.Adam(model.parameters(), args.lr)
     
     if args.resume:
         if os.path.isfile(args.resume):
@@ -86,8 +88,6 @@ def main():
     loss = MeanMetric().to(device)
     logdir = os.path.join(dir, 'log')
     writer = SummaryWriter(log_dir=logdir)
-    
-    optimizer = optim.Adam(model.parameters(), args.lr)
     
     print('=> running pretrain for {args.epochs} epochs')
     for epoch in range(start_epoch, args.epochs):
