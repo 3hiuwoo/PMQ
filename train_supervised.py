@@ -205,7 +205,7 @@ def validate(valid_loader, model, epoch, metrics, writer, device):
             metrics.update(outputs, labels)
         
         total_metrics = metrics.compute()
-        writer.add_scalars('auc&acc', total_metrics, epoch)
+        writer.add_scalars('metrics', total_metrics, epoch)
         metrics.reset()
     
     return total_metrics
