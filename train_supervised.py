@@ -13,7 +13,7 @@ import argparse
 import torch
 from torch import optim
 from torch.utils.tensorboard import SummaryWriter
-from torchmetrics import MeanMetric, AUROC, Accuracy, MetricCollection
+from torchmetrics import MeanMetric, AUROC, Accuracy, F1Score, MetricCollection
 from tqdm import tqdm
 from dataset.load import load_data
 from model.load import load_model
@@ -86,8 +86,6 @@ def main():
             model.load_state_dict(checkpoint['model'], strict=False)
         else:
             print(f'=> no pretrained model found at {args.pretrain}')
-    
-    
         
     if args.data == 'chapman':
         trans = transform.Compose([
@@ -116,9 +114,10 @@ def main():
             
             test_metrics = MetricCollection({
                 'acc': Accuracy(task='multiclass', num_classes=4),
-                'auc': AUROC(task='multiclass', num_classes=4)}).to(device)
-            auc = test(test_loader, model, test_metrics, device)
-            print(f'=> test auc: {auc}')
+                'auc': AUROC(task='multiclass', num_classes=4),
+                'f1': F1Score(task='multiclass', num_classes=4)}).to(device)
+            metrics = test(test_loader, model, test_metrics, device)
+            print(f'=> auc: {metrics["auc"].item()}, acc: {metrics["acc"].item()}, f1: {metrics["f1"].item()}')
             return
         
         else:
@@ -173,7 +172,7 @@ def train(train_loader, model, optimizer, criterion, epoch, metric, writer, free
     if freeze:
         model.eval()
     
-    for signals, labels in tqdm(train_loader, desc=f'Epoch {epoch+1}'):
+    for signals, labels in tqdm(train_loader, desc=f'=> Epoch {epoch+1}'):
         signals = signals.to(device)
         labels = labels.to(device)
         outputs = model(signals)
@@ -194,7 +193,7 @@ def validate(valid_loader, model, epoch, metrics, writer, device):
     model.eval()
     
     with torch.no_grad():
-        for signals, labels in tqdm(valid_loader, desc=f'Epoch {epoch+1}'):
+        for signals, labels in tqdm(valid_loader, desc=f'=> Validating'):
             signals = signals.to(device)
             labels = labels.to(device)
             outputs = model(signals)
@@ -212,7 +211,7 @@ def test(test_loader, model, metrics, device):
     model.eval()
     
     with torch.no_grad():
-        for signals, labels in tqdm(test_loader, desc='Testing'):
+        for signals, labels in tqdm(test_loader, desc='=> Testing'):
             signals = signals.to(device)
             labels = labels.to(device)
             outputs = model(signals)

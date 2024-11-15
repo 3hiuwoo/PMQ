@@ -67,7 +67,7 @@ class ChapmanDataset(Dataset):
 
         # use wfdb to read .mat file and append the signal to the dataframe
         signals = pd.DataFrame(columns=['head', 'signal'])
-        for h in tqdm(heads, desc=f'Loading {self.split} dataset'):
+        for h in tqdm(heads, desc=f'=> Loading {self.split} dataset'):
             signal = rdrecord(os.path.join(self.root, h)).p_signal.T
             
             # drop leads that contain NaN
