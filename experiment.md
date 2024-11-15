@@ -13,10 +13,15 @@ About the dataset:
 **The following findings are possibly related to my technical problem or misunderstanding**
 - a small portion of data has labels that do not belong to any class out of 4 classes described by the dataset introduction, we dropped them.
 - a small portion of data has labels corresponding to not only one class out of 4 classes, we dropped them.
-- a small portion of data has leads that full of 0 or contains some NaN value, we dropped them.
+- a small portion of data has leads that full of 0 value or contains some NaN value, we dropped them.
 
 What else can we do:
 - apply **denoising** on **Chapman**
-- apply more othe transformations
+- apply more other transformations
 - **linear evaluation**
+- test different bigger size models
 - compare pretrained model with supervised one with less available labeld data
+- try more contrastive learning method(MoCo)
+- try bigger merged pretrain dataset
+- test on more downstream dataset
+- run more baseline(CMLC, CMSMLC, etc)

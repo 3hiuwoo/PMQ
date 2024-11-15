@@ -4,6 +4,9 @@ from .chapman import ChapmanDataset
 from utils.transform import Compose, Normalize, ToTensor
 
 def load_data(root, task, transform=None, batch_size=256, dataset_name='cinc2017'):
+    '''
+    return dataloaders
+    '''
     if task == 'contrast':
         if dataset_name == 'cinc2017':
             train_dataset = CINC2017Dataset(root=root, length=5000, split='train', transform=transform)

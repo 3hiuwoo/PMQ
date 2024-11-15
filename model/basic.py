@@ -1,7 +1,9 @@
-# -*- coding: utf-8 -*-
 from torch import nn
 
 class CNN3(nn.Module):
+    '''
+    a convolutional neural network with 3 convolutional layers
+    '''
     def __init__(self, embeddim=256, kernel_sizes=7, kernel_strides=3, channels=(4, 16, 32), dropouts=0.1):
         super(CNN3, self).__init__()
         if isinstance(dropouts, float):

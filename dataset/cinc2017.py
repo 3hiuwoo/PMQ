@@ -7,6 +7,15 @@ from tqdm import tqdm
 
 
 class CINC2017Dataset(Dataset):
+    '''CINC2017 dataset
+    
+    Args:
+        root (str): root directory of the dataset
+        length (int): length of the segmented signal, if None, use the whole signal
+        step (int): step of the sliding window, if None, set to length
+        split (str): one of 'train', 'valid' or 'test'
+        transform (transform): data augmentation
+    '''
     def __init__(self, root='training2017', length=None, step=None, split='train', transform=None):
         self.transform = transform
         self.length = length

@@ -7,6 +7,15 @@ from tqdm import tqdm
 
 
 class ChapmanDataset(Dataset):
+    '''Chapman dataset
+    
+    Args:
+        root (str): root directory of the dataset
+        split (str): one of 'train', 'valid' or 'test'
+        pretrain (bool): if True, return head, if False, return label
+        leads (list): list of leads to use, if None, use all leads
+        transform (transform): data augmentation
+    '''
     def __init__(self, root='trainingchapman', split='train', pretrain=True, leads=None, transform=None):
         self.transform = transform
         self.split = split
