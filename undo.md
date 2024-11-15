@@ -1,10 +1,11 @@
-#### dataset
-cinc2017:
+## dataset
+#### cinc2017:
 - interface for choosing a portion of the original data
-chapman:
+#### chapman:
 - can only flatten the leads dimension for time contrastive learning
 - downsample transformation
+- denoise
 
-#### train
+## train
 - learning rate decay
 - early stop

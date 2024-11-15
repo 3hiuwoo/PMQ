@@ -3,7 +3,7 @@
 This script is used to train the model under the CMSC paradigm.
 
 Run the script with the following command:
-    python train_cmsc.py
+    python train_cmsc.py {options}
     
 See python train_cmsc.py -h for training options
 '''
@@ -86,6 +86,7 @@ def main():
     
     # track loss
     loss = MeanMetric().to(device)
+    
     logdir = os.path.join(dir, 'log')
     writer = SummaryWriter(log_dir=logdir)
     
@@ -111,7 +112,7 @@ def main():
 def train(train_loader, model, optimizer, epoch, metric, writer, device):
     model.train()
     
-    for signals, heads in tqdm(train_loader, desc=f'=> Epoch {epoch+1}'):
+    for signals, heads in tqdm(train_loader, desc=f'=> Epoch {epoch+1}', leave=False):
         signals = signals.to(device)
         outputs = model(signals)
         

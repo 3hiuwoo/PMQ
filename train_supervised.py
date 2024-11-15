@@ -1,10 +1,13 @@
-'''2024-11-12
+'''2024-11-13
 
 This script is used to train the model under the supervised paradigm.
 Run the script for finetuning/linear evaluation with pretrained model or training from scratch.
 
-Run the script with the following command:
-    python train_supervised.py
+For training from scratch, run the script with the following command:
+    python train_supervised.py {options}
+    
+For finetuning/linear evaluation with pretrained model, run the script with the following command:
+    python train_supervised.py --pretrain {path_to_pretrained_model} (--freeze) {options}
     
 See python train_supervised.py -h for training options
 '''
@@ -115,7 +118,7 @@ def main():
             test_metrics = MetricCollection({
                 'acc': Accuracy(task='multiclass', num_classes=4),
                 'auc': AUROC(task='multiclass', num_classes=4),
-                'f1': F1Score(task='multiclass', num_classes=4)}).to(device)
+                'f1': F1Score(task='multiclass', num_classes=4, average='macro')}).to(device)
             metrics = test(test_loader, model, test_metrics, device)
             print(f'=> auc: {metrics["auc"].item()}, acc: {metrics["acc"].item()}, f1: {metrics["f1"].item()}')
             return
@@ -128,10 +131,12 @@ def main():
     train_loss = MeanMetric().to(device)
     valid_metrics = MetricCollection({
         'acc': Accuracy(task='multiclass', num_classes=4), 
-        'auc': AUROC(task='multiclass', num_classes=4)}).to(device)
+        'auc': AUROC(task='multiclass', num_classes=4),
+        'f1': F1Score(task='multiclass', num_classes=4, average='macro')}).to(device)
     
     logdir = os.path.join(dir, 'log')
     writer = SummaryWriter(log_dir=logdir)
+    
     criterion = torch.nn.CrossEntropyLoss().to(device)
 
     if len(params) == 2:
@@ -141,7 +146,6 @@ def main():
     else:
         print(f'=> running train from scratch for {args.epochs} epochs')
 
-    
     best_auc = 0
     for epoch in range(start_epoch, args.epochs):
         # adjust_lr(optimizer, epoch, args.schedule)
@@ -172,7 +176,7 @@ def train(train_loader, model, optimizer, criterion, epoch, metric, writer, free
     if freeze:
         model.eval()
     
-    for signals, labels in tqdm(train_loader, desc=f'=> Epoch {epoch+1}'):
+    for signals, labels in tqdm(train_loader, desc=f'=> Epoch {epoch+1}', leave=False):
         signals = signals.to(device)
         labels = labels.to(device)
         outputs = model(signals)
