@@ -197,7 +197,7 @@ def validate(valid_loader, model, epoch, metrics, writer, device):
     model.eval()
     
     with torch.no_grad():
-        for signals, labels in tqdm(valid_loader, desc=f'=> Validating'):
+        for signals, labels in tqdm(valid_loader, desc=f'=> Validating', leave=False):
             signals = signals.to(device)
             labels = labels.to(device)
             outputs = model(signals)
