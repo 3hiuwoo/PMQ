@@ -28,5 +28,5 @@ def save_checkpoint(checkpoint, is_best, path):
         
     torch.save(checkpoint, path)
     if is_best:
-        shutil.copyfile(path, os.path.join(os.path.dirname(path), 'model_best.pth'))
+        shutil.copyfile(path, os.path.join(os.path.dirname(path), 'best.pth'))
     

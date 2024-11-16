@@ -45,9 +45,13 @@ parser.add_argument('--test', type=str, default='', help='path to the best model
 def main():
     args = parser.parse_args()
     # directory to save the tensorboard log files and checkpoints
-    prefix = 'linear_evaluation' if args.freeze else 'finetune' if args.pretrain else 'scratch'
-    dir = os.path.join(args.log, f'{prefix}_{args.data}')
-    
+    prefix = 'lineval' if args.freeze else 'finetune' if args.pretrain else 'scratch'
+    dirname = f'{prefix}_{args.model}_{args.data}_{args.batch_size}'
+    if args.pretrain:
+        postfix = os.path.basename(args.pretrain)
+        dirname += f'__{os.path.basename(postfix)}'
+    dir = os.path.join(args.log, dirname)
+        
     if args.seed is not None:
         set_seed(args.seed)
         print(f'=> set seed to {args.seed}')
@@ -55,7 +59,7 @@ def main():
     device = get_device()
     print(f'=> using device {device}')
     
-    print(f'=> creating model {args.model}')
+    print(f'=> creating model with {args.model}')
     model = load_model(args.model, task='supervised', embeddim=args.embedding_dim)
     model.to(device)
     

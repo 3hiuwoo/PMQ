@@ -34,12 +34,12 @@ parser.add_argument('--seed', type=int, default=42, help='random seed for reprod
 parser.add_argument('--embedding_dim', type=int, default=256, help='the dimension of the embedding in contrastive loss')
 parser.add_argument('--check', type=int, default=10, help='the interval of epochs to save the checkpoint')
 parser.add_argument('--log', type=str, default='log', help='the directory to save the log')
-
+parser.add_argument('--method', type=str, default='cmsc', help='contrastive learning method')
 
 def main():
     args = parser.parse_args()
     # directory to save the tensorboard log files and checkpoints
-    dir = os.path.join(args.log, f'cmsc_{args.model}_{args.data}_{args.batch_size}')
+    dir = os.path.join(args.log, f'{args.method}_{args.model}_{args.data}_{args.batch_size}')
     
     if args.seed is not None:
         set_seed(args.seed)
