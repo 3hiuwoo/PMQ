@@ -48,8 +48,8 @@ def main():
     prefix = 'lineval' if args.freeze else 'finetune' if args.pretrain else 'scratch'
     dirname = f'{prefix}_{args.model}_{args.data}_{args.batch_size}'
     if args.pretrain:
-        postfix = os.path.dirname(args.pretrain)
-        dirname += f'__{os.path.basename(postfix)}'
+        postfix = args.pretrain.split(os.sep)[-3]
+        dir += f'__{postfix}'
     dir = os.path.join(args.log, dirname)
         
     if args.seed is not None:
