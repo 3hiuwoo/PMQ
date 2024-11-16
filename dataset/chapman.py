@@ -13,17 +13,17 @@ class ChapmanDataset(Dataset):
         root (str): root directory of the dataset
         split (str): one of 'train', 'valid' or 'test'
         pretrain (bool): if True, return head, if False, return label
-        leads (list): list of leads to use, if None, use all leads
+        keep_lead (bool): whether to keep the dimension of lead
         transform (transform): data augmentation
     '''
-    def __init__(self, root='trainingchapman', split='train', pretrain=True, leads=None, transform=None):
+    def __init__(self, root='trainingchapman', split='train', pretrain=True, keep_lead=None, transform=None):
         self.transform = transform
         self.split = split
         self.root = root
-        self.leads = leads
+        self.keep_lead = keep_lead
         self.pretrain = pretrain
         self.classes = ['SB', 'AFIB', 'GSVT', 'SR']
-        self.leads_name = ['I', 'II', 'III', 'aVR', 'aVL', 'aVF', 'V1', 'V2', 'V3', 'V4', 'V5', 'V6']
+        self.leads = ['I', 'II', 'III', 'aVR', 'aVL', 'aVF', 'V1', 'V2', 'V3', 'V4', 'V5', 'V6']
         self.data = self._load_data()
         if not self.pretrain:
             self.data = pd.merge(self._load_label(), self.data, on='head', how='inner')
@@ -92,7 +92,7 @@ class ChapmanDataset(Dataset):
             
         signals.reset_index(drop=True, inplace=True)
         
-        if self.leads is None:
+        if self.keep_lead is None:
             signals = signals.explode('signal', ignore_index=True)
         # else: ...
         

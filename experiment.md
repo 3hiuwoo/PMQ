@@ -25,3 +25,5 @@ What else can we do:
 - try bigger merged pretrain dataset
 - test on more downstream dataset
 - run more baseline(CMLC, CMSMLC, etc)
+- try more batch size
+- ablation on loss

@@ -39,7 +39,7 @@ parser.add_argument('--log', type=str, default='log', help='the directory to sav
 def main():
     args = parser.parse_args()
     # directory to save the tensorboard log files and checkpoints
-    dir = os.path.join(args.log, f'cmsc_{args.model}_{args.data}')
+    dir = os.path.join(args.log, f'cmsc_{args.model}_{args.data}_{args.batch_size}')
     
     if args.seed is not None:
         set_seed(args.seed)
