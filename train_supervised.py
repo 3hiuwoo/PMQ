@@ -49,7 +49,7 @@ def main():
     dirname = f'{prefix}_{args.model}_{args.data}_{args.batch_size}'
     if args.pretrain:
         postfix = args.pretrain.split(os.sep)[-3]
-        dir += f'__{postfix}'
+        dirname += f'__{postfix}'
     dir = os.path.join(args.log, dirname)
         
     if args.seed is not None:
