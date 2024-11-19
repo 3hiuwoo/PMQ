@@ -47,10 +47,16 @@ def main():
     # directory to save the tensorboard log files and checkpoints
     prefix = 'lineval' if args.freeze else 'finetune' if args.pretrain else 'scratch'
     dirname = f'{prefix}_{args.model}_{args.data}_{args.batch_size}'
+    
     if args.pretrain:
         postfix = args.pretrain.split(os.sep)[-3]
         dirname += f'__{postfix}'
+        filename = args.pretrain.split(os.sep)[-1].split('.')[0]
+        num_epochs = int(filename.split('_')[-1])
+        dirname += f'_{num_epochs}'
+
     dir = os.path.join(args.log, dirname)
+    # dir = args.log
         
     if args.seed is not None:
         set_seed(args.seed)

@@ -1,6 +1,6 @@
 # 2024-11-15
 
-Pretraining using **CMSC** on **Chapman** and finetuning on **CINC2017** using 12 leads and an learned embedding dimension of 256, such setting is which performs the best in the original paper:
+Pretrain with **CMSC** on **Chapman** and finetuning on **CINC2017** using 12 leads and an learned embedding dimension of 256, such setting is which performs the best in the original paper:
 
 |            | AUC      | Accuracy | F1score  |
 |:-----------|---------:|---------:|---------:|
@@ -27,3 +27,16 @@ What else can we do:
 - run more baseline(CMLC, CMSMLC, etc)
 - try more batch size
 - ablation on loss
+- try projection head
+
+# 2024-11-16
+
+Pretrain with **CMSC** on **Chapman** and finetuning on **CINC2017** using 12 leads and an learned embedding dimension of 256, but with different batch sizes:
+
+| batch size | AUC      | Accuracy | F1score  |
+|:-----------|---------:|---------:|---------:|
+| 128        | 0.878578 | 0.708417 | 0.629871 |
+| 256        | 0.874503 | 0.694389 | 0.622155 |
+| 512        | 0.866470 | 0.688377 | 0.621465 |
+| 1024       | 0.881802 | 0.698397 | 0.618134 |
+| 2048       | 0.883140 | 0.695391 | 0.617683 |

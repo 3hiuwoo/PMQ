@@ -40,6 +40,7 @@ def main():
     args = parser.parse_args()
     # directory to save the tensorboard log files and checkpoints
     dir = os.path.join(args.log, f'{args.method}_{args.model}_{args.data}_{args.batch_size}')
+    # dir = args.log
     
     if args.seed is not None:
         set_seed(args.seed)
