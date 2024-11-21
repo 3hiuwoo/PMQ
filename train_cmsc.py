@@ -91,11 +91,18 @@ def main():
     logdir = os.path.join(dir, 'log')
     writer = SummaryWriter(log_dir=logdir)
     
-    print(f'=> running pretrain for {args.epochs} epochs')
+    if args.method == 'cmsc':
+        criterion = cmsc_loss
+    elif args.method == 'simclr':
+        criterion = simclr_loss
+    else:
+        raise ValueError(f'unknown contrastive learning method {args.method}')
+    
+    print(f'=> running {args.method} for {args.epochs} epochs')
     for epoch in range(start_epoch, args.epochs):
         # adjust_lr(optimizer, epoch, args.schedule)
         
-        train(train_loader, model, optimizer, epoch, loss, writer, device)
+        train(train_loader, model, criterion, optimizer, epoch, loss, writer, device)
         
         if (epoch + 1) % args.check == 0:
             checkpoint = {
@@ -110,14 +117,14 @@ def main():
     writer.close()
 
 
-def train(train_loader, model, optimizer, epoch, metric, writer, device):
+def train(train_loader, model, criterion, optimizer, epoch, metric, writer, device):
     model.train()
     
     for signals, heads in tqdm(train_loader, desc=f'=> Epoch {epoch+1}', leave=False):
         signals = signals.to(device)
         outputs = model(signals)
         
-        loss = cmsc_loss(outputs, heads)
+        loss = criterion(outputs, heads)
         metric.update(loss)
         
         optimizer.zero_grad()
@@ -183,30 +190,52 @@ def cmsc_loss(outputs, heads):
     # average across views
     loss /= 2
     
-    # debug
-    # debug_dict = {
-    #     'pos_matrix': pos_matrix,
-    #     'view1': view1,
-    #     'view2': view2,
-    #     'sim_matrix': sim_matrix,
-    #     'sim_matrix_exp': sim_matrix_exp,
-    #     'row_sum': row_sum,
-    #     'col_sum': col_sum,
-    #     'diags': diags,
-    #     'lossd1': lossd1,
-    #     'lossd2': lossd2,
-    #     'upper_rows': upper_rows,
-    #     'upper_cols': upper_cols,
-    #     'lower_rows': lower_rows,
-    #     'lower_cols': lower_cols,
-    #     'loss': loss
-    # }
-    # if len(upper_rows) > 0:
-    #     debug_dict.update({'upper': upper, 'lossou': lossou})
-    # if len(lower_cols) > 0:
-    #     debug_dict.update({'lower': lower, 'lossol': lossol})
+    return loss
+
+
+def simclr_loss(outputs, heads):
+    '''
+    Loss function for SimCLR
     
-    return loss #, debug_dict
+    Args:
+        outputs: embedding for each view (NxBxH)
+        heads: not used, just for same input format
+    '''
+    # get normalized embeddings for each view
+    view1 = outputs[0]
+    view1 = torch.nn.functional.normalize(view1, dim=-1)
+    view2 = outputs[1]
+    view2 = torch.nn.functional.normalize(view2, dim=-1)
+    
+    # calculate the similarity matrix between two views
+    tao = 0.1
+    sim_matrix = torch.matmul(view1, view2.T)
+    sim_matrix /= tao
+    sim_matrix_exp = torch.exp(sim_matrix)
+    
+    # calculate the similarity matrix in the same view
+    sim_matrix1 = torch.matmul(view1, view1.T)
+    sim_matrix1 /= tao
+    sim_matrix_exp1 = torch.exp(sim_matrix1)
+    sim_matrix_od1 = torch.triu(sim_matrix_exp1, 1) + torch.tril(sim_matrix_exp1, -1)
+    
+    sim_matrix2 = torch.matmul(view2, view2.T)
+    sim_matrix2 /= tao
+    sim_matrix_exp2 = torch.exp(sim_matrix2)
+    sim_matrix_od2 = torch.triu(sim_matrix_exp2, 1) + torch.tril(sim_matrix_exp2, -1)
+    
+    # calculate the loss
+    denominator1 = torch.sum(sim_matrix_exp, 1) + torch.sum(sim_matrix_od1, 1)
+    denominator2 = torch.sum(sim_matrix_exp, 0) + torch.sum(sim_matrix_od2, 0)
+    
+    eps = 1e-12
+    diags = torch.diagonal(sim_matrix_exp)
+    loss1 = -torch.mean(torch.log((diags + eps)/(denominator1 + eps)))
+    loss2 = -torch.mean(torch.log((diags + eps)/(denominator2 + eps)))
+    loss = loss1 + loss2
+    loss /= 2
+    
+    return loss
     
 
 if __name__ == '__main__':

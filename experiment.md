@@ -1,4 +1,4 @@
-# 2024-11-15
+# EXP1: Compare with supervised
 
 Pretrain with **CMSC** on **Chapman** and finetuning on **CINC2017** using 12 leads and an learned embedding dimension of 256, such setting is which performs the best in the original paper:
 
@@ -28,15 +28,27 @@ What else can we do:
 - try more batch size
 - ablation on loss
 - try projection head
+- apply new loss to moco
 
-# 2024-11-16
+# EXP2: Ablation on batch size and epoch
 
 Pretrain with **CMSC** on **Chapman** and finetuning on **CINC2017** using 12 leads and an learned embedding dimension of 256, but with different batch sizes:
 
+## pretrain for 100 epochs
+
 | batch size | AUC      | Accuracy | F1score  |
 |:-----------|---------:|---------:|---------:|
-| 128        | 0.878578 | 0.708417 | 0.629871 |
-| 256        | 0.874503 | 0.694389 | 0.622155 |
-| 512        | 0.866470 | 0.688377 | 0.621465 |
-| 1024       | 0.881802 | 0.698397 | 0.618134 |
-| 2048       | 0.883140 | 0.695391 | 0.617683 |
+| 256        | 0.869519 | 0.697395 | 0.620368 |
+| 2048       | 0.881905 | 0.691383 | 0.623343 |
+
+## pretrain for 400 epochs
+
+| batch size | AUC          | Accuracy     | F1score      |
+|:-----------|-------------:|-------------:|-------------:|
+| 64         | 0.882743     | 0.707415     | **0.638528** |
+| 128        | 0.878578     | **0.708417** | 0.629871     |
+| 256        | 0.874503     | 0.694389     | 0.622155     |
+| 512        | 0.866470     | 0.688377     | 0.621465     |
+| 1024       | 0.881802     | 0.698397     | 0.618134     |
+| 2048       | **0.883140** | 0.695391     | 0.617683     |
+| 4096       | 0.880481     | 0.687375     | 0.601843     |
