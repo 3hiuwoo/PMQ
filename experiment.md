@@ -29,6 +29,7 @@ What else can we do:
 - ablation on loss
 - try projection head
 - apply new loss to moco
+- change the fc
 
 # EXP2: Ablation on batch size and epoch
 

@@ -206,7 +206,7 @@ class ToGroup:
         return np.concatenate(sigs, axis=0)
     
 
-class Denoise:
+class WaveletDenoise:
     '''
     denoise the raw signal
     '''
@@ -259,3 +259,17 @@ class CreateView:
         signals = [self.transform(signal) for n in range(self.nviews)]
         return np.stack(signals, axis=0)
         
+
+class DownSample:
+    '''
+    downsample the signal
+    
+    Args:
+        df(int): downsample factor
+    '''
+    def __init__(self, df):
+        self.df = df
+        
+        
+    def __call__(self, signal):
+        return signal[..., ::self.df]

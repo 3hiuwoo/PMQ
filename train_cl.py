@@ -1,11 +1,11 @@
 '''2024-11-12
 
-This script is used to train the model under the CMSC paradigm.
+This script is used to train the model under the CMSC/SimCLR/MoCo paradigm.
 
 Run the script with the following command:
-    python train_cmsc.py {options}
+    python train_cl.py {options}
     
-See python train_cmsc.py -h for training options
+See python train_cl.py -h for training options
 '''
 import os
 import argparse
@@ -50,7 +50,7 @@ def main():
     print(f'=> using device {device}')
     
     print(f'=> creating model {args.model}')
-    model = load_model(args.model, task='contrast', embeddim=args.embedding_dim)
+    model = load_model(args.model, task=args.method, embeddim=args.embedding_dim)
     model.to(device)
 
     optimizer = optim.Adam(model.parameters(), args.lr)
