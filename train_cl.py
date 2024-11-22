@@ -34,12 +34,12 @@ parser.add_argument('--seed', type=int, default=42, help='random seed for reprod
 parser.add_argument('--embedding_dim', type=int, default=256, help='the dimension of the embedding in contrastive loss')
 parser.add_argument('--check', type=int, default=10, help='the interval of epochs to save the checkpoint')
 parser.add_argument('--log', type=str, default='log', help='the directory to save the log')
-parser.add_argument('--method', type=str, default='cmsc', help='contrastive learning method')
+parser.add_argument('--task', type=str, default='cmsc', help='contrastive learning method')
 
 def main():
     args = parser.parse_args()
     # directory to save the tensorboard log files and checkpoints
-    dir = os.path.join(args.log, f'{args.method}_{args.model}_{args.data}_{args.batch_size}')
+    dir = os.path.join(args.log, f'{args.task}_{args.model}_{args.data}_{args.batch_size}')
     # dir = args.log
     
     if args.seed is not None:
@@ -50,7 +50,7 @@ def main():
     print(f'=> using device {device}')
     
     print(f'=> creating model {args.model}')
-    model = load_model(args.model, task=args.method, embeddim=args.embedding_dim)
+    model = load_model(args.model, task=args.task, embeddim=args.embedding_dim)
     model.to(device)
 
     optimizer = optim.Adam(model.parameters(), args.lr)
@@ -67,7 +67,7 @@ def main():
     else:
         start_epoch = 0
     
-    # for creating views
+    # creating views
     trans = transform.Compose([
         # transform.Denoise(),
         transform.Normalize(),
@@ -80,7 +80,7 @@ def main():
         
     print(f'=> loading dataset {args.data} from {args.data_root}')
     
-    train_loader, _, _ = load_data(root=args.data_root, task='contrast', dataset_name=args.data, batch_size=args.batch_size, transform=trans)
+    train_loader, _, _ = load_data(root=args.data_root, task=args.task, dataset_name=args.data, batch_size=args.batch_size, transform=trans)
     
     print(f'=> dataset contains {len(train_loader.dataset)} samples')
     print(f'=> loaded with batch size of {args.batch_size}')
@@ -91,10 +91,13 @@ def main():
     logdir = os.path.join(dir, 'log')
     writer = SummaryWriter(log_dir=logdir)
     
-    if args.method == 'cmsc':
+    # choose the contrastive loss function for different structure
+    if args.task == 'cmsc':
         criterion = cmsc_loss
-    elif args.method == 'simclr':
+    elif args.task == 'simclr':
         criterion = simclr_loss
+    elif args.task == 'moco':
+        criterion = moco_loss
     else:
         raise ValueError(f'unknown contrastive learning method {args.method}')
     
@@ -234,6 +237,20 @@ def simclr_loss(outputs, heads):
     loss2 = -torch.mean(torch.log((diags + eps)/(denominator2 + eps)))
     loss = loss1 + loss2
     loss /= 2
+    
+    return loss
+    
+    
+def moco_loss(logits, heads):
+    '''
+    moco loss function
+    
+    Args:
+        logits: the output of the model (Bx(K+1))
+        heads: not used, just for same input format
+    '''
+    labels = torch.zeros(logits.shape[0], dtype=torch.long, device=logits.device)
+    loss = torch.nn.functional.cross_entropy(logits, labels)
     
     return loss
     

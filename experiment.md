@@ -2,10 +2,11 @@
 
 Pretrain with **CMSC** on **Chapman** and finetuning on **CINC2017** using 12 leads and an learned embedding dimension of 256, such setting is which performs the best in the original paper:
 
-|            | AUC      | Accuracy | F1score  |
-|:-----------|---------:|---------:|---------:|
-| Supervised | 0.860281 | 0.670341 | 0.589147 |
-| Finetune   | 0.874503 | 0.694389 | 0.622155 |
+|              | AUC      | Accuracy | F1score  |
+|:-------------|---------:|---------:|---------:|
+| Supervised   | 0.860281 | 0.670341 | 0.589147 |
+| Finetune w/  | 0.874503 | 0.694389 | 0.622155 |
+| Finetune w/o | 0.873064 | 0.681363 | 0.598361 |
 
 There has been an update on Chapman dataset enlarging its shape to more than 40k 12-lead ecg frames(from 10k), boosting the CMSC method from auc of 0.822 to one listed above. And the supervised model trained from scratch performs not as poor as shown in the paper.
 
