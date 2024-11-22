@@ -23,6 +23,8 @@ def load_model(model_name, task, embeddim):
         return ContrastModel(network=network, embeddim=embeddim)
     elif task == 'moco':
         return MoCoModel(network=network, embeddim=embeddim)
+    elif task == 'mcp':
+        return MCPModel(network=network, embeddim=embeddim)
     elif task == 'supervised':
         return SupervisedModel(network=network, embeddim=embeddim)
     else:
@@ -34,7 +36,7 @@ class ContrastModel(nn.Module):
     contrastive model used for CMSC, SimCLR
     '''
     def __init__(self, network, embeddim=256):
-        super(ContrastModel,self).__init__()
+        super(ContrastModel, self).__init__()
         self.embeddim = embeddim
         self.encoder = network(embeddim)
         
@@ -57,7 +59,7 @@ class SupervisedModel(nn.Module):
     supervised model
     '''
     def __init__(self, network, num_classes=4, embeddim=256):
-        super(SupervisedModel,self).__init__()
+        super(SupervisedModel, self).__init__()
         self.embeddim = embeddim
         self.encoder = network(embeddim)
         # dim = self.encoder.fc.weight.shape[1]
@@ -76,7 +78,94 @@ class MoCoModel(nn.Module):
     MoCo model
     '''
     def __init__(self, network, embeddim=256, queue_size=16384, momentum=0.999):
-        super(MoCoModel,self).__init__()
+        super(MoCoModel, self).__init__()
+        self.embeddim = embeddim
+        self.encoder_q = network(embeddim)
+        self.encoder_k = network(embeddim)
+        self.queue_size = queue_size
+        self.momentum = momentum
+        self.register_buffer("queue", torch.randn(embeddim, queue_size))
+        self.queue = nn.functional.normalize(self.queue, dim=0)
+        self.register_buffer("queue_ptr", torch.zeros(1, dtype=torch.long))
+
+        for param_q, param_k in zip(self.encoder_q.parameters(), self.encoder_k.parameters()):
+            param_k.data.copy_(param_q.data)
+            param_k.requires_grad = False
+
+
+    @torch.no_grad()
+    def _update_key_encoder(self):
+        """
+        Momentum update of the key encoder
+        """
+        for param_q, param_k in zip(
+            self.encoder_q.parameters(), self.encoder_k.parameters()
+        ):
+            param_k.data = param_k.data * self.momentum + param_q.data * (1.0 - self.momentum)
+
+
+    @torch.no_grad()
+    def _update_queue(self, keys):
+        batch_size = keys.shape[0]
+
+        ptr = int(self.queue_ptr)
+        assert self.queue_size % batch_size == 0  # for simplicity
+
+        # replace the keys at ptr (dequeue and enqueue)
+        self.queue[:, ptr : ptr + batch_size] = keys.T
+        ptr = (ptr + batch_size) % self.self.queue_size  # move pointer
+
+        self.queue_ptr[0] = ptr
+        
+
+    def forward(self, x):
+        """
+        Input:
+            x: input with 2 views (Bx2xCxS)
+        Output:
+            logits
+        """
+        x = x.permute(1, 0, 2, 3)
+        
+        # compute query features
+        q = self.encoder_q(x[0])  # queries: BxH
+        q = nn.functional.normalize(q, dim=1)
+
+        # compute key features
+        with torch.no_grad():  # no gradient to keys
+            self._update_key_encoder()  # update the key encoder
+
+            # shuffle for making use of BN
+            idx = torch.randperm(x[1].size(0), device=x.device)
+            k = self.encoder_k(x[1, idx, ...])  # keys: BxH
+            
+            # undo shuffle
+            k = k[torch.argsort(idx)]
+            k = nn.functional.normalize(k, dim=1)
+
+        # positive logits: Nx1
+        pos = torch.einsum("nq,nq->n", [q, k]).unsqueeze(-1)
+        # negative logits: NxK
+        neg = torch.einsum("nq,qk->nk", [q, self.queue.clone().detach()])
+
+        # logits: Nx(1+K)
+        logits = torch.cat([pos, neg], dim=1)
+
+        # apply temperature
+        logits /= 0.1
+
+        # dequeue and enqueue
+        self._update_queue(k)
+
+        return logits
+
+
+class MCPModel(nn.Module):
+    '''
+    MoCo model
+    '''
+    def __init__(self, network, embeddim=256, queue_size=16384, momentum=0.999):
+        super(MCPModel, self).__init__()
         self.embeddim = embeddim
         self.encoder_q = network(embeddim)
         self.encoder_k = network(embeddim)
