@@ -127,12 +127,14 @@ def train(train_loader, model, criterion, task, optimizer, epoch, metric, writer
         signals = signals.to(device)
         
         if task == 'mcp':
-            outputs = model(signals, heads)
+            query_key, query_queue, key_queue, current_heads = model(signals, heads)
         else:
             outputs = model(signals)
     
         if task == 'cmsc':
             loss = criterion(outputs, heads)
+        elif task == 'mcp':
+            loss = criterion(query_key, query_queue, key_queue, current_heads)
         else:
             loss = criterion(outputs)
             
@@ -185,6 +187,7 @@ def cmsc_loss(outputs, heads):
     lossd1 = -torch.mean(torch.log((diags + eps)/(row_sum + eps)))
     lossd2 = -torch.mean(torch.log((diags + eps)/(col_sum + eps)))
     loss = lossd1 + lossd2
+    num_loss = 2
     
     # calculate off-diagonal loss symmetrically
     upper_rows, upper_cols = np.where(np.triu(pos_matrix, 1))
@@ -192,14 +195,16 @@ def cmsc_loss(outputs, heads):
     if len(upper_rows) > 0:
         upper = sim_matrix_exp[upper_rows, upper_cols]
         lossou = -torch.mean(torch.log((upper + eps)/(row_sum[upper_rows] + eps)))
-        loss += lossou    
+        loss += lossou
+        num_loss += 1
     if len(lower_cols) > 0:
         lower = sim_matrix_exp[lower_rows, lower_cols]
         lossol = -torch.mean(torch.log((lower + eps)/(col_sum[lower_cols] + eps)))
         loss += lossol
+        num_loss += 1
 
     # average across views
-    loss /= 2
+    loss /= num_loss
     
     return loss
 
@@ -255,10 +260,63 @@ def moco_loss(logits):
     Args:
         logits: the output of the model (Bx(K+1))
     '''
+    logits /= 0.1
     labels = torch.zeros(logits.shape[0], dtype=torch.long, device=logits.device)
     loss = torch.nn.functional.cross_entropy(logits, labels)
     
     return loss
+
+
+def mcp_loss(query_key, query_queue, queue_heads, heads):
+    '''
+    mcp loss function
+    
+    Args:
+        query_key: product of q and k(BxB)
+        query_queue: product of q and queue(BxK)
+        key_query: list contains corresponding product of q and queue to each q(Bx?)
+        heads: the head of sample in the batch (B)
+    '''
+    heads = np.array(heads)
+    # off diagonal of qk product
+    pos_matrix1 = np.equal.outer(heads, heads).astype(int)
+    # position of q queue product
+    pos_matrix2 = np.equal.outer(heads, queue_heads).astype(int)
+    
+    query_key /= 0.1
+    query_queue /= 0.1
+    
+    query_key_exp = torch.exp(query_key)
+    query_queue_exp = torch.exp(query_queue)
+
+    denominator = torch.sum(query_queue_exp, dim=1)
+    
+    # calculate diagonal loss symmetrically
+    eps = 1e-12
+    diags = torch.diagonal(query_key)
+    loss = -torch.mean(torch.log((diags + eps)/(denominator + eps)))
+    num_loss = 1
+    
+    rows1, cols1 = np.where(np.triu(pos_matrix1, 1))
+    if len(rows1) > 0:
+        upper = query_key_exp[rows1, cols1]
+        loss1 = -torch.mean(torch.log((upper + eps)/(denominator[rows1] + eps)))
+        loss += loss1
+        num_loss += 1
+        
+    rows2, cols2 = np.where(pos_matrix2)
+    if len(rows2) > 0:
+        pos = query_queue_exp[rows2, cols2]
+        loss2 = -torch.mean(torch.log((pos + eps)/(denominator[rows2] + eps)))
+        loss += loss2
+        num_loss += 1
+        
+    loss /= num_loss
+    
+    return loss
+    
+    
+    
     
 
 if __name__ == '__main__':

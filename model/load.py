@@ -1,5 +1,6 @@
 import torch
 import re
+import numpy as np
 from torch import nn
 from model.basic import CNN3
 
@@ -152,9 +153,6 @@ class MoCoModel(nn.Module):
         # logits: Nx(1+K)
         logits = torch.cat([pos, neg], dim=1)
 
-        # apply temperature
-        logits /= 0.1
-
         # dequeue and enqueue
         self._update_queue(k)
 
@@ -201,8 +199,8 @@ class MCPModel(nn.Module):
         assert self.queue_size % batch_size == 0  # for simplicity
 
         # replace the keys at ptr (dequeue and enqueue)
-        self.queue[:, ptr : ptr + batch_size] = keys.T
-        self.heads[ptr : ptr + batch_size] = heads
+        self.queue[:, ptr:(ptr+batch_size)] = keys.T
+        self.heads[ptr:(ptr+batch_size)] = heads
         ptr = (ptr + batch_size) % self.queue_size  # move pointer
 
         self.queue_ptr[0] = ptr
@@ -225,7 +223,8 @@ class MCPModel(nn.Module):
             logits
         """
         x = x.permute(1, 0, 2, 3)
-        heads = self._strip_heads(heads)
+        current_heads = self._strip_heads(heads)
+        current_heads = torch.tensor(current_heads, dtype=torch.long, device=self.heads.device)
         
         # compute query features
         q = self.encoder_q(x[0])  # queries: BxH
@@ -243,18 +242,12 @@ class MCPModel(nn.Module):
             k = k[torch.argsort(idx)]
             k = nn.functional.normalize(k, dim=1)
 
-        # positive logits in batch: Nx1
-        pos = torch.einsum("nq,nq->n", [q, k]).unsqueeze(-1)
-        # negative logits: NxK
-        neg = torch.einsum("nq,qk->nk", [q, self.queue.clone().detach()])
-
-        # logits: Nx(1+K)
-        logits = torch.cat([pos, neg], dim=1)
-
-        # apply temperature
-        logits /= 0.1
-
+        query_key = torch.matmul(q, k.T)
+        query_queue = torch.matmul(q, self.queue.clone().detach())   
+        
+        queue_heads = self.heads.clone().detach()
+        
         # dequeue and enqueue
-        self._update_queue_n_head(k, heads)
+        self._update_queue_n_head(k, current_heads)
 
-        return logits
+        return query_key, query_queue, queue_heads, current_heads
