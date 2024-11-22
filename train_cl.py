@@ -164,7 +164,7 @@ def cmsc_loss(outputs, heads):
         2 symmetric diagonal terms and 2 symmetric off-diagonal terms
     '''
     # find the diagonal and off-diagonal positions that need to calculate the loss
-    heads = np.array(heads.cpu())
+    heads = np.array(heads)
     pos_matrix = np.equal.outer(heads, heads).astype(int)
     
     # get normalized embeddings for each view
@@ -279,7 +279,9 @@ def mcp_loss(query_key, query_queue, queue_heads, heads):
         key_query: list contains corresponding product of q and queue to each q(Bx?)
         heads: the head of sample in the batch (B)
     '''
-    heads = np.array(heads)
+    heads = np.array(heads.cpu())
+    queue_heads = np.array(queue_heads.cpu())
+    
     # off diagonal of qk product
     pos_matrix1 = np.equal.outer(heads, heads).astype(int)
     # position of q queue product
