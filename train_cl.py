@@ -120,14 +120,22 @@ def main():
     writer.close()
 
 
-def train(train_loader, model, criterion, optimizer, epoch, metric, writer, device):
+def train(train_loader, model, criterion, task, optimizer, epoch, metric, writer, device):
     model.train()
     
     for signals, heads in tqdm(train_loader, desc=f'=> Epoch {epoch+1}', leave=False):
         signals = signals.to(device)
-        outputs = model(signals)
         
-        loss = criterion(outputs, heads)
+        if task == 'mcp':
+            outputs = model(signals, heads)
+        else:
+            outputs = model(signals)
+    
+        if task == 'cmsc':
+            loss = criterion(outputs, heads)
+        else:
+            loss = criterion(outputs)
+            
         metric.update(loss)
         
         optimizer.zero_grad()
@@ -196,13 +204,12 @@ def cmsc_loss(outputs, heads):
     return loss
 
 
-def simclr_loss(outputs, heads):
+def simclr_loss(outputs):
     '''
     Loss function for SimCLR
     
     Args:
         outputs: embedding for each view (NxBxH)
-        heads: not used, just for same input format
     '''
     # get normalized embeddings for each view
     view1 = outputs[0]
@@ -241,13 +248,12 @@ def simclr_loss(outputs, heads):
     return loss
     
     
-def moco_loss(logits, heads):
+def moco_loss(logits):
     '''
     moco loss function
     
     Args:
         logits: the output of the model (Bx(K+1))
-        heads: not used, just for same input format
     '''
     labels = torch.zeros(logits.shape[0], dtype=torch.long, device=logits.device)
     loss = torch.nn.functional.cross_entropy(logits, labels)
