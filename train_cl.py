@@ -164,7 +164,7 @@ def cmsc_loss(outputs, heads):
         2 symmetric diagonal terms and 2 symmetric off-diagonal terms
     '''
     # find the diagonal and off-diagonal positions that need to calculate the loss
-    heads = np.array(heads)
+    heads = np.array(heads.cpu())
     pos_matrix = np.equal.outer(heads, heads).astype(int)
     
     # get normalized embeddings for each view
