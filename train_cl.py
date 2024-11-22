@@ -99,9 +99,9 @@ def main():
     elif args.task == 'moco':
         criterion = moco_loss
     else:
-        raise ValueError(f'unknown contrastive learning method {args.method}')
+        raise ValueError(f'unknown contrastive learning method {args.task}')
     
-    print(f'=> running {args.method} for {args.epochs} epochs')
+    print(f'=> running {args.task} for {args.epochs} epochs')
     for epoch in range(start_epoch, args.epochs):
         # adjust_lr(optimizer, epoch, args.schedule)
         

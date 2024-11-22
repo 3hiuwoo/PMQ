@@ -96,6 +96,14 @@ def main():
         if os.path.isfile(args.pretrain):
             print(f'=> loading pretrained model from {args.pretrain}')
             checkpoint = torch.load(args.pretrain, map_location=device)
+            
+            # to match with moco
+            if args.task == 'moco':
+                for k in list(checkpoint['model'].keys()):
+                    if 'encoder_q' in k:
+                        checkpoint['model'][k.replace('encoder_q.', 'encoder')] = checkpoint['model'].pop(k)
+                    del checkpoint['model'][k]
+
             model.load_state_dict(checkpoint['model'], strict=False)
         else:
             print(f'=> no pretrained model found at {args.pretrain}')

@@ -31,14 +31,13 @@ class CNN3(nn.Module):
             nn.MaxPool1d(2),
             nn.Dropout(dropouts[2]),
             
-            nn.Flatten()
+            nn.Flatten(),
+            nn.Linear(10 * channels[2], embeddim)
         )
-        self.fc = nn.Linear(10 * channels[2], embeddim)
     
     
     def forward(self, x):
         x = self.backbone(x)
-        x = self.fc(x)
         return x
     
     
