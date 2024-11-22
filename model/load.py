@@ -242,8 +242,8 @@ class MCPModel(nn.Module):
             k = k[torch.argsort(idx)]
             k = nn.functional.normalize(k, dim=1)
 
-        query_key = torch.matmul(q, k.T)
-        query_queue = torch.matmul(q, self.queue.clone().detach())   
+        query_key = torch.matmul(q, k.T) # BxB
+        query_queue = torch.matmul(q, self.queue.clone().detach()) # BxK
         
         queue_heads = self.heads.clone().detach()
         

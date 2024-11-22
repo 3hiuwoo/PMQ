@@ -293,11 +293,13 @@ def mcp_loss(query_key, query_queue, queue_heads, heads):
     query_key_exp = torch.exp(query_key)
     query_queue_exp = torch.exp(query_queue)
 
-    denominator = torch.sum(query_queue_exp, dim=1)
+    denominator = torch.sum(
+        torch.concat([query_key_exp, query_queue_exp], dim=1),
+        dim=1)
     
     # calculate diagonal loss symmetrically
     eps = 1e-12
-    diags = torch.diagonal(query_key)
+    diags = torch.diagonal(query_key_exp)
     loss = -torch.mean(torch.log((diags + eps)/(denominator + eps)))
     num_loss = 1
     
