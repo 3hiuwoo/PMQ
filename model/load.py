@@ -1,4 +1,5 @@
 import torch
+import re
 from torch import nn
 from model.basic import CNN3
 
@@ -174,7 +175,8 @@ class MCPModel(nn.Module):
         self.register_buffer("queue", torch.randn(embeddim, queue_size))
         self.queue = nn.functional.normalize(self.queue, dim=0)
         self.register_buffer("queue_ptr", torch.zeros(1, dtype=torch.long))
-
+        self.register_buffer("heads", torch.zeros(queue_size, dtype=torch.long))
+        
         for param_q, param_k in zip(self.encoder_q.parameters(), self.encoder_k.parameters()):
             param_k.data.copy_(param_q.data)
             param_k.requires_grad = False
@@ -192,7 +194,7 @@ class MCPModel(nn.Module):
 
 
     @torch.no_grad()
-    def _update_queue(self, keys):
+    def _update_queue_n_head(self, keys, heads):
         batch_size = keys.shape[0]
 
         ptr = int(self.queue_ptr)
@@ -200,12 +202,22 @@ class MCPModel(nn.Module):
 
         # replace the keys at ptr (dequeue and enqueue)
         self.queue[:, ptr : ptr + batch_size] = keys.T
+        self.heads[ptr : ptr + batch_size] = heads
         ptr = (ptr + batch_size) % self.queue_size  # move pointer
 
         self.queue_ptr[0] = ptr
         
-
-    def forward(self, x):
+        
+    @torch.no_grad()
+    def _strip_heads(self, heads):
+        strip_heads = []
+        for head in heads:
+            pattern = re.search(r'\d+$', head)
+            strip_heads.append(int(pattern.group()))
+        return strip_heads
+            
+            
+    def forward(self, x, heads):
         """
         Input:
             x: input with 2 views (Bx2xCxS)
@@ -213,6 +225,7 @@ class MCPModel(nn.Module):
             logits
         """
         x = x.permute(1, 0, 2, 3)
+        heads = self._strip_heads(heads)
         
         # compute query features
         q = self.encoder_q(x[0])  # queries: BxH
@@ -230,7 +243,7 @@ class MCPModel(nn.Module):
             k = k[torch.argsort(idx)]
             k = nn.functional.normalize(k, dim=1)
 
-        # positive logits: Nx1
+        # positive logits in batch: Nx1
         pos = torch.einsum("nq,nq->n", [q, k]).unsqueeze(-1)
         # negative logits: NxK
         neg = torch.einsum("nq,qk->nk", [q, self.queue.clone().detach()])
@@ -242,6 +255,6 @@ class MCPModel(nn.Module):
         logits /= 0.1
 
         # dequeue and enqueue
-        self._update_queue(k)
+        self._update_queue_n_head(k, heads)
 
         return logits

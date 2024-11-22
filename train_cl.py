@@ -105,7 +105,7 @@ def main():
     for epoch in range(start_epoch, args.epochs):
         # adjust_lr(optimizer, epoch, args.schedule)
         
-        train(train_loader, model, criterion, optimizer, epoch, loss, writer, device)
+        train(train_loader, model, criterion, args.task, optimizer, epoch, loss, writer, device)
         
         if (epoch + 1) % args.check == 0:
             checkpoint = {
