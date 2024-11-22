@@ -113,7 +113,7 @@ class MoCoModel(nn.Module):
 
         # replace the keys at ptr (dequeue and enqueue)
         self.queue[:, ptr : ptr + batch_size] = keys.T
-        ptr = (ptr + batch_size) % self.self.queue_size  # move pointer
+        ptr = (ptr + batch_size) % self.queue_size  # move pointer
 
         self.queue_ptr[0] = ptr
         
@@ -162,7 +162,7 @@ class MoCoModel(nn.Module):
 
 class MCPModel(nn.Module):
     '''
-    MoCo model
+    MoCo model patient specific variant
     '''
     def __init__(self, network, embeddim=256, queue_size=16384, momentum=0.999):
         super(MCPModel, self).__init__()
@@ -196,11 +196,11 @@ class MCPModel(nn.Module):
         batch_size = keys.shape[0]
 
         ptr = int(self.queue_ptr)
-        assert self.self.queue_size % batch_size == 0  # for simplicity
+        assert self.queue_size % batch_size == 0  # for simplicity
 
         # replace the keys at ptr (dequeue and enqueue)
         self.queue[:, ptr : ptr + batch_size] = keys.T
-        ptr = (ptr + batch_size) % self.self.queue_size  # move pointer
+        ptr = (ptr + batch_size) % self.queue_size  # move pointer
 
         self.queue_ptr[0] = ptr
         
