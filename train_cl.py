@@ -98,6 +98,8 @@ def main():
         criterion = simclr_loss
     elif args.task == 'moco':
         criterion = moco_loss
+    elif args.task == 'mcp':
+        criterion = mcp_loss
     else:
         raise ValueError(f'unknown contrastive learning method {args.task}')
     
@@ -127,14 +129,14 @@ def train(train_loader, model, criterion, task, optimizer, epoch, metric, writer
         signals = signals.to(device)
         
         if task == 'mcp':
-            query_key, query_queue, key_queue, current_heads = model(signals, heads)
+            query_key, query_queue, queue_heads, current_heads = model(signals, heads)
         else:
             outputs = model(signals)
     
         if task == 'cmsc':
             loss = criterion(outputs, heads)
         elif task == 'mcp':
-            loss = criterion(query_key, query_queue, key_queue, current_heads)
+            loss = criterion(query_key, query_queue, queue_heads, current_heads)
         else:
             loss = criterion(outputs)
             

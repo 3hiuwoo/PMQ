@@ -6,6 +6,9 @@ import shutil
 
 
 def set_seed(seed):
+    '''
+    set the random seed
+    '''
     random.seed(seed)
     np.random.seed(seed)
     torch.manual_seed(seed)
@@ -15,6 +18,9 @@ def set_seed(seed):
     
 
 def get_device():
+    '''
+    get device
+    '''
     return (
         'cuda' if torch.cuda.is_available()
         else 'mps' if torch.mps.is_available()
@@ -23,9 +29,11 @@ def get_device():
     
     
 def save_checkpoint(checkpoint, is_best, path):
+    '''
+    save the model
+    '''
     if not os.path.exists(os.path.dirname(path)):
-        os.makedirs(os.path.dirname(path))
-        
+        os.makedirs(os.path.dirname(path))    
     torch.save(checkpoint, path)
     if is_best:
         shutil.copyfile(path, os.path.join(os.path.dirname(path), 'best.pth'))
