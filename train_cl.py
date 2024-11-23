@@ -299,23 +299,18 @@ def mcp_loss(query_key, query_queue, queue_heads, heads):
     eps = 1e-12
     diags = torch.diagonal(query_key_exp)
     loss = -torch.mean(torch.log((diags + eps)/(denominator + eps)))
-    num_loss = 1
-    
+
     rows1, cols1 = np.where(np.triu(pos_matrix1, 1))
     if len(rows1) > 0:
         upper = query_key_exp[rows1, cols1]
         loss1 = -torch.mean(torch.log((upper + eps)/(denominator[rows1] + eps)))
         loss += loss1
-        num_loss += 1
-        
+ 
     rows2, cols2 = np.where(pos_matrix2)
     if len(rows2) > 0:
         pos = query_queue_exp[rows2, cols2]
         loss2 = -torch.mean(torch.log((pos + eps)/(denominator[rows2] + eps)))
         loss += loss2
-        num_loss += 1
-        
-    loss /= num_loss
     
     return loss
     

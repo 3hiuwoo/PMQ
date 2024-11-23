@@ -110,7 +110,7 @@ def main():
                     del checkpoint['model'][k]
                     
             msg = model.load_state_dict(checkpoint['model'], strict=False)
-            print(f'=> weights that train from scratch: {set(msg.missing_keys)}')
+            assert set(msg.missing_keys) == {'fc.weight', 'fc.bias'}
             
         else:
             print(f'=> no pretrained model found at {args.pretrain}')
