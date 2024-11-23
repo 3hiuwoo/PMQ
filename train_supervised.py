@@ -108,7 +108,9 @@ def main():
                     if 'encoder_q' in k:
                         checkpoint['model'][k.replace('encoder_q', 'encoder')] = checkpoint['model'][k]
                     del checkpoint['model'][k]
-            model.load_state_dict(checkpoint['model'], strict=False)
+                    
+            msg = model.load_state_dict(checkpoint['model'], strict=False)
+            print(f'=> weights that train from scratch: {set(msg.missing_keys)}')
             
         else:
             print(f'=> no pretrained model found at {args.pretrain}')
