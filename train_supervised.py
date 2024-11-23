@@ -106,9 +106,8 @@ def main():
             if task in ['moco', 'mcp']:
                 for k in list(checkpoint['model'].keys()):
                     if 'encoder_q' in k:
-                        checkpoint['model'][k.replace('encoder_q.', 'encoder')] = checkpoint['model'].pop(k)
+                        checkpoint['model'][k.replace('encoder_q', 'encoder')] = checkpoint['model'][k]
                     del checkpoint['model'][k]
-
             model.load_state_dict(checkpoint['model'], strict=False)
             
         else:
