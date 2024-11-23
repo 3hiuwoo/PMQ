@@ -5,8 +5,11 @@ Pretrain with **CMSC** on **Chapman** and finetuning on **CINC2017** using 12 le
 |              | AUC      | Accuracy | F1score  |
 |:-------------|---------:|---------:|---------:|
 | Supervised   | 0.860281 | 0.670341 | 0.589147 |
-| Finetune w/  | 0.874503 | 0.694389 | 0.622155 |
-| Finetune w/o | 0.873064 | 0.681363 | 0.598361 |
+| cmscv2 w/    | 0.874503 | 0.694389 | 0.622155 |
+| cmscv2 w/o   | 0.873064 | 0.681363 | 0.598361 |
+| cmsc w/      | 0.874065 | 0.681363 | 0.596483 |
+| simclr       | 0.869480 | 0.689379 | 0.613317 |
+| moco         | 0.871978 | 0.695391 | 0.625451 |
 
 There has been an update on Chapman dataset enlarging its shape to more than 40k 12-lead ecg frames(from 10k), boosting the CMSC method from auc of 0.822 to one listed above. And the supervised model trained from scratch performs not as poor as shown in the paper.
 
@@ -32,7 +35,7 @@ What else can we do:
 - apply new loss to moco
 - change the fc
 
-# EXP2: Ablation on batch size and epoch
+# EXP2: Ablation on batch size and epoch with cmsc
 
 Pretrain with **CMSC** on **Chapman** and finetuning on **CINC2017** using 12 leads and an learned embedding dimension of 256, but with different batch sizes:
 

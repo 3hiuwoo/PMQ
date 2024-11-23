@@ -189,8 +189,7 @@ def cmsc_loss(outputs, heads):
     lossd1 = -torch.mean(torch.log((diags + eps)/(row_sum + eps)))
     lossd2 = -torch.mean(torch.log((diags + eps)/(col_sum + eps)))
     loss = lossd1 + lossd2
-    num_loss = 2
-    
+   
     # calculate off-diagonal loss symmetrically
     upper_rows, upper_cols = np.where(np.triu(pos_matrix, 1))
     lower_rows, lower_cols = np.where(np.tril(pos_matrix, -1))
@@ -198,15 +197,14 @@ def cmsc_loss(outputs, heads):
         upper = sim_matrix_exp[upper_rows, upper_cols]
         lossou = -torch.mean(torch.log((upper + eps)/(row_sum[upper_rows] + eps)))
         loss += lossou
-        num_loss += 1
+
     if len(lower_cols) > 0:
         lower = sim_matrix_exp[lower_rows, lower_cols]
         lossol = -torch.mean(torch.log((lower + eps)/(col_sum[lower_cols] + eps)))
         loss += lossol
-        num_loss += 1
 
     # average across views
-    loss /= num_loss
+    loss /= 2
     
     return loss
 
