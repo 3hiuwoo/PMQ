@@ -147,8 +147,9 @@ def mcp_loss(query_key, query_queue, queue_heads, heads):
     # position of q queue product
     pos_matrix2 = np.equal.outer(heads, queue_heads).astype(int)
     
-    query_key /= 0.1
-    query_queue /= 0.1
+    temp = 0.1
+    query_key /= temp
+    query_queue /= temp
     
     query_key_exp = torch.exp(query_key)
     query_queue_exp = torch.exp(query_queue)

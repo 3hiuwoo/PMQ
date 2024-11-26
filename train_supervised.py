@@ -23,7 +23,7 @@ from model.load import load_model
 from utils import transform
 from utils.utils import set_seed, get_device, save_checkpoint
 
-parser = argparse.ArgumentParser(description='pretraining chosen model on chosen dataset under CMSC paradigm')
+parser = argparse.ArgumentParser(description='train model with labeled data')
 
 parser.add_argument('--data_root', type=str, default='training2017', help='the root directory of the dataset')
 parser.add_argument('--data', type=str, default='cinc2017', help='the dataset to be used')
@@ -172,16 +172,16 @@ def main():
     else:
         print(f'=> running train from scratch for {args.epochs} epochs')
 
-    best_auc = 0
+    best_f1 = 0
     for epoch in range(start_epoch, args.epochs):
         # adjust_lr(optimizer, epoch, args.schedule)
         
         train(train_loader, model, optimizer, criterion, epoch, train_loss, writer, args.freeze, device)
         metrics = validate(valid_loader, model, epoch, valid_metrics, writer, device)
         
-        auc = metrics['auc']
-        isbest = auc > best_auc
-        best_auc = max(auc, best_auc)
+        f1 = metrics['f1'].item()
+        isbest = f1 > best_f1
+        best_f1 = max(f1, best_f1)
 
         if (epoch + 1) % args.check == 0 or isbest:
             checkpoint = {

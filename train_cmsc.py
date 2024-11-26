@@ -152,9 +152,8 @@ def cmsc_loss(outputs, heads):
     view2 = torch.nn.functional.normalize(view2, dim=-1)
     
     # calculate the similarity matrix
-    tao = 0.1
     sim_matrix = torch.matmul(view1, view2.T)
-    sim_matrix /= tao
+    sim_matrix /= 0.1
     sim_matrix_exp = torch.exp(sim_matrix)
 
     # sum over similarities across rows and columns
@@ -180,9 +179,6 @@ def cmsc_loss(outputs, heads):
         lower = sim_matrix_exp[lower_rows, lower_cols]
         lossol = -torch.mean(torch.log((lower + eps)/(col_sum[lower_cols] + eps)))
         loss += lossol
-
-    # average across views
-    loss /= 2
     
     return loss
 

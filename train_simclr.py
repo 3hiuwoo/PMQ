@@ -143,19 +143,19 @@ def simclr_loss(outputs):
     view2 = torch.nn.functional.normalize(view2, dim=-1)
     
     # calculate the similarity matrix between two views
-    tao = 0.1
+    temp = 0.1
     sim_matrix = torch.matmul(view1, view2.T)
-    sim_matrix /= tao
+    sim_matrix /= temp
     sim_matrix_exp = torch.exp(sim_matrix)
     
     # calculate the similarity matrix in the same view
     sim_matrix1 = torch.matmul(view1, view1.T)
-    sim_matrix1 /= tao
+    sim_matrix1 /= temp
     sim_matrix_exp1 = torch.exp(sim_matrix1)
     sim_matrix_od1 = torch.triu(sim_matrix_exp1, 1) + torch.tril(sim_matrix_exp1, -1)
     
     sim_matrix2 = torch.matmul(view2, view2.T)
-    sim_matrix2 /= tao
+    sim_matrix2 /= temp
     sim_matrix_exp2 = torch.exp(sim_matrix2)
     sim_matrix_od2 = torch.triu(sim_matrix_exp2, 1) + torch.tril(sim_matrix_exp2, -1)
     
