@@ -10,6 +10,8 @@ Pretrain with **CMSC** on **Chapman** and finetuning on **CINC2017** using 12 le
 | cmsc w/      | 0.874065 | 0.681363 | 0.596483 |
 | simclr       | 0.869480 | 0.689379 | 0.613317 |
 | moco         | 0.871978 | 0.695391 | 0.625451 |
+| mcp          | 0.884877 | 0.708417 | 0.648786 |
+| mcpv2        | 0.885785 | 0.711423 | 0.645346 |
 
 There has been an update on Chapman dataset enlarging its shape to more than 40k 12-lead ecg frames(from 10k), boosting the CMSC method from auc of 0.822 to one listed above. And the supervised model trained from scratch performs not as poor as shown in the paper.
 
@@ -58,7 +60,7 @@ Pretrain with **CMSC** on **Chapman** and finetuning on **CINC2017** using 12 le
 | 2048       | **0.883140** | 0.695391     | 0.617683     |
 | 4096       | 0.880481     | 0.687375     | 0.601843     |
 
-# EXP3: Compare with SimCLR
+# EXP3: Ablation on batch size and epoch with SimCLR
 
 ## pretrain for 100 epochs
 
@@ -72,4 +74,33 @@ Pretrain with **CMSC** on **Chapman** and finetuning on **CINC2017** using 12 le
 | batch size | AUC      | Accuracy | F1score  |
 |:-----------|---------:|---------:|---------:|
 | 256        | 0.869480 | 0.689379 | 0.613317 |
-| 4086       | 0.860255 | 0.673347 | 0.592742 |
+| 4096       | 0.860255 | 0.673347 | 0.592742 |
+| 8192       | 0.865270 | 0.671343 | 0.594154 |
+
+# EXP4: Ablation on batch size and epoch with MCP
+
+## pretrain for 100 epochs
+
+| batch size | AUC      | Accuracy | F1score  |
+|:-----------|---------:|---------:|---------:|
+| 256        | 0.859750 | 0.657315 | 0.571836 |
+
+## pretrain for 400 epochs
+
+| batch size | AUC      | Accuracy | F1score  |
+|:-----------|---------:|---------:|---------:|
+| 256        | 0.884877 | 0.708417 | 0.648786 |
+
+# EXP5: Ablation on batch size and epoch with MoCo
+
+## pretrain for 100 epochs
+
+| batch size | AUC      | Accuracy | F1score  |
+|:-----------|---------:|---------:|---------:|
+
+## pretrain for 400 epochs
+
+| batch size | AUC      | Accuracy | F1score  |
+|:-----------|---------:|---------:|---------:|
+
+# EXP6: Ablation on queue size with MCP and MoCo

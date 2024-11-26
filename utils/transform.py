@@ -2,7 +2,6 @@ import torch
 import numpy as np
 import pywt
 from scipy.interpolate import interp1d
-from .utils import get_device
 
 
 def normalize(arr):

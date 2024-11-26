@@ -1,11 +1,11 @@
 '''2024-11-12
 
-This script is used to train the model under the CMSC/SimCLR/MoCo paradigm.
+This script is used to train the model under the SimCLR paradigm.
 
 Run the script with the following command:
-    python train_cl.py {options}
+    python train_simclr.py {options}
     
-See python train_cl.py -h for training options
+See python train_simclr.py -h for training options
 '''
 import os
 import argparse
@@ -20,7 +20,7 @@ from model.load import load_model
 from utils import transform
 from utils.utils import set_seed, get_device, save_checkpoint
 
-parser = argparse.ArgumentParser(description='pretraining chosen model on chosen dataset under CMSC paradigm')
+parser = argparse.ArgumentParser(description='pretraining chosen model on chosen dataset under SimCLR paradigm')
 
 parser.add_argument('--data_root', type=str, default='trainingchapman', help='the root directory of the dataset')
 parser.add_argument('--data', type=str, default='chapman', help='the dataset to be used')
@@ -34,12 +34,11 @@ parser.add_argument('--seed', type=int, default=42, help='random seed for reprod
 parser.add_argument('--embedding_dim', type=int, default=256, help='the dimension of the embedding in contrastive loss')
 parser.add_argument('--check', type=int, default=10, help='the interval of epochs to save the checkpoint')
 parser.add_argument('--log', type=str, default='log', help='the directory to save the log')
-parser.add_argument('--task', type=str, default='cmsc', help='contrastive learning method')
 
 def main():
     args = parser.parse_args()
     # directory to save the tensorboard log files and checkpoints
-    dir = os.path.join(args.log, f'{args.task}_{args.model}_{args.data}_{args.batch_size}')
+    dir = os.path.join(args.log, f'simclr_{args.model}_{args.data}_{args.batch_size}')
     # dir = args.log
     
     if args.seed is not None:
@@ -50,7 +49,7 @@ def main():
     print(f'=> using device {device}')
     
     print(f'=> creating model {args.model}')
-    model = load_model(args.model, task=args.task, embeddim=args.embedding_dim)
+    model = load_model(args.model, task='simclr', embeddim=args.embedding_dim)
     model.to(device)
 
     optimizer = optim.Adam(model.parameters(), args.lr)
@@ -79,8 +78,8 @@ def main():
         torch.backends.cudnn.benchmark = True
         
     print(f'=> loading dataset {args.data} from {args.data_root}')
-    
-    train_loader, _, _ = load_data(root=args.data_root, task=args.task, dataset_name=args.data, batch_size=args.batch_size, transform=trans)
+
+    train_loader = load_data(root=args.data_root, task='simclr', dataset_name=args.data, batch_size=args.batch_size, transform=trans)
     
     print(f'=> dataset contains {len(train_loader.dataset)} samples')
     print(f'=> loaded with batch size of {args.batch_size}')
@@ -90,24 +89,12 @@ def main():
     
     logdir = os.path.join(dir, 'log')
     writer = SummaryWriter(log_dir=logdir)
-    
-    # choose the contrastive loss function for different structure
-    if args.task == 'cmsc':
-        criterion = cmsc_loss
-    elif args.task == 'simclr':
-        criterion = simclr_loss
-    elif args.task == 'moco':
-        criterion = moco_loss
-    elif args.task == 'mcp':
-        criterion = mcp_loss
-    else:
-        raise ValueError(f'unknown contrastive learning method {args.task}')
-    
-    print(f'=> running {args.task} for {args.epochs} epochs')
+
+    print(f'=> running simclr for {args.epochs} epochs')
     for epoch in range(start_epoch, args.epochs):
         # adjust_lr(optimizer, epoch, args.schedule)
         
-        train(train_loader, model, criterion, args.task, optimizer, epoch, loss, writer, device)
+        train(train_loader, model, optimizer, epoch, loss, writer, device)
         
         if (epoch + 1) % args.check == 0:
             checkpoint = {
@@ -122,23 +109,14 @@ def main():
     writer.close()
 
 
-def train(train_loader, model, criterion, task, optimizer, epoch, metric, writer, device):
+def train(train_loader, model, optimizer, epoch, metric, writer, device):
     model.train()
     
-    for signals, heads in tqdm(train_loader, desc=f'=> Epoch {epoch+1}', leave=False):
+    for signals, _ in tqdm(train_loader, desc=f'=> Epoch {epoch+1}', leave=False):
         signals = signals.to(device)
-        
-        if task == 'mcp':
-            query_key, query_queue, queue_heads, current_heads = model(signals, heads)
-        else:
-            outputs = model(signals)
-    
-        if task == 'cmsc':
-            loss = criterion(outputs, heads)
-        elif task == 'mcp':
-            loss = criterion(query_key, query_queue, queue_heads, current_heads)
-        else:
-            loss = criterion(outputs)
+        outputs = model(signals)
+
+        loss = simclr_loss(outputs)
             
         metric.update(loss)
         
@@ -149,64 +127,6 @@ def train(train_loader, model, criterion, task, optimizer, epoch, metric, writer
     total_loss = metric.compute()
     writer.add_scalar('loss', total_loss, epoch)
     metric.reset()
-    
-    
-def cmsc_loss(outputs, heads):
-    '''
-    fix number of views to 2
-    
-    Args:
-        outputs: embedding for each view (NxBxH)
-        heads: the head of sample in the batch (B)
-        
-    Returns:
-        the contrastive loss cross patients including 4 terms:
-        2 symmetric diagonal terms and 2 symmetric off-diagonal terms
-    '''
-    # find the diagonal and off-diagonal positions that need to calculate the loss
-    heads = np.array(heads)
-    pos_matrix = np.equal.outer(heads, heads).astype(int)
-    
-    # get normalized embeddings for each view
-    view1 = outputs[0]
-    view1 = torch.nn.functional.normalize(view1, dim=-1)
-    view2 = outputs[1]
-    view2 = torch.nn.functional.normalize(view2, dim=-1)
-    
-    # calculate the similarity matrix
-    tao = 0.1
-    sim_matrix = torch.matmul(view1, view2.T)
-    sim_matrix /= tao
-    sim_matrix_exp = torch.exp(sim_matrix)
-
-    # sum over similarities across rows and columns
-    row_sum = torch.sum(sim_matrix_exp, dim=1)
-    col_sum = torch.sum(sim_matrix_exp, dim=0)
-    
-    # calculate diagonal loss symmetrically
-    eps = 1e-12
-    diags = torch.diagonal(sim_matrix_exp)
-    lossd1 = -torch.mean(torch.log((diags + eps)/(row_sum + eps)))
-    lossd2 = -torch.mean(torch.log((diags + eps)/(col_sum + eps)))
-    loss = lossd1 + lossd2
-   
-    # calculate off-diagonal loss symmetrically
-    upper_rows, upper_cols = np.where(np.triu(pos_matrix, 1))
-    lower_rows, lower_cols = np.where(np.tril(pos_matrix, -1))
-    if len(upper_rows) > 0:
-        upper = sim_matrix_exp[upper_rows, upper_cols]
-        lossou = -torch.mean(torch.log((upper + eps)/(row_sum[upper_rows] + eps)))
-        loss += lossou
-
-    if len(lower_cols) > 0:
-        lower = sim_matrix_exp[lower_rows, lower_cols]
-        lossol = -torch.mean(torch.log((lower + eps)/(col_sum[lower_cols] + eps)))
-        loss += lossol
-
-    # average across views
-    loss /= 2
-    
-    return loss
 
 
 def simclr_loss(outputs):
@@ -253,18 +173,7 @@ def simclr_loss(outputs):
     return loss
     
     
-def moco_loss(logits):
-    '''
-    moco loss function
-    
-    Args:
-        logits: the output of the model (Bx(K+1))
-    '''
-    logits /= 0.1
-    labels = torch.zeros(logits.shape[0], dtype=torch.long, device=logits.device)
-    loss = torch.nn.functional.cross_entropy(logits, labels)
-    
-    return loss
+
 
 
 def mcp_loss(query_key, query_queue, queue_heads, heads):

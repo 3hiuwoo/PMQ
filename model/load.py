@@ -2,7 +2,7 @@ import torch
 import re
 import numpy as np
 from torch import nn
-from model.basic import CNN3
+from model.base import CNN3
 
 
 def load_network(network_name):
