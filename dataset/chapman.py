@@ -16,7 +16,7 @@ class ChapmanDataset(Dataset):
         keep_lead (bool): whether to keep the dimension of lead
         transform (transform): data augmentation
     '''
-    def __init__(self, root='trainingchapman', split='train', pretrain=True, keep_lead=None, transform=None):
+    def __init__(self, root='trainingchapman', split='train', pretrain=True, keep_lead=False, transform=None):
         self.transform = transform
         self.split = split
         self.root = root
@@ -79,22 +79,21 @@ class ChapmanDataset(Dataset):
         for h in tqdm(heads, desc=f'=> Loading {self.split} dataset'):
             signal = rdrecord(os.path.join(self.root, h)).p_signal.T
             
-            # drop leads that contain NaN
-            mask = np.all(~np.isnan(signal), axis=1)
-            signal = signal[mask]
+            # drop signals that contain NaN
+            if np.isnan(signal).any():
+                continue
             
-            # drop leads that return empty signal
-            mask = np.any(signal!=0, axis=1)
-            signal = signal[mask]
+            # drop signals that have leads with all zeros
+            if np.all(signal == 0, axis=1).any():
+                continue
             
             signals = pd.concat([signals,
                                  pd.DataFrame({'head': h, 'signal': [signal]})])
             
         signals.reset_index(drop=True, inplace=True)
         
-        if self.keep_lead is None:
+        if not self.keep_lead:
             signals = signals.explode('signal', ignore_index=True)
-        # else: ...
         
         return signals
 
