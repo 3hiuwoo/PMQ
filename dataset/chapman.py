@@ -16,7 +16,7 @@ class ChapmanDataset(Dataset):
         keep_lead (bool): whether to keep the dimension of lead
         transform (transform): data augmentation
     '''
-    def __init__(self, root='trainingchapman', split='train', pretrain=True, keep_lead=False, transform=None):
+    def __init__(self, root='trainingchapman', split='train', pretrain=True, keep_lead=True, transform=None):
         self.transform = transform
         self.split = split
         self.root = root
@@ -77,19 +77,25 @@ class ChapmanDataset(Dataset):
         # use wfdb to read .mat file and append the signal to the dataframe
         signals = pd.DataFrame(columns=['head', 'signal'])
         for h in tqdm(heads, desc=f'=> Loading {self.split} dataset'):
-            signal = rdrecord(os.path.join(self.root, h)).p_signal.T
             
-            # drop signals that contain NaN
-            if np.isnan(signal).any():
-                continue
+            with open(os.path.join(self.root, h, 'RECORDS'), 'r') as f:
+                names = f.readlines()
+            names = [n.strip() for n in names]
             
-            # drop signals that have leads with all zeros
-            if np.all(signal == 0, axis=1).any():
-                continue
+            for n in names:
+                signal = rdrecord(os.path.join(self.root, h, n)).p_signal.T
+                
+                # drop signals that contain NaN
+                if np.isnan(signal).any():
+                    continue
             
-            signals = pd.concat([signals,
-                                 pd.DataFrame({'head': h, 'signal': [signal]})])
+                # drop signals that have leads with all zeros
+                if np.all(signal == 0, axis=1).any():
+                    continue
             
+                signals = pd.concat([signals,
+                                    pd.DataFrame({'head': n, 'signal': [signal]})])
+           
         signals.reset_index(drop=True, inplace=True)
         
         if not self.keep_lead:

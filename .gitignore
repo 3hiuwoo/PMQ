@@ -3,6 +3,5 @@ test*/
 test*.*
 __pycache__/
 log*/
-data/
 .DS_Store
 **/.DS_Store

@@ -16,14 +16,20 @@ class CINC2017Dataset(Dataset):
         split (str): one of 'train', 'valid' or 'test'
         transform (transform): data augmentation
     '''
-    def __init__(self, root='training2017', length=None, step=None, split='train', transform=None):
+    def __init__(self, root='training2017', length=None, step=None, split='train', drop_noise=True, transform=None):
         self.transform = transform
         self.length = length
         self.step = step
         self.split = split
         self.root = root
+        self.drop_noise = drop_noise
         self.classes = ['N', 'A', 'O', '~']
         self.data = pd.merge(self._load_label(), self._load_data(), on='head',how='inner')
+        
+        # don't use the noise class
+        if self.drop_noise:
+            self.data = self.data[self.data['label'] != 3]
+            
         if self.length:
             self._segment_data()
 
