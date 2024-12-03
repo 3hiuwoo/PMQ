@@ -131,13 +131,13 @@ def train(train_loader, model, optimizer, epoch, metric, writer, device):
 
 def mcp_loss(query_key, query_queue, queue_heads, heads):
     '''
-    mcp loss function
+    MCP loss function
     
     Args:
         query_key: product of q and k(BxB)
         query_queue: product of q and queue(BxK)
-        key_query: list contains corresponding product of q and queue to each q(Bx?)
-        heads: the head of sample in the batch (B)
+        queue_heads: patient id queue stored in the MCP model
+        heads: patient ids of the current batch(B)
     '''
     heads = np.array(heads.cpu())
     queue_heads = np.array(queue_heads.cpu())
