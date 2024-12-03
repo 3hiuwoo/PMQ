@@ -173,7 +173,6 @@ class MCPModel(nn.Module):
         self.register_buffer("queue", torch.randn(embeddim, queue_size))
         self.queue = nn.functional.normalize(self.queue, dim=0)
         self.register_buffer("queue_ptr", torch.zeros(1, dtype=torch.long))
-        self.register_buffer("heads", torch.zeros(queue_size, dtype=torch.long))
         
         for param_q, param_k in zip(self.encoder_q.parameters(), self.encoder_k.parameters()):
             param_k.data.copy_(param_q.data)
@@ -192,39 +191,28 @@ class MCPModel(nn.Module):
 
 
     @torch.no_grad()
-    def _update_queue_n_head(self, keys, heads):
+    def _update_queue(self, keys):
         batch_size = keys.shape[0]
 
         ptr = int(self.queue_ptr)
         assert self.queue_size % batch_size == 0  # for simplicity
 
         # replace the keys at ptr (dequeue and enqueue)
-        self.queue[:, ptr:(ptr+batch_size)] = keys.T
-        self.heads[ptr:(ptr+batch_size)] = heads
+        self.queue[:, ptr : ptr + batch_size] = keys.T
         ptr = (ptr + batch_size) % self.queue_size  # move pointer
 
         self.queue_ptr[0] = ptr
         
-        
-    @torch.no_grad()
-    def _strip_heads(self, heads):
-        strip_heads = []
-        for head in heads:
-            pattern = re.search(r'\d+$', head)
-            strip_heads.append(int(pattern.group()))
-        return strip_heads
-            
-            
-    def forward(self, x, heads):
+                    
+    def forward(self, x):
         """
         Input:
             x: input with 2 views (Bx2xCxS)
+            queue_heads: patient id queue passed in from the training loop
         Output:
             logits
         """
         x = x.permute(1, 0, 2, 3)
-        current_heads = self._strip_heads(heads)
-        current_heads = torch.tensor(current_heads, dtype=torch.long, device=self.heads.device)
         
         # compute query features
         q = self.encoder_q(x[0])  # queries: BxH
@@ -244,10 +232,8 @@ class MCPModel(nn.Module):
 
         query_key = torch.matmul(q, k.T) # BxB
         query_queue = torch.matmul(q, self.queue.clone().detach()) # BxK
-        
-        queue_heads = self.heads.clone().detach()
-        
-        # dequeue and enqueue
-        self._update_queue_n_head(k, current_heads)
 
-        return query_key, query_queue, queue_heads, current_heads
+        # dequeue and enqueue
+        self._update_queue(k)
+
+        return query_key, query_queue

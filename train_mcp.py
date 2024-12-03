@@ -90,11 +90,15 @@ def main():
     logdir = os.path.join(dir, 'log')
     writer = SummaryWriter(log_dir=logdir)
 
+    # queue to store patient ids
+    queue_heads = np.empty(16384)
+    ptr = 0
+    
     print(f'=> running mcp for {args.epochs} epochs')
     for epoch in range(start_epoch, args.epochs):
         # adjust_lr(optimizer, epoch, args.schedule)
         
-        train(train_loader, model, optimizer, epoch, loss, writer, device)
+        ptr = train(train_loader, model, optimizer, epoch, loss, writer, device, queue_heads, ptr)
         
         if (epoch + 1) % args.check == 0:
             checkpoint = {
@@ -109,14 +113,14 @@ def main():
     writer.close()
 
 
-def train(train_loader, model, optimizer, epoch, metric, writer, device):
+def train(train_loader, model, optimizer, epoch, metric, writer, device, queue_heads, ptr):
     model.train()
     
     for signals, heads in tqdm(train_loader, desc=f'=> Epoch {epoch+1}', leave=False):
         signals = signals.to(device)
-        query_key, query_queue, queue_heads, current_heads = model(signals, heads)
+        query_key, query_queue = model(signals)
 
-        loss = mcp_loss(query_key, query_queue, queue_heads, current_heads)
+        loss = mcp_loss(query_key, query_queue, queue_heads, heads)
             
         metric.update(loss)
         
@@ -124,9 +128,15 @@ def train(train_loader, model, optimizer, epoch, metric, writer, device):
         loss.backward()
         optimizer.step()
         
+        # update patient ids queue
+        queue_heads[ptr:ptr+heads.shape[0]] = heads
+        ptr = (ptr + heads.shape[0]) % queue_heads.shape[0]
+        
     total_loss = metric.compute()
     writer.add_scalar('loss', total_loss, epoch)
     metric.reset()
+    
+    return ptr
 
 
 def mcp_loss(query_key, query_queue, queue_heads, heads):
@@ -139,9 +149,6 @@ def mcp_loss(query_key, query_queue, queue_heads, heads):
         queue_heads: patient id queue stored in the MCP model
         heads: patient ids of the current batch(B)
     '''
-    heads = np.array(heads.cpu())
-    queue_heads = np.array(queue_heads.cpu())
-    
     # off diagonal of qk product
     pos_matrix1 = np.equal.outer(heads, heads).astype(int)
     # position of q queue product
