@@ -48,6 +48,7 @@ def main():
     prefix = 'lineval' if args.freeze else 'finetune' if args.pretrain else 'scratch'
     dirname = f'{prefix}_{args.model}_{args.data}_{args.batch_size}'
     
+    # capture the pretrain information and append to the directory name
     if args.pretrain:
         postfix = args.pretrain.split(os.sep)[-3]
         dirname += f'__{postfix}'

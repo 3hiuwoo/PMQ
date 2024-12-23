@@ -39,7 +39,12 @@ class CINC2017Dataset(Dataset):
         
         
     def __getitem__(self, idx):
-        signal = self.data.at[idx, 'signal'][np.newaxis, :]
+        '''
+        Returns:
+            signal (np.array): with shape (lead, length) where lead is 1 here.
+            label (int): label of the signal
+        '''    
+        signal = self.data.at[idx, 'signal']
         label = self.data.at[idx, 'label']
         if self.transform:
             signal = self.transform(signal)
@@ -59,9 +64,9 @@ class CINC2017Dataset(Dataset):
 
     def _load_data(self):
         '''
-        read corresponding subset dataframe
+        read corresponding split dataframe
         '''
-        # read all signals' name in the corresponding dataset
+        # read all signals' name
         if self.split == 'train':
             with open(os.path.join(self.root, 'RECORDTrain.txt'), 'r') as f:
                 heads = f.readlines()
@@ -80,7 +85,7 @@ class CINC2017Dataset(Dataset):
         # use wfdb to read .mat file and append the signal to the dataframe
         signals = pd.DataFrame(columns=['head', 'signal'])
         for h in tqdm(heads, desc=f'=> Loading {self.split} dataset'):
-            signal = rdrecord(os.path.join(self.root, h)).p_signal.reshape(-1)
+            signal = rdrecord(os.path.join(self.root, h)).p_signal.T
             signals = pd.concat([signals,
                                  pd.DataFrame({'head': h, 'signal': [signal]})])
         signals.reset_index(drop=True, inplace=True)

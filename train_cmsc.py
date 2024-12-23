@@ -35,6 +35,7 @@ parser.add_argument('--embedding_dim', type=int, default=256, help='the dimensio
 parser.add_argument('--check', type=int, default=10, help='the interval of epochs to save the checkpoint')
 parser.add_argument('--log', type=str, default='log', help='the directory to save the log')
 
+
 def main():
     args = parser.parse_args()
     # directory to save the tensorboard log files and checkpoints
