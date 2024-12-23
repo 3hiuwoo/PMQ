@@ -34,7 +34,14 @@ class ChapmanDataset(Dataset):
         
         
     def __getitem__(self, idx):
-        signal = self.data.at[idx, 'signal'][np.newaxis, :]
+        '''
+        Returns:
+            signal (np.array): with shape (lead, length) where lead is 1 here.
+            head(str)/label(int): if pretrain is True, return head, else return label
+        '''
+        signal = self.data.at[idx, 'signal']
+        # ensure the signal has 2 dimensions corresponding to (lead, length)
+        signal = signal.reshape(-1, signal.shape[-1])
         if self.pretrain:
             head = self.data.at[idx, 'head']
             if self.transform:
@@ -56,9 +63,9 @@ class ChapmanDataset(Dataset):
 
     def _load_data(self):
         '''
-        read corresponding subset dataframe
+        read corresponding split dataframe
         '''
-        # read all signals' name in the corresponding dataset
+        # read all signals' directory
         if self.split == 'train':
             with open(os.path.join(self.root, 'RECORDTrain.txt'), 'r') as f:
                 heads = f.readlines()
@@ -78,6 +85,7 @@ class ChapmanDataset(Dataset):
         signals = pd.DataFrame(columns=['head', 'signal'])
         for h in tqdm(heads, desc=f'=> Loading {self.split} dataset'):
             
+            # read all signals' name in the directory
             with open(os.path.join(self.root, h, 'RECORDS'), 'r') as f:
                 names = f.readlines()
             names = [n.strip() for n in names]
@@ -98,6 +106,7 @@ class ChapmanDataset(Dataset):
            
         signals.reset_index(drop=True, inplace=True)
         
+        # flatten the signal by lead dimension
         if not self.keep_lead:
             signals = signals.explode('signal', ignore_index=True)
         

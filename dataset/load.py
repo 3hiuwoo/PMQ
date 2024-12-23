@@ -28,7 +28,6 @@ def load_data(root, task, transform=None, batch_size=256, dataset_name='cinc2017
             test_dataset = CINC2017Dataset(root=root, length=2500, split='test', transform=ToTensor())
             
         elif dataset_name == 'chapman':
-            # downsample class of transformation is needed and not yet implemented
             train_dataset = ChapmanDataset(root=root, split='train', pretrain=False, transform=transform)
             valid_dataset = ChapmanDataset(root=root, split='valid', pretrain=False, transform=Compose([Normalize(), ToTensor()]))
             test_dataset = ChapmanDataset(root=root, split='test', pretrain=False, transform=Compose([Normalize(), ToTensor()]))
