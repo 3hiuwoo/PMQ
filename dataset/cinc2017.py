@@ -111,12 +111,12 @@ class CINC2017Dataset(Dataset):
         
         # segment the signal
         def slicing_window(signal, window, interval):
-            return [signal[i: i+window] for i in range(0, len(signal), interval)
-                    if i+window <= len(signal)]
+            return [signal[..., i:i+window] for i in range(0, signal.shape[-1], interval)
+                    if i+window <= signal.shape[-1]]
             
             
         for row in self.data.itertuples():
-            if len(row.signal) >= self.length:
+            if row.signal.shape[-1] >= self.length:
                 if row.label == 0:
                     self.data.at[row.Index, 'signal'] =\
                         slicing_window(row.signal, self.length, inter_n)

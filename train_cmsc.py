@@ -31,7 +31,7 @@ parser.add_argument('--lr', type=float, default=0.0001, help='the learning rate 
 # parser.add_argument('--schedule', type=int, default=[100, 200, 300], help='schedule the learning rate where scale lr by 0.1')
 parser.add_argument('--resume', type=str, default='', help='path to the checkpoint to be resumed')
 parser.add_argument('--seed', type=int, default=42, help='random seed for reproducibility')
-# parser.add_argument('--embedding_dim', type=int, default=256, help='the dimension of the embedding in contrastive loss')
+parser.add_argument('--embedding_dim', type=int, default=256, help='the dimension of the embedding in contrastive loss')
 parser.add_argument('--check', type=int, default=10, help='the interval of epochs to save the checkpoint')
 parser.add_argument('--log', type=str, default='log', help='the directory to save the log')
 
