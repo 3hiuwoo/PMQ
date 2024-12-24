@@ -42,6 +42,7 @@ parser.add_argument('--freeze', action='store_true', help='freeze the pretrained
 parser.add_argument('--test', type=str, default='', help='path to the best model to be tested')
 # parser.add_argument('--early_stop', type=int, default=20, help='stop training if the auc does not improve for n epochs')
 
+
 def main():
     args = parser.parse_args()
     # directory to save the tensorboard log files and checkpoints

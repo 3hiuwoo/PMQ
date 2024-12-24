@@ -31,9 +31,10 @@ parser.add_argument('--lr', type=float, default=0.0001, help='the learning rate 
 # parser.add_argument('--schedule', type=int, default=[100, 200, 300], help='schedule the learning rate where scale lr by 0.1')
 parser.add_argument('--resume', type=str, default='', help='path to the checkpoint to be resumed')
 parser.add_argument('--seed', type=int, default=42, help='random seed for reproducibility')
-parser.add_argument('--embedding_dim', type=int, default=256, help='the dimension of the embedding in contrastive loss')
+# parser.add_argument('--embedding_dim', type=int, default=256, help='the dimension of the embedding in contrastive loss')
 parser.add_argument('--check', type=int, default=10, help='the interval of epochs to save the checkpoint')
 parser.add_argument('--log', type=str, default='log', help='the directory to save the log')
+
 
 def main():
     args = parser.parse_args()
@@ -173,59 +174,5 @@ def simclr_loss(outputs):
     return loss
     
     
-
-
-
-def mcp_loss(query_key, query_queue, queue_heads, heads):
-    '''
-    mcp loss function
-    
-    Args:
-        query_key: product of q and k(BxB)
-        query_queue: product of q and queue(BxK)
-        key_query: list contains corresponding product of q and queue to each q(Bx?)
-        heads: the head of sample in the batch (B)
-    '''
-    heads = np.array(heads.cpu())
-    queue_heads = np.array(queue_heads.cpu())
-    
-    # off diagonal of qk product
-    pos_matrix1 = np.equal.outer(heads, heads).astype(int)
-    # position of q queue product
-    pos_matrix2 = np.equal.outer(heads, queue_heads).astype(int)
-    
-    query_key /= 0.1
-    query_queue /= 0.1
-    
-    query_key_exp = torch.exp(query_key)
-    query_queue_exp = torch.exp(query_queue)
-
-    denominator = torch.sum(
-        torch.concat([query_key_exp, query_queue_exp], dim=1),
-        dim=1)
-    
-    # calculate diagonal loss symmetrically
-    eps = 1e-12
-    diags = torch.diagonal(query_key_exp)
-    loss = -torch.mean(torch.log((diags + eps)/(denominator + eps)))
-
-    rows1, cols1 = np.where(np.triu(pos_matrix1, 1))
-    if len(rows1) > 0:
-        upper = query_key_exp[rows1, cols1]
-        loss1 = -torch.mean(torch.log((upper + eps)/(denominator[rows1] + eps)))
-        loss += loss1
- 
-    rows2, cols2 = np.where(pos_matrix2)
-    if len(rows2) > 0:
-        pos = query_queue_exp[rows2, cols2]
-        loss2 = -torch.mean(torch.log((pos + eps)/(denominator[rows2] + eps)))
-        loss += loss2
-    
-    return loss
-    
-    
-    
-    
-
 if __name__ == '__main__':
     main()

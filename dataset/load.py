@@ -12,7 +12,7 @@ def load_data(root, task, transform=None, batch_size=256, dataset_name='cinc2017
             train_dataset = CINC2017Dataset(root=root, length=5000, split='train', transform=transform)
         
         elif dataset_name == 'chapman':
-            train_dataset = ChapmanDataset(root=root, split='train', transform=transform)
+            train_dataset = ChapmanDataset(root=root, split='train', keep_lead=False, transform=transform)
 
         else:
             raise ValueError(f'Unknown dataset {dataset_name}')

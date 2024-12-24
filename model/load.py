@@ -15,32 +15,50 @@ def load_network(network_name):
         raise ValueError(f'Unknown network {network_name}')
 
 
-def load_model(model_name, task, embeddim):
+def load_model(model_name, task, in_channels=1, embeddim=256):
     '''
     load model
     '''
     network = load_network(model_name)
     
     if task in ['cmsc', 'simclr']:
-        return ContrastModel(network=network, embeddim=embeddim)
+        return ContrastModel(network=network, in_channels=in_channels, embeddim=embeddim)
     elif task == 'moco':
-        return MoCoModel(network=network, embeddim=embeddim)
+        return MoCoModel(network=network, in_channels=in_channels, embeddim=embeddim)
     elif task == 'mcp':
-        return MCPModel(network=network, embeddim=embeddim)
+        return MCPModel(network=network, in_channels=in_channels, embeddim=embeddim)
     elif task == 'supervised':
-        return SupervisedModel(network=network, embeddim=embeddim)
+        return SupervisedModel(network=network, in_channels=in_channels, embeddim=embeddim)
     else:
         raise ValueError(f'Unknown task {task}')
+    
+    
+class SupervisedModel(nn.Module):
+    '''
+    supervised model
+    '''
+    def __init__(self, network, in_channels=1, num_classes=4, embeddim=256):
+        super(SupervisedModel, self).__init__()
+        self.embeddim = embeddim
+        self.encoder = network(in_channels, embeddim)
+        # dim = self.encoder.fc.weight.shape[1]
+        # self.encoder.fc = nn.Linear(dim, num_classes)
+        self.fc = nn.Linear(embeddim, num_classes)
         
+    
+    def forward(self, x):
+        x = self.encoder(x)
+        x = self.fc(x)
+        return x        
 
 class ContrastModel(nn.Module):
     '''
     contrastive model used for CMSC, SimCLR
     '''
-    def __init__(self, network, embeddim=256):
+    def __init__(self, network, in_channels=1, embeddim=256):
         super(ContrastModel, self).__init__()
         self.embeddim = embeddim
-        self.encoder = network(embeddim)
+        self.encoder = network(in_channels, embeddim)
         
         
     def forward(self, x):
@@ -55,35 +73,16 @@ class ContrastModel(nn.Module):
         h = [self.encoder(x[n, ...]) for n in range(nviews)]
         return torch.stack(h, dim=0)
     
-
-class SupervisedModel(nn.Module):
-    '''
-    supervised model
-    '''
-    def __init__(self, network, num_classes=4, embeddim=256):
-        super(SupervisedModel, self).__init__()
-        self.embeddim = embeddim
-        self.encoder = network(embeddim)
-        # dim = self.encoder.fc.weight.shape[1]
-        # self.encoder.fc = nn.Linear(dim, num_classes)
-        self.fc = nn.Linear(embeddim, num_classes)
-        
-    
-    def forward(self, x):
-        x = self.encoder(x)
-        x = self.fc(x)
-        return x
-    
-    
+  
 class MoCoModel(nn.Module):
     '''
     MoCo model
     '''
-    def __init__(self, network, embeddim=256, queue_size=16384, momentum=0.999):
+    def __init__(self, network, in_channels=1, embeddim=256, queue_size=16384, momentum=0.999):
         super(MoCoModel, self).__init__()
         self.embeddim = embeddim
-        self.encoder_q = network(embeddim)
-        self.encoder_k = network(embeddim)
+        self.encoder_q = network(in_channels, embeddim)
+        self.encoder_k = network(in_channels, embeddim)
         self.queue_size = queue_size
         self.momentum = momentum
         self.register_buffer("queue", torch.randn(embeddim, queue_size))
@@ -163,11 +162,11 @@ class MCPModel(nn.Module):
     '''
     MoCo model patient specific variant
     '''
-    def __init__(self, network, embeddim=256, queue_size=16384, momentum=0.999):
+    def __init__(self, network, in_channels=1, embeddim=256, queue_size=16384, momentum=0.999):
         super(MCPModel, self).__init__()
         self.embeddim = embeddim
-        self.encoder_q = network(embeddim)
-        self.encoder_k = network(embeddim)
+        self.encoder_q = network(in_channels, embeddim)
+        self.encoder_k = network(in_channels, embeddim)
         self.queue_size = queue_size
         self.momentum = momentum
         self.register_buffer("queue", torch.randn(embeddim, queue_size))
