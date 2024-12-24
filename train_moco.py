@@ -23,7 +23,7 @@ parser = argparse.ArgumentParser(description='pretraining chosen model on chosen
 
 parser.add_argument('--data_root', type=str, default='trainingchapman', help='the root directory of the dataset')
 parser.add_argument('--data', type=str, default='chapman', help='the dataset to be used')
-parser.add_argument('--model', type=str, default='cnn3', help='the backbone model to be used')
+parser.add_argument('--model', type=str, default='res20', help='the backbone model to be used')
 parser.add_argument('--epochs', type=int, default=400, help='the number of epochs for training')
 parser.add_argument('--batch_size', type=int, default=256, help='the batch size for training')
 parser.add_argument('--lr', type=float, default=0.0001, help='the learning rate for training')

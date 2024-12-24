@@ -2,7 +2,7 @@ import torch
 import re
 import numpy as np
 from torch import nn
-from model.base import CNN3
+from model.base import CNN3, Res20
 
 
 def load_network(network_name):
@@ -11,6 +11,8 @@ def load_network(network_name):
     '''
     if network_name == 'cnn3':
         return CNN3
+    elif network_name == 'res20':
+        return Res20
     else:
         raise ValueError(f'Unknown network {network_name}')
 
