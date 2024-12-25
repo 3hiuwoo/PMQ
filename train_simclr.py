@@ -1,6 +1,6 @@
 '''2024-11-12
 
-This script is used to train the model under the SimCLR paradigm.
+Train the model under SimCLR paradigm to run ablation on the CMSC loss.
 
 Run the script with the following command:
     python train_simclr.py {options}

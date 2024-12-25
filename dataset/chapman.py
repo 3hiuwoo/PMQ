@@ -14,19 +14,28 @@ class ChapmanDataset(Dataset):
         split (str): one of 'train', 'valid' or 'test'
         pretrain (bool): if True, return head, if False, return label
         keep_lead (bool): whether to keep the dimension of lead
+        trial(int): the trial number of each signal to be segmented, if None/0/'none', use the whole signal
+        sample(int): the sample length of each segment extracted from the trial, if None/0/'none', use the whole trial
         transform (transform): data augmentation
     '''
-    def __init__(self, root='trainingchapman', split='train', pretrain=True, keep_lead=True, transform=None):
+    def __init__(self, root='trainingchapman', split='train', pretrain=True, keep_lead=True, trial=None, sample=None, transform=None):
         self.transform = transform
         self.split = split
         self.root = root
         self.keep_lead = keep_lead
         self.pretrain = pretrain
+        self.trial = trial
+        self.sample = sample
         self.classes = ['SB', 'AFIB', 'GSVT', 'SR']
         self.leads = ['I', 'II', 'III', 'aVR', 'aVL', 'aVF', 'V1', 'V2', 'V3', 'V4', 'V5', 'V6']
         self.data = self._load_data()
         if not self.pretrain:
             self.data = pd.merge(self._load_label(), self.data, on='head', how='inner')
+            
+        if self.trial:
+            self._make_trial()
+        if self.sample:
+            self._make_sample()
 
         
     def __len__(self):
@@ -46,7 +55,12 @@ class ChapmanDataset(Dataset):
             head = self.data.at[idx, 'head']
             if self.transform:
                 signal = self.transform(signal)
-            return signal, head
+            if self.trial:
+                trial = self.data.at[idx, 'trial']
+                return signal, head, trial
+            else:
+                return signal, head
+            
         else:
             label = self.data.at[idx, 'label']
             if self.transform:
@@ -112,5 +126,31 @@ class ChapmanDataset(Dataset):
         
         return signals
 
-        
 
+    def _make_trial(self):
+        '''
+        segment each signal into trials and add trial id
+        '''
+        length = self.data['signal'].apply(lambda x: x.shape[-1]).min()
+        assert length == 5000
+        T = length // self.trial
+        self.data['signal'] = self.data['signal'].apply(lambda x: self._segment(x, T))
+        tid = np.tile(np.arange(self.trial), self.data.shape[0])
+        self.data = self.data.explode('signal', ignore_index=True)
+        self.data['trial'] = tid
+        
+    
+    def _make_sample(self):
+        '''
+        segment each trial into samples
+        '''
+        self.data['signal'] = self.data['signal'].apply(lambda x: self._segment(x, self.sample))
+        self.data = self.data.explode('signal', ignore_index=True)
+
+
+    def _segment(self, signal, length):
+        '''
+        segment the signal non-overlapping
+        '''
+        return [signal[..., i:i+length] for i in range(0, signal.shape[-1], length)
+                    if i+length <= signal.shape[-1]]

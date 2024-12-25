@@ -98,16 +98,22 @@ class CINC2017Dataset(Dataset):
         perform segmentation on the signals
         '''
         # for balancing the label, specify the stride of the sliding window of each class
-        if self.step == None or self.step == 0 or self.step == 'none':
-            inter_n = inter_a = inter_o = inter_p = self.length
-        elif isinstance(self.step, dict):
-            inter_n, inter_a, inter_o, inter_p = self.step.values()
-        elif isinstance(self.step, (int, float)):
-            inter_n = inter_a = inter_o = inter_p = self.step
-        elif isinstance(self.step, (list, tuple)):
-            inter_n, inter_a, inter_o, inter_p = self.step
+        # if self.step == None or self.step == 0 or self.step == 'none':
+        #     inter_n = inter_a = inter_o = inter_p = self.length
+        # elif isinstance(self.step, dict):
+        #     inter_n, inter_a, inter_o, inter_p = self.step.values()
+        # elif isinstance(self.step, (int, float)):
+        #     inter_n = inter_a = inter_o = inter_p = self.step
+        # elif isinstance(self.step, (list, tuple)):
+        #     inter_n, inter_a, inter_o, inter_p = self.step
+        # else:
+        #     raise ValueError('step must be dict/list/tuple/number')
+        if self.step is None or self.step == 0 or self.step == 'none':
+            self.step = self.length
+        if isinstance(self.step, float):
+            self.step = int(self.length * self.step)
         else:
-            raise ValueError('step must be dict/list/tuple/number')
+            raise ValueError('step must be a number')
         
         # segment the signal
         def slicing_window(signal, window, interval):
@@ -117,18 +123,19 @@ class CINC2017Dataset(Dataset):
             
         for row in self.data.itertuples():
             if row.signal.shape[-1] >= self.length:
-                if row.label == 0:
-                    self.data.at[row.Index, 'signal'] =\
-                        slicing_window(row.signal, self.length, inter_n)
-                elif row.label == 1:
-                    self.data.at[row.Index, 'signal'] =\
-                        slicing_window(row.signal, self.length, inter_a)
-                elif row.label == 2:
-                    self.data.at[row.Index, 'signal'] =\
-                        slicing_window(row.signal, self.length, inter_o)
-                else:
-                    self.data.at[row.Index, 'signal'] =\
-                        slicing_window(row.signal, self.length, inter_p)   
+                self.data.at[row.Index, 'signal'] = slicing_window(row.signal, self.length, self.step)
+                # if row.label == 0:
+                #     self.data.at[row.Index, 'signal'] =\
+                #         slicing_window(row.signal, self.length, inter_n)
+                # elif row.label == 1:
+                #     self.data.at[row.Index, 'signal'] =\
+                #         slicing_window(row.signal, self.length, inter_a)
+                # elif row.label == 2:
+                #     self.data.at[row.Index, 'signal'] =\
+                #         slicing_window(row.signal, self.length, inter_o)
+                # else:
+                #     self.data.at[row.Index, 'signal'] =\
+                #         slicing_window(row.signal, self.length, inter_p)   
             else:
                 self.data.drop(row.Index, inplace=True)
                 

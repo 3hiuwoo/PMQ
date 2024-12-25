@@ -1,6 +1,6 @@
 import torch
 import numpy as np
-import pywt
+# import pywt
 from scipy.interpolate import interp1d
 
 
@@ -187,44 +187,26 @@ class TimeWarp:
         return f(x_new)
         
     
-class ToGroup:
-    '''
-    convert the signal to a group of signals with different transformations
-    
-    Args:
-        trans(array): list of transformations
-    '''
-    def __init__(self, transforms):
-        self.transforms = transforms
-        
-
-    def __call__(self, signal):
-        sigs = [signal]
-        for t in self.transformations:
-            sigs.append(t(signal))
-        return np.concatenate(sigs, axis=0)
-    
-
-class WaveletDenoise:
-    '''
-    denoise the raw signal
-    '''
-    def __init__(self):
-        pass
+# class WaveletDenoise:
+#     '''
+#     denoise the raw signal
+#     '''
+#     def __init__(self):
+#         pass
     
     
-    def __call__(self, signal):
-        coeffs = pywt.wavedec(data=signal, wavelet='db5', level=9)
-        cD2, cD1 = coeffs[-2], coeffs[-1]
+#     def __call__(self, signal):
+#         coeffs = pywt.wavedec(data=signal, wavelet='db5', level=9)
+#         cD2, cD1 = coeffs[-2], coeffs[-1]
 
-        threshold = (np.median(np.abs(cD1)) / 0.6745) * (np.sqrt(2 * np.log(len(cD1))))
-        cD1.fill(0)
-        cD2.fill(0)
-        for i in range(1, len(coeffs) - 2):
-            coeffs[i] = pywt.threshold(coeffs[i], threshold)
+#         threshold = (np.median(np.abs(cD1)) / 0.6745) * (np.sqrt(2 * np.log(len(cD1))))
+#         cD1.fill(0)
+#         cD2.fill(0)
+#         for i in range(1, len(coeffs) - 2):
+#             coeffs[i] = pywt.threshold(coeffs[i], threshold)
 
-        sig = pywt.waverec(coeffs=coeffs, wavelet='db5')
-        return sig
+#         sig = pywt.waverec(coeffs=coeffs, wavelet='db5')
+#         return sig
         
 
 class Segment:
@@ -255,10 +237,46 @@ class CreateView:
         
         
     def __call__(self, signal):
-        signals = [self.transform(signal) for n in range(self.nviews)]
+        signals = [self.transform(signal) for _ in range(self.nviews)]
         return np.stack(signals, axis=0)
+       
+       
+class CreateGroup:
+    '''
+    create multiple groups, each is produced by a unique transformation
+    '''
+    def __init__(self, transforms):
+        self.transforms = transforms
         
+        
+    def __call__(self, signal):
+        return np.stack([t(signal) for t in self.transforms], axis=0)
 
+
+class RandomMask:
+    '''
+    randomly mask the signal continuously
+    
+    Args:
+        n(int): number of segments to be masked
+        l(int/float): length of the mask, a float number between 0 and 1 indicates the ratio of the signal length
+    '''
+    def __init__(self, n=5, l=0.1):
+        self.n = n
+        self.l = l
+        
+        
+    def __call__(self, signal):
+        T = signal.shape[-1]
+        if self.l < 1:
+            self.l = int(T * self.l)
+        mask = np.ones_like(signal)
+        for _ in range(self.n):
+            idx = np.random.randint(0, (T-self.l+1))
+            mask[..., idx:idx+self.l] = 0
+        return signal * mask
+    
+    
 class DownSample:
     '''
     downsample the signal

@@ -7,13 +7,16 @@ def load_data(root, task, transform=None, batch_size=256, dataset_name='cinc2017
     '''
     return dataloaders
     '''
-    if task in ['cmsc', 'simclr', 'moco', 'mcp']:
-        if dataset_name == 'cinc2017':
-            train_dataset = CINC2017Dataset(root=root, length=5000, split='train', transform=transform)
-        
-        elif dataset_name == 'chapman':
+    if task in ['cmsc', 'simclr', 'moco', 'mcp', 'comet']:
+        if dataset_name == 'chapman':
             train_dataset = ChapmanDataset(root=root, split='train', keep_lead=False, transform=transform)
 
+        elif  dataset_name == 'chapman_lead': # don't flatten the lead dimension
+            train_dataset = ChapmanDataset(root=root, split='train', transform=transform)
+        
+        elif dataset_name == 'chapman_trial': # segment to trial and sample
+            train_dataset = ChapmanDataset(root=root, split='train', trial=2, sample=250, transform=transform)
+            
         else:
             raise ValueError(f'Unknown dataset {dataset_name}')
         
@@ -31,7 +34,17 @@ def load_data(root, task, transform=None, batch_size=256, dataset_name='cinc2017
             train_dataset = ChapmanDataset(root=root, split='train', pretrain=False, transform=transform)
             valid_dataset = ChapmanDataset(root=root, split='valid', pretrain=False, transform=Compose([Normalize(), ToTensor()]))
             test_dataset = ChapmanDataset(root=root, split='test', pretrain=False, transform=Compose([Normalize(), ToTensor()]))
+        
+        elif dataset_name == 'chapman_lead':
+            train_dataset = ChapmanDataset(root=root, split='train', pretrain=False, keep_lead=False, transform=transform)
+            valid_dataset = ChapmanDataset(root=root, split='valid', pretrain=False, keep_lead=False, transform=Compose([Normalize(), ToTensor()]))
+            test_dataset = ChapmanDataset(root=root, split='test', pretrain=False, keep_lead=False, transform=Compose([Normalize(), ToTensor()]))
             
+        elif dataset_name == 'chapman_trial':
+            train_dataset = ChapmanDataset(root=root, split='train', pretrain=False, trial=2, sample=250, transform=transform)
+            valid_dataset = ChapmanDataset(root=root, split='valid', pretrain=False, trial=2, sample=250, transform=Compose([Normalize(), ToTensor()]))
+            test_dataset = ChapmanDataset(root=root, split='test', pretrain=False, trial=2, sample=250, transform=Compose([Normalize(), ToTensor()]))
+                
         else:
             raise ValueError(f'Unknown dataset {dataset_name}')
         

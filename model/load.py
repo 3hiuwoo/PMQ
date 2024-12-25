@@ -25,6 +25,8 @@ def load_model(model_name, task, in_channels=1, embeddim=256):
     
     if task in ['cmsc', 'simclr']:
         return ContrastModel(network=network, in_channels=in_channels, embeddim=embeddim)
+    elif task == 'comet':
+        return COMETModel(network=network, in_channels=in_channels, embeddim=embeddim)
     elif task == 'moco':
         return MoCoModel(network=network, in_channels=in_channels, embeddim=embeddim)
     elif task == 'mcp':
@@ -60,7 +62,7 @@ class ContrastModel(nn.Module):
     def __init__(self, network, in_channels=1, embeddim=256):
         super(ContrastModel, self).__init__()
         self.embeddim = embeddim
-        self.encoder = network(in_channels, embeddim)
+        self.encoder = network(in_channels, embeddim, )
         
         
     def forward(self, x):
@@ -74,7 +76,35 @@ class ContrastModel(nn.Module):
         x = x.permute(1, 0, 2, 3)
         h = [self.encoder(x[n, ...]) for n in range(nviews)]
         return torch.stack(h, dim=0)
+
+
+class COMETModel(nn.Module):
+    '''
+    COMET model
+    '''
+    def __init__(self, network, in_channels=12, embeddim=256):
+        super(COMETModel, self).__init__()
+        self.embeddim = embeddim
+        self.encoder = network(in_channels, embeddim, keep_dim=True)
+        
     
+    def forward(self, x):
+        """
+        Args:
+            x (torch.Tensor): inputs with L levels, each with N views (BxLxNxCxS)
+        Returns:
+            h (torch.Tensor): latent embedding for each of the N views (NxBxH)
+        """
+        nlevels = x.shape[0]
+        nviews = x.shape[1]
+        
+        x = x.permute(1, 2, 0, 3, 4)
+        ls = []
+        for l in range(nlevels):
+            h = torch.stack([self.encoder(x[l, n, ...]) for n in range(nviews)], dim=0)
+            ls.append(h)
+            
+        return torch.stack(ls, dim=0)
   
 class MoCoModel(nn.Module):
     '''
