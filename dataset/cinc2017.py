@@ -110,10 +110,10 @@ class CINC2017Dataset(Dataset):
         #     raise ValueError('step must be dict/list/tuple/number')
         if self.step is None or self.step == 0 or self.step == 'none':
             self.step = self.length
-        if isinstance(self.step, float):
+        elif isinstance(self.step, float):
             self.step = int(self.length * self.step)
-        else:
-            raise ValueError('step must be a number')
+        elif not isinstance(self.step, int):
+            raise ValueError('step must be int or float')
         
         # segment the signal
         def slicing_window(signal, window, interval):

@@ -40,14 +40,14 @@ def load_data(root, task, transform=None, batch_size=256, dataset_name='cinc2017
             test_dataset = CINC2017Dataset(root=root, length=2500, split='test', transform=ToTensor())
             
         elif dataset_name == 'chapman':
+            train_dataset = ChapmanDataset(root=root, split='train', pretrain=False, keep_lead=False, transform=transform)
+            valid_dataset = ChapmanDataset(root=root, split='valid', pretrain=False, keep_lead=False, transform=Compose([Normalize(), ToTensor()]))
+            test_dataset = ChapmanDataset(root=root, split='test', pretrain=False, keep_lead=False, transform=Compose([Normalize(), ToTensor()]))    
+        
+        elif dataset_name == 'chapman_lead':
             train_dataset = ChapmanDataset(root=root, split='train', pretrain=False, transform=transform)
             valid_dataset = ChapmanDataset(root=root, split='valid', pretrain=False, transform=Compose([Normalize(), ToTensor()]))
             test_dataset = ChapmanDataset(root=root, split='test', pretrain=False, transform=Compose([Normalize(), ToTensor()]))
-        
-        elif dataset_name == 'chapman_lead':
-            train_dataset = ChapmanDataset(root=root, split='train', pretrain=False, keep_lead=False, transform=transform)
-            valid_dataset = ChapmanDataset(root=root, split='valid', pretrain=False, keep_lead=False, transform=Compose([Normalize(), ToTensor()]))
-            test_dataset = ChapmanDataset(root=root, split='test', pretrain=False, keep_lead=False, transform=Compose([Normalize(), ToTensor()]))
             
         elif dataset_name == 'chapman_trial':
             train_dataset = ChapmanDataset(root=root, split='train', pretrain=False, trial=2, sample=250, transform=transform)
