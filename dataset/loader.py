@@ -32,6 +32,8 @@ def load_data(root, task, transform=None, batch_size=256, dataset_name='cinc2017
         sampler = CometBatchSampler(range(len(train_dataset)), batch_size, drop_last=True)
         train_dataloader = DataLoader(train_dataset, batch_sampler=sampler)\
         # train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, drop_last=True)
+        
+        return train_dataloader
              
     elif task == 'supervised':
         if dataset_name == 'cinc2017':
