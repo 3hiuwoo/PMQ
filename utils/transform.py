@@ -4,6 +4,48 @@ import numpy as np
 from scipy.interpolate import interp1d
 
 
+def load_transforms(task, dataset_name):
+    '''
+    load transforms based on task and dataset_name
+    '''
+    if task in ['cmsc', 'simclr', 'moco', 'mcp']:
+        if dataset_name in ['chapman', 'chapman_lead', 'chapman_trial']:
+            trans = Compose([
+                # Denoise(),
+                Normalize(),
+                CreateView(Segment()),
+                ToTensor()
+                ])
+        
+        else:
+            raise ValueError(f'Unknown dataset {dataset_name}')
+    
+    elif task in ['comet']:
+        if dataset_name in ['chapman', 'chapman_lead', 'chapman_trial']:
+            trans = Compose([
+                # Denoise(),
+                Normalize(),
+                CreateGroup([
+                    CreateView(Compose([RandomMask(), ToTensor()])), # observation level
+                    CreateView(Compose([RandomMask(), ToTensor()])), # sample level
+                    CreateView(ToTensor()), # trial level
+                    CreateView(ToTensor()) # patient level
+                    ])
+                ])
+        
+        else:
+            raise ValueError(f'Unknown dataset {dataset_name}')
+        
+    elif task == 'supervised':
+        if dataset_name in ['cinc2017']:
+            trans = ToTensor()
+            
+        else:
+            raise ValueError(f'Unknown dataset {dataset_name}')
+
+    return trans
+            
+           
 def normalize(arr):
     '''
     normalize the array by x = (x - x.min()) / (x.max() - x.min())

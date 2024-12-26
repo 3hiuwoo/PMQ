@@ -8,8 +8,8 @@ from torchmetrics import MeanMetric
 from tqdm import tqdm
 from dataset.load import load_data
 from model.load import load_model
-from utils import transform
-from utils.utils import set_seed, get_device, save_checkpoint
+from utils.transform import load_transforms
+from utils.f import set_seed, get_device, save_checkpoint
 
 parser = argparse.ArgumentParser(description='pretraining chosen model on chosen dataset under comet paradigm')
 
@@ -60,22 +60,13 @@ def main():
     else:
         start_epoch = 0
     
-    # creating views for different levels
-    trans = transform.Compose([
-        # transform.Denoise(),
-        transform.Normalize(),
-        transform.CreateGroup([
-            transform.CreateView(transform.Compose([transform.RandomMask(), transform.ToTensor()])), # observation level
-            transform.CreateView(transform.Compose([transform.RandomMask(), transform.ToTensor()])), # sample level
-            transform.CreateView(transform.ToTensor()), # trial level
-            transform.CreateView(transform.ToTensor()) # patient level
-            ])
-        ])
-    
     if device == 'cuda':
         torch.backends.cudnn.benchmark = True
         
     print(f'=> loading dataset {args.data} from {args.data_root}')
+    
+    # creating views for different levels
+    trans = load_transforms(task='comet', dataset_name=args.data)
     
     train_loader = load_data(root=args.data_root, task='comet', dataset_name=args.data, batch_size=args.batch_size, transform=trans)
     
@@ -137,8 +128,8 @@ def comet_loss(outputs, heads, trials):
         heads: the patient ids with shape (batch_size)
         trials: the trial ids with shape (batch_size)
     '''
-    B = outputs.shape[2]
-    T = outputs.shape[-1]
+    B = outputs.shape[2] # batch size
+    T = outputs.shape[-1] # time length
     
     # ----------observation loss----------
     oout = outputs[0]

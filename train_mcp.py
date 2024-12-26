@@ -17,8 +17,8 @@ from torchmetrics import MeanMetric
 from tqdm import tqdm
 from dataset.load import load_data
 from model.load import load_model
-from utils import transform
-from utils.utils import set_seed, get_device, save_checkpoint
+from utils.transform import load_transforms
+from utils.f import set_seed, get_device, save_checkpoint
 
 parser = argparse.ArgumentParser(description='pretraining chosen model on chosen dataset under MCP paradigm')
 
@@ -67,19 +67,14 @@ def main():
     else:
         start_epoch = 0
     
-    # creating views
-    trans = transform.Compose([
-        # transform.Denoise(),
-        transform.Normalize(),
-        transform.CreateView(transform.Segment()),
-        transform.ToTensor()
-        ])
-    
     if device == 'cuda':
         torch.backends.cudnn.benchmark = True
         
     print(f'=> loading dataset {args.data} from {args.data_root}')
-
+    
+    # creating views
+    trans = load_transforms(task='mcp', dataset_name=args.data)
+    
     train_loader = load_data(root=args.data_root, task='mcp', dataset_name=args.data, batch_size=args.batch_size, transform=trans)
     
     print(f'=> dataset contains {len(train_loader.dataset)} samples')
@@ -117,7 +112,8 @@ def main():
 def train(train_loader, model, optimizer, epoch, metric, writer, device, queue_heads, ptr):
     model.train()
     
-    for signals, heads in tqdm(train_loader, desc=f'=> Epoch {epoch+1}', leave=False):
+    bar = tqdm(train_loader, desc=f'=> Epoch {epoch+1}', leave=False)
+    for signals, heads in bar:
         signals = signals.to(device)
         query_key, query_queue = model(signals)
 
@@ -132,6 +128,8 @@ def train(train_loader, model, optimizer, epoch, metric, writer, device, queue_h
         # update patient ids queue
         queue_heads[ptr:ptr+heads.shape[0]] = heads
         ptr = (ptr + heads.shape[0]) % queue_heads.shape[0]
+        
+        bar.set_postfix(loss=loss.item())
         
     total_loss = metric.compute()
     writer.add_scalar('loss', total_loss, epoch)

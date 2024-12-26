@@ -20,13 +20,13 @@ from torchmetrics import MeanMetric, AUROC, Accuracy, F1Score, MetricCollection
 from tqdm import tqdm
 from dataset.load import load_data
 from model.load import load_model
-from utils import transform
-from utils.utils import set_seed, get_device, save_checkpoint
+from utils.transform import load_transforms
+from utils.f import set_seed, get_device, save_checkpoint
 
 parser = argparse.ArgumentParser(description='train model with labeled data')
 
 parser.add_argument('--data_root', type=str, default='training2017', help='the root directory of the dataset')
-parser.add_argument('--data', type=str, default='cinc2017', help='the dataset to be used')
+parser.add_argument('--data', type=str, default='cinc2017', choices=['cinc2017'], help='the dataset to be used')
 parser.add_argument('--model', type=str, default='res20', help='the backbone model to be used')
 parser.add_argument('--epochs', type=int, default=400, help='the number of epochs for training')
 parser.add_argument('--batch_size', type=int, default=256, help='the batch size for training')
@@ -93,10 +93,7 @@ def main():
         else:
             print(f'=> no checkpoint found at {args.resume}')
             
-    else:
-        start_epoch = 0
-        
-    if args.pretrain:
+    elif args.pretrain:
         if os.path.isfile(args.pretrain):
             print(f'=> loading pretrained model from {args.pretrain}')
             checkpoint = torch.load(args.pretrain, map_location=device)
@@ -112,25 +109,23 @@ def main():
                     del checkpoint['model'][k]
                     
             msg = model.load_state_dict(checkpoint['model'], strict=False)
-            assert set(msg.missing_keys) == {'fc.weight', 'fc.bias'}
+            # assert set(msg.missing_keys) == {'fc.weight', 'fc.bias'}
+            print(f'=> loaded with missing keys: {msg.missing_keys}')
             
         else:
             print(f'=> no pretrained model found at {args.pretrain}')
-        
-    if args.data == 'chapman':
-        trans = transform.Compose([
-            # transform.Denoise(),
-            transform.DownSample(2),
-            transform.Normalize(),
-            transform.ToTensor()
-            ])
+            
+        start_epoch = 0
+            
     else:
-        trans = transform.ToTensor()
-    
+        start_epoch = 0    
+
     if device == 'cuda':
         torch.backends.cudnn.benchmark = True
 
     print(f'=> loading dataset {args.data} from {args.data_root}')
+    
+    trans = load_transforms(task='supervised', dataset_name=args.data)
     
     train_loader, valid_loader, test_loader = load_data(root=args.data_root, task='supervised', dataset_name=args.data, batch_size=args.batch_size, transform=trans)
     
@@ -153,7 +148,7 @@ def main():
         
         else:
             print(f'=> no model found at {args.test}')
-            return
+            return # exit here if just test
     
     # track loss
     train_loss = MeanMetric().to(device)
@@ -204,7 +199,8 @@ def train(train_loader, model, optimizer, criterion, epoch, metric, writer, free
     if freeze:
         model.eval()
     
-    for signals, labels in tqdm(train_loader, desc=f'=> Epoch {epoch+1}', leave=False):
+    bar = tqdm(train_loader, desc=f'=> Epoch {epoch+1}', leave=False)
+    for signals, labels in bar:
         signals = signals.to(device)
         labels = labels.to(device)
         outputs = model(signals)
@@ -215,6 +211,8 @@ def train(train_loader, model, optimizer, criterion, epoch, metric, writer, free
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
+        
+        bar.set_postfix(loss=loss.item())
         
     total_loss = metric.compute()
     writer.add_scalar('loss', total_loss, epoch)

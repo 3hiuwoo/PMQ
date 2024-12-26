@@ -135,7 +135,7 @@ class ChapmanDataset(Dataset):
         assert length == 5000
         T = length // self.trial
         self.data['signal'] = self.data['signal'].apply(lambda x: self._segment(x, T))
-        tid = np.tile(np.arange(self.trial), self.data.shape[0])
+        tid = np.arange(self.trial * self.data.shape[0])
         self.data = self.data.explode('signal', ignore_index=True)
         self.data['trial'] = tid
         

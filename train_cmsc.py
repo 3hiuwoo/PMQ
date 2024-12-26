@@ -17,8 +17,8 @@ from torchmetrics import MeanMetric
 from tqdm import tqdm
 from dataset.load import load_data
 from model.load import load_model
-from utils import transform
-from utils.utils import set_seed, get_device, save_checkpoint
+from utils.transform import load_transforms
+from utils.f import set_seed, get_device, save_checkpoint
 
 parser = argparse.ArgumentParser(description='pretraining chosen model on chosen dataset under CMSC paradigm')
 
@@ -67,18 +67,13 @@ def main():
     else:
         start_epoch = 0
     
-    # creating views
-    trans = transform.Compose([
-        # transform.Denoise(),
-        transform.Normalize(),
-        transform.CreateView(transform.Segment()),
-        transform.ToTensor()
-        ])
-    
     if device == 'cuda':
         torch.backends.cudnn.benchmark = True
         
     print(f'=> loading dataset {args.data} from {args.data_root}')
+    
+    # creating views
+    trans = load_transforms(task='cmsc', dataset_name=args.data)
     
     train_loader = load_data(root=args.data_root, task='cmsc', dataset_name=args.data, batch_size=args.batch_size, transform=trans)
     
@@ -113,7 +108,8 @@ def main():
 def train(train_loader, model, optimizer, epoch, metric, writer, device):
     model.train()
     
-    for signals, heads in tqdm(train_loader, desc=f'=> Epoch {epoch+1}', leave=False):
+    bar = tqdm(train_loader, desc=f'=> Epoch {epoch+1}', leave=False)
+    for signals, heads in bar:
         signals = signals.to(device)
         outputs = model(signals)
 
@@ -125,6 +121,7 @@ def train(train_loader, model, optimizer, epoch, metric, writer, device):
         loss.backward()
         optimizer.step()
         
+        bar.set_postfix(loss=loss.item())
     total_loss = metric.compute()
     writer.add_scalar('loss', total_loss, epoch)
     metric.reset()
