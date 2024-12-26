@@ -95,8 +95,8 @@ class COMETModel(nn.Module):
         Returns:
             h (torch.Tensor): latent embedding for each of the N views (NxBxH)
         """
-        nlevels = x.shape[0]
-        nviews = x.shape[1]
+        nlevels = x.shape[1]
+        nviews = x.shape[2]
         
         x = x.permute(1, 2, 0, 3, 4)
         ls = []

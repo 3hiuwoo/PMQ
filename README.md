@@ -10,3 +10,5 @@ Download **training2017.zip** and **REFERENCE-v3.csv** from [here](https://physi
 ### Chapman
 
 Download the dataset zip file from [here](https://physionet.org/content/ecg-arrhythmia/1.0.0/), unzip it and move a copy of **RECORDTrain.txt**, **RECORDValid.txt**, **RECORDTest.txt**, **REFERENCE4.csv** from [data/chapman](https://github.com/3hiuwoo/MCP/tree/main/data/chapman) to the unzipped folder.
+
+Modification to some header file: JS1052.hea 500->5000

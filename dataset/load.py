@@ -15,7 +15,7 @@ def load_data(root, task, transform=None, batch_size=256, dataset_name='cinc2017
             train_dataset = ChapmanDataset(root=root, split='train', transform=transform)
         
         elif dataset_name == 'chapman_trial': # segment to trial and sample
-            train_dataset = ChapmanDataset(root=root, split='train', trial=2, sample=250, transform=transform)
+            train_dataset = ChapmanDataset(root=root, split='valid', trial=2, sample=250, transform=transform)
             
         else:
             raise ValueError(f'Unknown dataset {dataset_name}')

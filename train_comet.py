@@ -11,10 +11,10 @@ from model.load import load_model
 from utils import transform
 from utils.utils import set_seed, get_device, save_checkpoint
 
-parser = argparse.ArgumentParser(description='pretraining chosen model on chosen dataset under CMSC paradigm')
+parser = argparse.ArgumentParser(description='pretraining chosen model on chosen dataset under comet paradigm')
 
 parser.add_argument('--data_root', type=str, default='trainingchapman', help='the root directory of the dataset')
-parser.add_argument('--data', type=str, default='chapman_trial', choices=['chapman_trial'], help='the dataset to be used', choices=['chapman_trial'])
+parser.add_argument('--data', type=str, default='chapman_trial', choices=['chapman_trial'], help='the dataset to be used')
 parser.add_argument('--model', type=str, default='res20', help='the backbone model to be used')
 parser.add_argument('--epochs', type=int, default=400, help='the number of epochs for training')
 parser.add_argument('--batch_size', type=int, default=256, help='the batch size for training')
@@ -30,7 +30,7 @@ parser.add_argument('--log', type=str, default='log', help='the directory to sav
 def main():
     args = parser.parse_args()
     # directory to save the tensorboard log files and checkpoints
-    dir = os.path.join(args.log, f'cmsc_{args.model}_{args.data}_{args.batch_size}')
+    dir = os.path.join(args.log, f'comet_{args.model}_{args.data}_{args.batch_size}')
     # dir = args.log
     
     if args.seed is not None:
@@ -41,7 +41,9 @@ def main():
     print(f'=> using device {device}')
     
     print(f'=> creating model {args.model}')
-    model = load_model(args.model, task='comet', embeddim=args.embedding_dim)
+    if args.data == 'chapman_trial':
+        in_channels = 12
+    model = load_model(args.model, task='comet', in_channels=in_channels, embeddim=args.embedding_dim)
     model.to(device)
 
     optimizer = optim.Adam(model.parameters(), args.lr)
@@ -58,7 +60,7 @@ def main():
     else:
         start_epoch = 0
     
-    # creating views
+    # creating views for different levels
     trans = transform.Compose([
         # transform.Denoise(),
         transform.Normalize(),
@@ -86,7 +88,7 @@ def main():
     logdir = os.path.join(dir, 'log')
     writer = SummaryWriter(log_dir=logdir)
 
-    print(f'=> running cmsc for {args.epochs} epochs')
+    print(f'=> running comet for {args.epochs} epochs')
     for epoch in range(start_epoch, args.epochs):
         # adjust_lr(optimizer, epoch, args.schedule)
         
@@ -108,7 +110,8 @@ def main():
 def train(train_loader, model, optimizer, epoch, metric, writer, device):
     model.train()
     
-    for signals, heads, trials in tqdm(train_loader, desc=f'=> Epoch {epoch+1}', leave=False):
+    bar = tqdm(train_loader, desc=f'=> Epoch {epoch+1}', leave=False)
+    for signals, heads, trials in bar:
         signals = signals.to(device)
         outputs = model(signals)
 
@@ -119,6 +122,8 @@ def train(train_loader, model, optimizer, epoch, metric, writer, device):
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
+        
+        bar.set_postfix(loss=loss.item())
         
     total_loss = metric.compute()
     writer.add_scalar('loss', total_loss, epoch)
@@ -150,8 +155,8 @@ def comet_loss(outputs, heads, trials):
     
     # ----------sample loss----------
     zout = outputs[1]
-    z2 = torch.cat([zout, zout], dim=0)  # 2B x C x T
-    z2 = z2.transpose(0, 2)  # T x 2B x C
+    z2 = torch.cat([zout[0], zout[1]], dim=0)  # 2B x C x T
+    z2 = z2.permute(2, 0, 1)  # T x 2B x C
     ssim = torch.matmul(z2, z2.transpose(1, 2))  # O x 2B x 2B
     slogits = torch.tril(ssim, diagonal=-1)[:, :, :-1]    # O x 2B x (2B-1), left-down side, remove last zero column
     slogits += torch.triu(ssim, diagonal=1)[:, :, 1:]  # O x 2B x (2B-1), right-up side, remove first zero column
@@ -263,3 +268,7 @@ def comet_loss(outputs, heads, trials):
     loss = oloss * factors[0] + zloss * factors[1] + tloss * factors[2] + ploss * factors[3]
     
     return loss
+
+
+if __name__ == '__main__':
+    main()
