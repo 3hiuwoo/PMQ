@@ -6,10 +6,10 @@ from torch import optim
 from torch.utils.tensorboard import SummaryWriter
 from torchmetrics import MeanMetric
 from tqdm import tqdm
-from dataset.load import load_data
-from model.load import load_model
+from dataset.loader import load_data
+from model.loader import load_model
 from utils.transform import load_transforms
-from utils.f import set_seed, get_device, save_checkpoint
+from utils.functional import set_seed, get_device, save_checkpoint
 
 parser = argparse.ArgumentParser(description='pretraining chosen model on chosen dataset under comet paradigm')
 

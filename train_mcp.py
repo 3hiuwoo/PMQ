@@ -15,10 +15,10 @@ from torch import optim
 from torch.utils.tensorboard import SummaryWriter
 from torchmetrics import MeanMetric
 from tqdm import tqdm
-from dataset.load import load_data
-from model.load import load_model
+from dataset.loader import load_data
+from model.loader import load_model
 from utils.transform import load_transforms
-from utils.f import set_seed, get_device, save_checkpoint
+from utils.functional import set_seed, get_device, save_checkpoint
 
 parser = argparse.ArgumentParser(description='pretraining chosen model on chosen dataset under MCP paradigm')
 
@@ -90,6 +90,8 @@ def main():
     queue_heads = np.empty(16384)
     ptr = 0
     
+    # maybe add queue to store trial ids
+    
     print(f'=> running mcp for {args.epochs} epochs')
     for epoch in range(start_epoch, args.epochs):
         # adjust_lr(optimizer, epoch, args.schedule)
@@ -113,7 +115,7 @@ def train(train_loader, model, optimizer, epoch, metric, writer, device, queue_h
     model.train()
     
     bar = tqdm(train_loader, desc=f'=> Epoch {epoch+1}', leave=False)
-    for signals, heads in bar:
+    for signals, heads, _ in bar:
         signals = signals.to(device)
         query_key, query_queue = model(signals)
 

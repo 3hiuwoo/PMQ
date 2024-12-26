@@ -59,7 +59,7 @@ class ChapmanDataset(Dataset):
                 trial = self.data.at[idx, 'trial']
                 return signal, head, trial
             else:
-                return signal, head
+                return signal, head, None
             
         else:
             label = self.data.at[idx, 'label']
@@ -154,3 +154,16 @@ class ChapmanDataset(Dataset):
         '''
         return [signal[..., i:i+length] for i in range(0, signal.shape[-1], length)
                     if i+length <= signal.shape[-1]]
+        
+        
+    def _shuffle(self):
+        '''
+        shuffle the dataframe prior to data loading, consisting of inter-trail shuffle and inter-trail shuffle
+        '''
+        assert 'trial' in self.data.columns
+        # inter-trail shuffle
+        shuffle = self.data.groupby('trial').apply(lambda x: x.sample(frac=1)).reset_index(drop=True)
+        # inter-sample shuffle\
+        tid = shuffle['trial'].unique()
+        np.random.shuffle(tid)
+        self.data = shuffle.set_index('trial').loc[tid].reset_index()
