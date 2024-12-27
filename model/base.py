@@ -75,8 +75,7 @@ class Residual(nn.Module):
 class Res20(nn.Module):
     '''ResNet with 10 residual block, each with 2 convolutional layers
     Args:
-        channels(list): list of number of channels, the first element is the number of input channels,
-                        others are output channels for each residual block
+        in_channels(list): the number of channels of the input signal
         kernel_size(int): the size of the every kernel
         avepool(bool): whether to add global average pooling layer at the end     
     '''

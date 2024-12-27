@@ -23,7 +23,7 @@ def load_data(root, task, transform=None, batch_size=256, dataset_name='cinc2017
         return train_dataloader
     
     elif task in ['comet']:
-        if dataset_name == 'chapman_trial':
+        if dataset_name == 'chapman_trial': # segment the data into trials and samples
             train_dataset = ChapmanDataset(root=root, split='train', trial=2, sample=250, transform=transform)
             
         else:
