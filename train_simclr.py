@@ -109,7 +109,7 @@ def train(train_loader, model, optimizer, epoch, metric, writer, device):
     model.train()
     
     bar = tqdm(train_loader, desc=f'=> Epoch {epoch+1}', leave=False)
-    for signals, _, _ in bar:
+    for signals, _ in bar:
         signals = signals.to(device)
         outputs = model(signals)
 

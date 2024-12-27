@@ -12,7 +12,7 @@ def load_data(root, task, transform=None, batch_size=256, dataset_name='cinc2017
         if dataset_name == 'chapman':
             train_dataset = ChapmanDataset(root=root, split='train', keep_lead=False, transform=transform)
 
-        elif  dataset_name == 'chapman_lead': # don't flatten the lead dimension
+        elif dataset_name == 'chapman_lead': # don't flatten the lead dimension
             train_dataset = ChapmanDataset(root=root, split='train', transform=transform)
 
         else:

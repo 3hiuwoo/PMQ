@@ -115,7 +115,7 @@ def train(train_loader, model, optimizer, epoch, metric, writer, device, queue_h
     model.train()
     
     bar = tqdm(train_loader, desc=f'=> Epoch {epoch+1}', leave=False)
-    for signals, heads, _ in bar:
+    for signals, heads in bar:
         signals = signals.to(device)
         query_key, query_queue = model(signals)
 
