@@ -111,6 +111,8 @@ def train(train_loader, model, optimizer, epoch, metric, writer, device):
     bar = tqdm(train_loader, desc=f'=> Epoch {epoch+1}', leave=False)
     for signals, heads in bar:
         signals = signals.to(device)
+        heads = np.array(heads)
+        
         outputs = model(signals)
 
         loss = cmsc_loss(outputs, heads)
@@ -140,7 +142,6 @@ def cmsc_loss(outputs, heads):
         2 symmetric diagonal terms and 2 symmetric off-diagonal terms
     '''
     # find the diagonal and off-diagonal positions that need to calculate the loss
-    heads = np.array(heads)
     pos_matrix = np.equal.outer(heads, heads).astype(int)
     
     # get normalized embeddings for each view

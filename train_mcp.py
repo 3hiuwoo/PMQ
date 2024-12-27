@@ -117,6 +117,8 @@ def train(train_loader, model, optimizer, epoch, metric, writer, device, queue_h
     bar = tqdm(train_loader, desc=f'=> Epoch {epoch+1}', leave=False)
     for signals, heads in bar:
         signals = signals.to(device)
+        heads = np.array(heads)
+        
         query_key, query_queue = model(signals)
 
         loss = mcp_loss(query_key, query_queue, queue_heads, heads)
