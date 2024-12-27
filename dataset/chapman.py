@@ -50,7 +50,7 @@ class ChapmanDataset(Dataset):
         '''
         signal = self.data.at[idx, 'signal']
         # ensure the signal has 2 dimensions corresponding to (lead, length)
-        # signal = signal.reshape(-1, signal.shape[-1])
+        signal = signal.reshape(-1, signal.shape[-1])
         if self.pretrain:
             head = self.data.at[idx, 'head']
             if self.transform:
