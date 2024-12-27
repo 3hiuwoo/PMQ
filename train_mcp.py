@@ -87,7 +87,7 @@ def main():
     writer = SummaryWriter(log_dir=logdir)
 
     # queue to store patient ids
-    queue_heads = np.empty(16384)
+    queue_heads = np.empty(16384, dtype=str)
     ptr = 0
     
     # maybe add queue to store trial ids
