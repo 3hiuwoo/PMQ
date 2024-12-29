@@ -1,3 +1,4 @@
+import torch
 from torch import nn
 from torch.nn import functional as F
 
@@ -5,7 +6,7 @@ class CNN3(nn.Module):
     '''
     a convolutional neural network with 3 convolutional layers
     '''
-    def __init__(self, embeddim=256):
+    def __init__(self, in_channels=1, embeddim=256, keep_dim=False):
         super(CNN3, self).__init__()
         
         kernel_sizes = [7] * 3
@@ -13,8 +14,8 @@ class CNN3(nn.Module):
         channels = [4, 16, 32]
         dropouts = [0.1] * 3
         
-        self.backbone = nn.Sequential(
-            nn.Conv1d(1, channels[0], kernel_sizes[0], kernel_strides[0]),
+        ls = [
+            nn.Conv1d(in_channels, channels[0], kernel_sizes[0], kernel_strides[0]),
             nn.BatchNorm1d(channels[0]),
             nn.ReLU(),
             nn.MaxPool1d(2),
@@ -32,9 +33,11 @@ class CNN3(nn.Module):
             nn.MaxPool1d(2),
             nn.Dropout(dropouts[2]),
             
-            nn.Flatten(),
-            nn.Linear(10 * channels[2], embeddim)
-        )
+            ls.append(nn.Flatten()),
+            ls.append(nn.Linear(10 * channels[2], embeddim))
+        ]
+            
+        self.backbone = nn.Sequential(*ls)
     
     
     def forward(self, x):
@@ -42,68 +45,90 @@ class CNN3(nn.Module):
         return x
 
 
-class Residual(nn.Module):
-    '''
-    Residual block with feature dimension kept the same
-    '''
-    def __init__(self, in_channels, out_channels, kernel_size, stride=1, dilation=1, padding='same', final=False):
+class DilatedConvBlock(nn.Module):
+    def __init__(self, in_channels, out_channels, kernel_size, dilation, final=False):
         super().__init__()
-        
-        self.conv1 = nn.Conv1d(in_channels, out_channels, kernel_size, stride, padding, dilation)
-        self.conv2 = nn.Conv1d(out_channels, out_channels, kernel_size, stride, padding, dilation)
-        
-        if in_channels != out_channels or final:
-            self.conv3 = nn.Conv1d(in_channels, out_channels, 1)
-        else:
-            self.conv3 = None
-            
-        self.bn1 = nn.BatchNorm1d(out_channels)
-        self.bn2 = nn.BatchNorm1d(out_channels)
+        self.conv1 = nn.Conv1d(in_channels, out_channels, kernel_size, padding='same', dilation=dilation)
+        self.conv2 = nn.Conv1d(out_channels, out_channels, kernel_size, padding='same', dilation=dilation)
+        self.projector = nn.Conv1d(in_channels, out_channels, 1) if in_channels != out_channels or final else None
+    
+    def forward(self, x):
+        residual = x if self.projector is None else self.projector(x)
+        x = F.gelu(x)
+        x = self.conv1(x)
+        x = F.gelu(x)
+        x = self.conv2(x)
+        return x + residual
 
 
-    def forward(self, X):
-        Y = F.relu(self.bn1(self.conv1(X)))
-        Y = self.bn2(self.conv2(Y))
-        
-        if self.conv3:
-            X = self.conv3(X)  
-        Y += X
-        
-        return F.relu(Y)
-    
-    
-class Res20(nn.Module):
-    '''ResNet with 10 residual block, each with 2 convolutional layers
-    Args:
-        in_channels(list): the number of channels of the input signal
-        kernel_size(int): the size of the every kernel
-        avepool(bool): whether to add global average pooling layer at the end     
+class DilatedConvNet(nn.Module):
     '''
-    def __init__(self, in_channels, embeddim=256, keep_dim=False):
+    dilated residual network
+    '''
+    def __init__(self, in_channels, channels, kernel_size):
         super().__init__()
-        
-        channels = [in_channels] + [64] * 9 + [embeddim]
-        
-        blk_list = [
-            Residual(
+        self.backbone = nn.Sequential(*[
+            DilatedConvBlock(
+                channels[i-1] if i > 0 else in_channels,
                 channels[i],
-                channels[i+1],
-                kernel_size=3,
-                # dilation=2**i,
-                final=(i == len(channels)-2)
+                kernel_size=kernel_size,
+                dilation=2**i,
+                final=(i == len(channels)-1)
             )
-            for i in range(len(channels)-1)
-        ]
-        blk_list.append(nn.Dropout1d(0.1))
-        
-        if not keep_dim:
-            blk_list.append(nn.AdaptiveAvgPool1d(1))
-            blk_list.append(nn.Flatten())
-            
-        self.backbone = nn.Sequential(*blk_list)
-        
+            for i in range(len(channels))
+        ])
         
     def forward(self, x):
         return self.backbone(x)
-
-
+    
+    
+class TSEncoder(nn.Module):
+    '''
+    a time series model with dilated convolutional layers
+    '''
+    def __init__(self, in_channels=12, hid_channels=64, out_channels=256, depth=10, keep_dim=False):
+        super().__init__()
+        self.in_dims = in_channels
+        self.out_dims = out_channels
+        self.hid_dims = hid_channels
+        self.proj = nn.Linear(in_channels, hid_channels)
+        self.backbone = DilatedConvNet(hid_channels, [hid_channels] * depth + [out_channels], 3)
+        self.dropout = nn.Dropout(0.1)
+        self.maxpool = nn.AdaptiveMaxPool1d(1) if not keep_dim else None
+        
+        
+    def forward(self, x, mask=False):
+        x = x.transpose(1, 2)
+        x = self.proj(x)
+        
+        if mask:
+            mask = self._generate_mask(x.size(0), x.size(1)).to(x.device)
+            x[~mask] = 0
+        
+        x = x.transpose(1, 2)
+        
+        x = self.dropout(self.backbone(x))
+        
+        if self.maxpool is not None:
+            x = self.maxpool(x)
+            x = x.squeeze(-1)
+            
+        return x
+        
+        
+    def _generate_mask(B, T, n=5, l=0.1):
+        mask = torch.full((B, T), True, dtype=torch.bool)
+        if isinstance(n, float):
+            n = int(n * T)
+        n = max(min(n, T // 2), 1)
+        
+        if isinstance(l, float):
+            l = int(l * T)
+        l = max(l, 1)
+        
+        for i in range(B):
+            for _ in range(n):
+                t = torch.randint(T-l+1, (1,)).item()
+                # For a continuous timestamps, mask all channels
+                mask[i, t:t+l] = False
+        return mask

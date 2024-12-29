@@ -2,37 +2,24 @@ import torch
 import re
 import numpy as np
 from torch import nn
-from model.base import CNN3, Res20
+from model.base import TSEncoder
 
 
-def load_network(network_name):
-    '''
-    return backbone network class
-    '''
-    if network_name == 'cnn3':
-        return CNN3
-    elif network_name == 'res20':
-        return Res20
-    else:
-        raise ValueError(f'Unknown network {network_name}')
-
-
-def load_model(model_name, task, in_channels=1, embeddim=256):
+def load_model(model_name, task, in_channels=12, out_channels=256, depth=10, num_classes=4):
     '''
     load model
     '''
-    network = load_network(model_name)
-    
     if task in ['cmsc', 'simclr']:
-        return ContrastModel(network=network, in_channels=in_channels, embeddim=embeddim)
+        return ContrastModel(network=TSEncoder, in_channels=in_channels, out_channels=out_channels, depty=depth)
     elif task == 'comet':
-        return COMETModel(network=network, in_channels=in_channels, embeddim=embeddim)
+        return COMETModel(network=TSEncoder, in_channels=in_channels, out_channels=out_channels, depth=depth)
     elif task == 'moco':
-        return MoCoModel(network=network, in_channels=in_channels, embeddim=embeddim)
+        return MoCoModel(network=TSEncoder, in_channels=in_channels, out_channels=out_channels, depth=depth)
     elif task == 'mcp':
-        return MCPModel(network=network, in_channels=in_channels, embeddim=embeddim)
+        return MCPModel(network=TSEncoder, in_channels=in_channels, out_channels=out_channels, depth=depth)
     elif task == 'supervised':
-        return SupervisedModel(network=network, in_channels=in_channels, embeddim=embeddim)
+        return SupervisedModel(network=TSEncoder, in_channels=in_channels, num_classes=num_classes,
+                               out_channels=out_channels, depth=depth)
     else:
         raise ValueError(f'Unknown task {task}')
     
@@ -41,13 +28,11 @@ class SupervisedModel(nn.Module):
     '''
     supervised model
     '''
-    def __init__(self, network, in_channels=1, num_classes=4, embeddim=256):
+    def __init__(self, network, in_channels=1, num_classes=4, out_channels=256, depth=10):
         super(SupervisedModel, self).__init__()
-        self.embeddim = embeddim
-        self.encoder = network(in_channels, embeddim)
-        # dim = self.encoder.fc.weight.shape[1]
-        # self.encoder.fc = nn.Linear(dim, num_classes)
-        self.fc = nn.Linear(embeddim, num_classes)
+        self.out_channels = out_channels
+        self.encoder = network(in_channels=in_channels, out_channels=out_channels, depth=depth)
+        self.fc = nn.Linear(out_channels, num_classes)
         
     
     def forward(self, x):
@@ -59,16 +44,16 @@ class ContrastModel(nn.Module):
     '''
     contrastive model used for CMSC, SimCLR
     '''
-    def __init__(self, network, in_channels=1, embeddim=256):
+    def __init__(self, network, in_channels=1, out_channels=256, depth=10):
         super(ContrastModel, self).__init__()
-        self.embeddim = embeddim
-        self.encoder = network(in_channels, embeddim, )
+        self.out_channels = out_channels
+        self.encoder = network(in_channels=in_channels, out_channels=out_channels, depth=depth)
         
         
     def forward(self, x):
         """
         Args:
-            x (torch.Tensor): inputs with N views (BxNxCxS)
+            x (torch.Tensor): inputs with N views (BxNxCxT)
         Returns:
             h (torch.Tensor): latent embedding for each of the N views (NxBxH)
         """
@@ -82,42 +67,42 @@ class COMETModel(nn.Module):
     '''
     COMET model
     '''
-    def __init__(self, network, in_channels=12, embeddim=256):
+    def __init__(self, network, in_channels=12, out_channels=256, depth=10):
         super(COMETModel, self).__init__()
-        self.embeddim = embeddim
-        self.encoder = network(in_channels, embeddim, keep_dim=True)
+        self.out_channels = out_channels
+        self.encoder = network(in_channels=in_channels, out_channels=out_channels, depth=depth, keep_dim=True)
         
     
     def forward(self, x):
         """
         Args:
-            x (torch.Tensor): inputs with L levels, each with N views (BxLxNxCxS)
+            x (torch.Tensor): raw inputs with shape BxCxT
         Returns:
-            h (torch.Tensor): latent embedding for each of the N views (NxBxH)
+            h (torch.Tensor): latent embedding for (observation, sample, trial, patient) levels, each with 2 views.
         """
-        nlevels = x.shape[1]
-        nviews = x.shape[2]
+        nlevels = 4
+        nviews = 2
+        mask = [True, True, False, False]
         
-        x = x.permute(1, 2, 0, 3, 4)
         ls = []
         for l in range(nlevels):
-            h = torch.stack([self.encoder(x[l, n, ...]) for n in range(nviews)], dim=0)
+            h = torch.stack([self.encoder(x, mask=mask[l]) for _ in range(nviews)], dim=0)
             ls.append(h)
-            
         return torch.stack(ls, dim=0)
+  
   
 class MoCoModel(nn.Module):
     '''
     MoCo model
     '''
-    def __init__(self, network, in_channels=1, embeddim=256, queue_size=16384, momentum=0.999):
+    def __init__(self, network, in_channels=1, out_channels=256, depth=10, queue_size=65536, momentum=0.999):
         super(MoCoModel, self).__init__()
-        self.embeddim = embeddim
-        self.encoder_q = network(in_channels, embeddim)
-        self.encoder_k = network(in_channels, embeddim)
+        self.out_channels = out_channels
+        self.encoder_q = network(in_channels=in_channels, out_channels=out_channels, depth=depth)
+        self.encoder_k = network(in_channels=in_channels, out_channels=out_channels, depth=depth)
         self.queue_size = queue_size
         self.momentum = momentum
-        self.register_buffer("queue", torch.randn(embeddim, queue_size))
+        self.register_buffer("queue", torch.randn(out_channels, queue_size))
         self.queue = nn.functional.normalize(self.queue, dim=0)
         self.register_buffer("queue_ptr", torch.zeros(1, dtype=torch.long))
 
@@ -194,14 +179,14 @@ class MCPModel(nn.Module):
     '''
     MoCo model patient specific variant
     '''
-    def __init__(self, network, in_channels=1, embeddim=256, queue_size=16384, momentum=0.999):
+    def __init__(self, network, in_channels=1, out_channels=256, depth=10, queue_size=16384, momentum=0.999):
         super(MCPModel, self).__init__()
-        self.embeddim = embeddim
-        self.encoder_q = network(in_channels, embeddim)
-        self.encoder_k = network(in_channels, embeddim)
+        self.out_channels = out_channels
+        self.encoder_q = network(in_channels=in_channels, out_channels=out_channels, depth=depth)
+        self.encoder_k = network(in_channels=in_channels, out_channels=out_channels, depth=depth)
         self.queue_size = queue_size
         self.momentum = momentum
-        self.register_buffer("queue", torch.randn(embeddim, queue_size))
+        self.register_buffer("queue", torch.randn(out_channels, queue_size))
         self.queue = nn.functional.normalize(self.queue, dim=0)
         self.register_buffer("queue_ptr", torch.zeros(1, dtype=torch.long))
         

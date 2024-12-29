@@ -55,7 +55,7 @@ class ChapmanDataset(Dataset):
             head = self.data.at[idx, 'head']
             if self.transform:
                 signal = self.transform(signal)
-            if self.trial:
+            if 'trial' in self.data.columns:
                 trial = self.data.at[idx, 'trial']
                 return signal, head, trial
             else:
@@ -120,9 +120,11 @@ class ChapmanDataset(Dataset):
            
         signals.reset_index(drop=True, inplace=True)
         
-        # flatten the signal by lead dimension
+        # flatten the signal by lead dimension, each lead signal is a trial
         if not self.keep_lead:
             signals = signals.explode('signal', ignore_index=True)
+            tid = np.arange(signals.shape[0] * len(self.leads))
+            signals['trial'] = tid
         
         return signals
 
@@ -156,14 +158,14 @@ class ChapmanDataset(Dataset):
                     if i+length <= signal.shape[-1]]
         
         
-    def _shuffle(self):
+    def shuffle(self, by='trial'):
         '''
-        shuffle the dataframe prior to data loading, consisting of inter-trail shuffle and inter-trail shuffle
+        shuffle the dataframe prior to data loading, consisting of inter-trail/head shuffle and inter-trail/head shuffle
         '''
         assert 'trial' in self.data.columns
-        # inter-trail shuffle
-        shuffle = self.data.groupby('trial').apply(lambda x: x.sample(frac=1)).reset_index(drop=True)
-        # inter-sample shuffle\
-        tid = shuffle['trial'].unique()
-        np.random.shuffle(tid)
-        self.data = shuffle.set_index('trial').loc[tid].reset_index()
+        # intra-level shuffle
+        shuffle = self.data.groupby(by=by).apply(lambda x: x.sample(frac=1)).reset_index(drop=True)
+        # inter-level shuffle
+        id = shuffle[by].unique()
+        np.random.shuffle(id)
+        self.data = shuffle.set_index(by).loc[id].reset_index()

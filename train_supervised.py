@@ -27,14 +27,15 @@ parser = argparse.ArgumentParser(description='train model with labeled data')
 
 parser.add_argument('--data_root', type=str, default='training2017', help='the root directory of the dataset')
 parser.add_argument('--data', type=str, default='cinc2017', choices=['cinc2017'], help='the dataset to be used')
-parser.add_argument('--model', type=str, default='res20', help='the backbone model to be used')
+parser.add_argument('--model', type=str, default='res4', choices=['res4', 'res20'], help='the backbone model to be used')
 parser.add_argument('--epochs', type=int, default=400, help='the number of epochs for training')
 parser.add_argument('--batch_size', type=int, default=256, help='the batch size for training')
 parser.add_argument('--lr', type=float, default=0.0001, help='the learning rate for training')
 # parser.add_argument('--schedule', type=int, default=[100, 200, 300], help='schedule the learning rate where scale lr by 0.1')
 parser.add_argument('--resume', type=str, default='', help='path to the checkpoint to be resumed')
 parser.add_argument('--seed', type=int, default=42, help='random seed for reproducibility')
-parser.add_argument('--embedding_dim', type=int, default=256, help='the dimension of the embedding in contrastive loss')
+parser.add_argument('--dim', type=int, default=256, help='the dimension of the embedding in contrastive loss')
+parser.add_argument('--depth', type=int, default=2, help='the depth of the convolutional layers')
 parser.add_argument('--check', type=int, default=10, help='the interval of epochs to save the checkpoint')
 parser.add_argument('--log', type=str, default='log', help='the directory to save the log')
 parser.add_argument('--pretrain', type=str, default='', help='path to the pretrained model')
@@ -67,8 +68,21 @@ def main():
     device = get_device()
     print(f'=> using device {device}')
     
+    if device == 'cuda':
+        torch.backends.cudnn.benchmark = True
+
+    print(f'=> loading dataset {args.data} from {args.data_root}')
+    trans = load_transforms(task='supervised', dataset_name=args.data)
+    train_loader, valid_loader, test_loader = load_data(root=args.data_root, task='supervised',
+                                                        dataset_name=args.data, batch_size=args.batch_size, transform=trans)
+    print(f'=> dataset contains {len(train_loader.dataset)}|{len(valid_loader.dataset)}|{len(valid_loader.dataset)} samples')
+    print(f'=> loaded with batch size of {args.batch_size}')
+    
     print(f'=> creating model with {args.model}')
-    model = load_model(args.model, task='supervised', embeddim=args.embedding_dim)
+    in_channels = len(train_loader.dataset.leads)
+    num_classes = len(train_loader.dataset.classes)
+    model = load_model(args.model, task='supervised', in_channels=in_channels, out_channels=args.dim,
+                       depth=args.depth, num_classes=num_classes)
     model.to(device)
     
     if args.freeze:
@@ -76,11 +90,11 @@ def main():
             if name not in ['fc.weight', 'fc.bias']:
                 params.requires_grad = False
         
-        # model.fc.weight.data.normal_(mean=0.0, std=0.01)
-        # model.fc.bias.data.zero_()
+        model.fc.weight.data.normal_(mean=0.0, std=0.01)
+        model.fc.bias.data.zero_()
         
     params = list(filter(lambda p: p.requires_grad, model.parameters()))
-    optimizer = optim.Adam(params, args.lr)
+    optimizer = optim.AdamW(params, args.lr)
     
     if args.resume:
         if os.path.isfile(args.resume):
@@ -120,18 +134,6 @@ def main():
     else:
         start_epoch = 0    
 
-    if device == 'cuda':
-        torch.backends.cudnn.benchmark = True
-
-    print(f'=> loading dataset {args.data} from {args.data_root}')
-    
-    trans = load_transforms(task='supervised', dataset_name=args.data)
-    
-    train_loader, valid_loader, test_loader = load_data(root=args.data_root, task='supervised', dataset_name=args.data, batch_size=args.batch_size, transform=trans)
-    
-    print(f'=> dataset contains {len(train_loader.dataset)}|{len(valid_loader.dataset)}|{len(valid_loader.dataset)} samples')
-    print(f'=> loaded with batch size of {args.batch_size}')
-    
     if args.test:
         if os.path.isfile(args.test):
             print(f'=> testing model from {args.test}')
@@ -150,13 +152,12 @@ def main():
             print(f'=> no model found at {args.test}')
             return # exit here if just test
     
-    # track loss
+    # track loss and validation metrics
     train_loss = MeanMetric().to(device)
     valid_metrics = MetricCollection({
         'acc': Accuracy(task='multiclass', num_classes=4), 
         'auc': AUROC(task='multiclass', num_classes=4),
         'f1': F1Score(task='multiclass', num_classes=4, average='macro')}).to(device)
-    
     logdir = os.path.join(dir, 'log')
     writer = SummaryWriter(log_dir=logdir)
     
@@ -169,6 +170,7 @@ def main():
     else:
         print(f'=> running train from scratch for {args.epochs} epochs')
 
+    # training loop
     best_f1 = 0
     for epoch in range(start_epoch, args.epochs):
         # adjust_lr(optimizer, epoch, args.schedule)

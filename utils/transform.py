@@ -25,12 +25,7 @@ def load_transforms(task, dataset_name):
             trans = Compose([
                 # Denoise(),
                 Normalize(),
-                CreateGroup([
-                    CreateView(Compose([RandomMask(), ToTensor()])), # observation level
-                    CreateView(Compose([RandomMask(), ToTensor()])), # sample level
-                    CreateView(ToTensor()), # trial level
-                    CreateView(ToTensor()) # patient level
-                    ])
+                ToTensor()
                 ])
         
         else:

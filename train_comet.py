@@ -15,14 +15,15 @@ parser = argparse.ArgumentParser(description='pretraining chosen model on chosen
 
 parser.add_argument('--data_root', type=str, default='trainingchapman', help='the root directory of the dataset')
 parser.add_argument('--data', type=str, default='chapman_trial', choices=['chapman_trial'], help='the dataset to be used')
-parser.add_argument('--model', type=str, default='res20', help='the backbone model to be used')
+parser.add_argument('--model', type=str, default='res4', choices=['res4', 'res20'], help='the backbone model to be used')
 parser.add_argument('--epochs', type=int, default=400, help='the number of epochs for training')
 parser.add_argument('--batch_size', type=int, default=256, help='the batch size for training')
 parser.add_argument('--lr', type=float, default=0.0001, help='the learning rate for training')
 # parser.add_argument('--schedule', type=int, default=[100, 200, 300], help='schedule the learning rate where scale lr by 0.1')
 parser.add_argument('--resume', type=str, default='', help='path to the checkpoint to be resumed')
 parser.add_argument('--seed', type=int, default=42, help='random seed for reproducibility')
-parser.add_argument('--embedding_dim', type=int, default=256, help='the dimension of the embedding in contrastive loss')
+parser.add_argument('--dim', type=int, default=256, help='the dimension of the embedding in contrastive loss')
+parser.add_argument('--depth', type=int, default=2, help='the depth of the convolutional layers')
 parser.add_argument('--check', type=int, default=10, help='the interval of epochs to save the checkpoint')
 parser.add_argument('--log', type=str, default='log', help='the directory to save the log')
 
@@ -40,13 +41,22 @@ def main():
     device = get_device()
     print(f'=> using device {device}')
     
+    if device == 'cuda':
+        torch.backends.cudnn.benchmark = True
+        
+    print(f'=> loading dataset {args.data} from {args.data_root}')
+    # creating views for different levels
+    trans = load_transforms(task='comet', dataset_name=args.data)
+    train_loader = load_data(root=args.data_root, task='comet', dataset_name=args.data, batch_size=args.batch_size, transform=trans)
+    print(f'=> dataset contains {len(train_loader.dataset)} samples')
+    print(f'=> loaded with batch size of {args.batch_size}')
+    
     print(f'=> creating model {args.model}')
-    if args.data == 'chapman_trial':
-        in_channels = 12
-    model = load_model(args.model, task='comet', in_channels=in_channels, embeddim=args.embedding_dim)
+    in_channels = len(train_loader.dataset.leads)
+    model = load_model(args.model, task='comet', in_channels=in_channels, out_channels=args.dim, depth=args.depth)
     model.to(device)
 
-    optimizer = optim.Adam(model.parameters(), args.lr)
+    optimizer = optim.AdamW(model.parameters(), args.lr)
     
     if args.resume:
         if os.path.isfile(args.resume):
@@ -60,22 +70,8 @@ def main():
     else:
         start_epoch = 0
     
-    if device == 'cuda':
-        torch.backends.cudnn.benchmark = True
-        
-    print(f'=> loading dataset {args.data} from {args.data_root}')
-    
-    # creating views for different levels
-    trans = load_transforms(task='comet', dataset_name=args.data)
-    
-    train_loader = load_data(root=args.data_root, task='comet', dataset_name=args.data, batch_size=args.batch_size, transform=trans)
-    
-    print(f'=> dataset contains {len(train_loader.dataset)} samples')
-    print(f'=> loaded with batch size of {args.batch_size}')
-    
     # track loss
     loss = MeanMetric().to(device)
-    
     logdir = os.path.join(dir, 'log')
     writer = SummaryWriter(log_dir=logdir)
 

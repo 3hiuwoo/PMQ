@@ -24,6 +24,7 @@ class CINC2017Dataset(Dataset):
         self.root = root
         self.drop_noise = drop_noise
         self.classes = ['N', 'A', 'O', '~']
+        self.leads = ['I']
         self.data = pd.merge(self._load_label(), self._load_data(), on='head',how='inner')
         
         # don't use the noise class
