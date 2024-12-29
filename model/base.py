@@ -116,7 +116,7 @@ class TSEncoder(nn.Module):
         return x
         
         
-    def _generate_mask(B, T, n=5, l=0.1):
+    def _generate_mask(self, B, T, n=5, l=0.1):
         mask = torch.ones((B, T))
         if isinstance(n, float):
             n = int(n * T)
