@@ -10,7 +10,7 @@ def load_model(model_name, task, in_channels=12, out_channels=256, depth=10, num
     load model
     '''
     if task in ['cmsc', 'simclr']:
-        return ContrastModel(network=TSEncoder, in_channels=in_channels, out_channels=out_channels, depty=depth)
+        return ContrastModel(network=TSEncoder, in_channels=in_channels, out_channels=out_channels, depth=depth)
     elif task == 'comet':
         return COMETModel(network=TSEncoder, in_channels=in_channels, out_channels=out_channels, depth=depth)
     elif task == 'moco':
