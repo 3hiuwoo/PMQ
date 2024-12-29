@@ -103,7 +103,7 @@ class TSEncoder(nn.Module):
         
         if mask:
             mask = self._generate_mask(x.size(0), x.size(1)).to(x.device)
-            x[~mask] = 0
+            x = torch.masked_fill(x, ~mask, 0)
         
         x = x.transpose(1, 2)
         
@@ -117,7 +117,7 @@ class TSEncoder(nn.Module):
         
         
     def _generate_mask(B, T, n=5, l=0.1):
-        mask = torch.full((B, T), True, dtype=torch.bool)
+        mask = torch.ones((B, T))
         if isinstance(n, float):
             n = int(n * T)
         n = max(min(n, T // 2), 1)
@@ -130,5 +130,5 @@ class TSEncoder(nn.Module):
             for _ in range(n):
                 t = torch.randint(T-l+1, (1,)).item()
                 # For a continuous timestamps, mask all channels
-                mask[i, t:t+l] = False
-        return mask
+                mask[i, t:t+l] = 0
+        return mask.bool()

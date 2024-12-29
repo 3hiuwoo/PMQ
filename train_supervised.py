@@ -27,7 +27,7 @@ parser = argparse.ArgumentParser(description='train model with labeled data')
 
 parser.add_argument('--data_root', type=str, default='training2017', help='the root directory of the dataset')
 parser.add_argument('--data', type=str, default='cinc2017', choices=['cinc2017'], help='the dataset to be used')
-parser.add_argument('--model', type=str, default='res4', choices=['res4', 'res20'], help='the backbone model to be used')
+parser.add_argument('--model', type=str, default='ts', choices=['res4', 'res20'], help='the backbone model to be used')
 parser.add_argument('--epochs', type=int, default=400, help='the number of epochs for training')
 parser.add_argument('--batch_size', type=int, default=256, help='the batch size for training')
 parser.add_argument('--lr', type=float, default=0.0001, help='the learning rate for training')
@@ -48,7 +48,8 @@ def main():
     args = parser.parse_args()
     # directory to save the tensorboard log files and checkpoints
     prefix = 'lineval' if args.freeze else 'finetune' if args.pretrain else 'scratch'
-    dirname = f'{prefix}_{args.model}_{args.data}_{args.batch_size}'
+    model_name = args.model + str(args.depth)
+    dirname = f'{prefix}_{model_name}_{args.data}_{args.batch_size}'
     
     # capture the pretrain information and append to the directory name
     if args.pretrain:
@@ -78,7 +79,7 @@ def main():
     print(f'=> dataset contains {len(train_loader.dataset)}|{len(valid_loader.dataset)}|{len(valid_loader.dataset)} samples')
     print(f'=> loaded with batch size of {args.batch_size}')
     
-    print(f'=> creating model with {args.model}')
+    print(f'=> creating model with {model_name}')
     in_channels = len(train_loader.dataset.leads)
     num_classes = len(train_loader.dataset.classes)
     model = load_model(args.model, task='supervised', in_channels=in_channels, out_channels=args.dim,

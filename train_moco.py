@@ -39,7 +39,8 @@ parser.add_argument('--log', type=str, default='log', help='the directory to sav
 def main():
     args = parser.parse_args()
     # directory to save the tensorboard log files and checkpoints
-    dir = os.path.join(args.log, f'moco_{args.model}_{args.data}_{args.batch_size}')
+    model_name = args.model + str(args.depth)
+    dir = os.path.join(args.log, f'moco_{model_name}_{args.data}_{args.batch_size}')
     # dir = args.log
     
     if args.seed is not None:
@@ -59,7 +60,7 @@ def main():
     print(f'=> dataset contains {len(train_loader.dataset)} samples')
     print(f'=> loaded with batch size of {args.batch_size}')
     
-    print(f'=> creating model {args.model}')
+    print(f'=> creating model {model_name}')
     in_channels = len(train_loader.dataset.leads)
     model = load_model(args.model, task='moco', in_channels=in_channels, embeddim=args.dim, depth=args.depth)
     model.to(device)

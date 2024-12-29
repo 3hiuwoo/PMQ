@@ -31,7 +31,8 @@ parser.add_argument('--lr', type=float, default=0.0001, help='the learning rate 
 # parser.add_argument('--schedule', type=int, default=[100, 200, 300], help='schedule the learning rate where scale lr by 0.1')
 parser.add_argument('--resume', type=str, default='', help='path to the checkpoint to be resumed')
 parser.add_argument('--seed', type=int, default=42, help='random seed for reproducibility')
-parser.add_argument('--embedding_dim', type=int, default=256, help='the dimension of the embedding in contrastive loss')
+parser.add_argument('--dim', type=int, default=256, help='the dimension of the embedding in contrastive loss')
+parser.add_argument('--depth', type=int, default=2, help='the depth of the convolutional layers')
 parser.add_argument('--check', type=int, default=10, help='the interval of epochs to save the checkpoint')
 parser.add_argument('--log', type=str, default='log', help='the directory to save the log')
 
@@ -39,7 +40,8 @@ parser.add_argument('--log', type=str, default='log', help='the directory to sav
 def main():
     args = parser.parse_args()
     # directory to save the tensorboard log files and checkpoints
-    dir = os.path.join(args.log, f'mcp_{args.model}_{args.data}_{args.batch_size}')
+    model_name = args.model + str(args.depth)
+    dir = os.path.join(args.log, f'mcp_{model_name}_{args.data}_{args.batch_size}')
     # dir = args.log
     
     if args.seed is not None:
@@ -49,11 +51,22 @@ def main():
     device = get_device()
     print(f'=> using device {device}')
     
-    print(f'=> creating model {args.model}')
-    model = load_model(args.model, task='mcp', embeddim=args.embedding_dim)
+    if device == 'cuda':
+        torch.backends.cudnn.benchmark = True
+        
+    print(f'=> loading dataset {args.data} from {args.data_root}')
+    # creating views
+    trans = load_transforms(task='mcp', dataset_name=args.data)
+    train_loader = load_data(root=args.data_root, task='mcp', dataset_name=args.data, batch_size=args.batch_size, transform=trans)
+    print(f'=> dataset contains {len(train_loader.dataset)} samples')
+    print(f'=> loaded with batch size of {args.batch_size}')
+    
+    print(f'=> creating model {model_name}')
+    in_channels = len(train_loader.dataset.leads)
+    model = load_model(args.model, task='mcp', in_channels=in_channels, depth=args.depth, dim=args.dim)
     model.to(device)
 
-    optimizer = optim.Adam(model.parameters(), args.lr)
+    optimizer = optim.AdamW(model.parameters(), args.lr)
     
     if args.resume:
         if os.path.isfile(args.resume):
@@ -67,22 +80,8 @@ def main():
     else:
         start_epoch = 0
     
-    if device == 'cuda':
-        torch.backends.cudnn.benchmark = True
-        
-    print(f'=> loading dataset {args.data} from {args.data_root}')
-    
-    # creating views
-    trans = load_transforms(task='mcp', dataset_name=args.data)
-    
-    train_loader = load_data(root=args.data_root, task='mcp', dataset_name=args.data, batch_size=args.batch_size, transform=trans)
-    
-    print(f'=> dataset contains {len(train_loader.dataset)} samples')
-    print(f'=> loaded with batch size of {args.batch_size}')
-    
     # track loss
     loss = MeanMetric().to(device)
-    
     logdir = os.path.join(dir, 'log')
     writer = SummaryWriter(log_dir=logdir)
 

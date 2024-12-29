@@ -123,7 +123,7 @@ class ChapmanDataset(Dataset):
         # flatten the signal by lead dimension, each lead signal is a trial
         if not self.keep_lead:
             signals = signals.explode('signal', ignore_index=True)
-            tid = np.arange(signals.shape[0] * len(self.leads))
+            tid = np.arange(signals.shape[0])
             signals['trial'] = tid
         
         return signals
