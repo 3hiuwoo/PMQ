@@ -62,7 +62,7 @@ def main():
     print(f'=> loaded with batch size of {args.batch_size}')
     
     print(f'=> creating model {model_name}')
-    in_channels = len(train_loader.dataset.leads)
+    in_channels = len(train_loader.dataset.leads) if train_loader.dataset.keep_lead else 1
     model = load_model(args.model, task='cmsc', in_channels=in_channels, out_channels=args.dim, depth=args.depth)
     model.to(device)
 

@@ -103,7 +103,7 @@ class TSEncoder(nn.Module):
         
         if mask:
             mask = self._generate_mask(x.shape[0], x.shape[1]).to(x.device)
-            x = torch.masked_fill(x, ~mask, 0)
+            x[~mask] = 0
         
         x = x.transpose(1, 2)
         
