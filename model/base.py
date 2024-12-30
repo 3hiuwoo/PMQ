@@ -98,7 +98,6 @@ class TSEncoder(nn.Module):
         
         
     def forward(self, x, mask=False):
-        x = x.transpose(1, 2)
         x = self.proj(x)
         
         if mask:
@@ -106,12 +105,14 @@ class TSEncoder(nn.Module):
             x[~mask] = 0
         
         x = x.transpose(1, 2)
-        
         x = self.dropout(self.backbone(x))
-        
+
         if self.maxpool is not None:
             x = self.maxpool(x)
             x = x.squeeze(-1)
+            
+        else:
+            x = x.transpose(1, 2)
             
         return x
         

@@ -31,7 +31,9 @@ class ChapmanDataset(Dataset):
         self.data = self._load_data()
         if not self.pretrain:
             self.data = pd.merge(self._load_label(), self.data, on='head', how='inner')
-            
+        
+        if not self.keep_lead:
+            self._lead_to_trial()
         if self.trial:
             self._make_trial()
         if self.sample:
@@ -53,14 +55,13 @@ class ChapmanDataset(Dataset):
         signal = signal.reshape(-1, signal.shape[-1])
         if self.pretrain:
             head = self.data.at[idx, 'head']
+            trial = self.data.at[idx, 'trial']
+            
             if self.transform:
                 signal = self.transform(signal)
-            if 'trial' in self.data.columns:
-                trial = self.data.at[idx, 'trial']
-                return signal, head, trial
-            else:
-                return signal, head
-            
+                
+            return signal, head, trial
+
         else:
             label = self.data.at[idx, 'label']
             if self.transform:
@@ -120,15 +121,21 @@ class ChapmanDataset(Dataset):
            
         signals.reset_index(drop=True, inplace=True)
         
-        # flatten the signal by lead dimension, each lead signal is a trial
-        if not self.keep_lead:
-            signals = signals.explode('signal', ignore_index=True)
-            tid = np.arange(signals.shape[0])
-            signals['trial'] = tid
+        tid = np.arange(signals.shape[0])
+        signals['trial'] = tid
         
         return signals
 
-
+    
+    def _lead_to_trial(self):
+        '''
+        flatten the lead dimension
+        '''
+        self.data = self.data.explode('signal', ignore_index=True)
+        tid = np.arange(self.data.shape[0])
+        self.data['trial'] = tid
+        
+        
     def _make_trial(self):
         '''
         segment each signal into trials and add trial id
