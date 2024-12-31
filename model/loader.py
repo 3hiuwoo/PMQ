@@ -74,13 +74,13 @@ class COMETModel(nn.Module):
     def forward(self, x):
         """
         Args:
-            x (torch.Tensor): raw inputs with shape BxCxT
+            x (torch.Tensor): raw inputs with shape BxTxC
         Returns:
-            h (torch.Tensor): latent embedding for (observation, sample, trial, patient) levels, each with 2 views.
+            h (torch.Tensor): latent embedding for (observation, sample, trial, patient) levels, each with 2 views(4x2xBxTxC).
         """
-        nlevels = 4
+        nlevels = 3 # trial and patient levels use the embedding
         nviews = 2
-        mask = [True, True, False, False]
+        mask = [True, True, False]
         
         ls = []
         for l in range(nlevels):

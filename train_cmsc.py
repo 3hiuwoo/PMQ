@@ -25,14 +25,14 @@ parser = argparse.ArgumentParser(description='pretraining chosen model on chosen
 parser.add_argument('--data_root', type=str, default='trainingchapman', help='the root directory of the dataset')
 parser.add_argument('--data', type=str, default='chapman', choices=['chapman'], help='the dataset to be used')
 parser.add_argument('--model', type=str, default='ts', choices=['ts'], help='the backbone model to be used')
-parser.add_argument('--epochs', type=int, default=400, help='the number of epochs for training')
+parser.add_argument('--epochs', type=int, default=100, help='the number of epochs for training')
 parser.add_argument('--batch_size', type=int, default=256, help='the batch size for training')
 parser.add_argument('--lr', type=float, default=0.0001, help='the learning rate for training')
 # parser.add_argument('--schedule', type=int, default=[100, 200, 300], help='schedule the learning rate where scale lr by 0.1')
 parser.add_argument('--resume', type=str, default='', help='path to the checkpoint to be resumed')
 parser.add_argument('--seed', type=int, default=42, help='random seed for reproducibility')
 parser.add_argument('--dim', type=int, default=256, help='the dimension of the embedding in contrastive loss')
-parser.add_argument('--depth', type=int, default=2, help='the depth of the convolutional layers')
+parser.add_argument('--depth', type=int, default=10, help='the depth of the convolutional layers')
 parser.add_argument('--check', type=int, default=10, help='the interval of epochs to save the checkpoint')
 parser.add_argument('--log', type=str, default='log', help='the directory to save the log')
 
@@ -108,13 +108,13 @@ def train(train_loader, model, optimizer, epoch, metric, writer, device):
     model.train()
     
     bar = tqdm(train_loader, desc=f'=> Epoch {epoch+1}', leave=False)
-    for signals, heads, _ in bar:
-        signals = signals.to(device)
-        heads = np.array(heads)
+    for X, y in bar:
+        X = X.to(device)
+        pid = y[:, 1]
         
-        outputs = model(signals)
+        outputs = model(X)
 
-        loss = cmsc_loss(outputs, heads)
+        loss = cmsc_loss(outputs, pid)
 
         metric.update(loss)
         
@@ -128,20 +128,21 @@ def train(train_loader, model, optimizer, epoch, metric, writer, device):
     metric.reset()
     
     
-def cmsc_loss(outputs, heads):
+def cmsc_loss(outputs, pid):
     '''
     fix number of views to 2
     
     Args:
         outputs: embedding for each view (NxBxH)
-        heads: the head of sample in the batch (B)
+        pid: the head of sample in the batch (B)
         
     Returns:
         the contrastive loss cross patients including 4 terms:
         2 symmetric diagonal terms and 2 symmetric off-diagonal terms
     '''
     # find the diagonal and off-diagonal positions that need to calculate the loss
-    pos_matrix = np.equal.outer(heads, heads).astype(int)
+    pid = pid.detach().numpy() 
+    pos_matrix = np.equal.outer(pid, pid).astype(bool)
     
     # get normalized embeddings for each view
     view1 = outputs[0]
@@ -159,24 +160,28 @@ def cmsc_loss(outputs, heads):
     col_sum = torch.sum(sim_matrix_exp, dim=0)
     
     # calculate diagonal loss symmetrically
-    eps = 1e-12
     diags = torch.diagonal(sim_matrix_exp)
-    lossd1 = -torch.mean(torch.log((diags + eps)/(row_sum + eps)))
-    lossd2 = -torch.mean(torch.log((diags + eps)/(col_sum + eps)))
+    lossd1 = -torch.mean(torch.log((diags)/(row_sum)))
+    lossd2 = -torch.mean(torch.log((diags)/(col_sum)))
     loss = lossd1 + lossd2
+    loss_term = 2
    
     # calculate off-diagonal loss symmetrically
     upper_rows, upper_cols = np.where(np.triu(pos_matrix, 1))
     lower_rows, lower_cols = np.where(np.tril(pos_matrix, -1))
     if len(upper_rows) > 0:
         upper = sim_matrix_exp[upper_rows, upper_cols]
-        lossou = -torch.mean(torch.log((upper + eps)/(row_sum[upper_rows] + eps)))
+        lossou = -torch.mean(torch.log((upper)/(row_sum[upper_rows])))
         loss += lossou
+        loss_term += 1
 
     if len(lower_cols) > 0:
         lower = sim_matrix_exp[lower_rows, lower_cols]
-        lossol = -torch.mean(torch.log((lower + eps)/(col_sum[lower_cols] + eps)))
+        lossol = -torch.mean(torch.log((lower)/(col_sum[lower_cols])))
         loss += lossol
+        loss_term += 1
+    
+    loss = loss / loss_term
     
     return loss
 

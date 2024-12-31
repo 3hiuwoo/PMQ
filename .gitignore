@@ -3,6 +3,7 @@ test*/
 test*.*
 __pycache__/
 log*/
-.DS_Store
+.*
 **/.DS_Store
+data/
 ECG*/

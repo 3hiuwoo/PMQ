@@ -25,17 +25,17 @@ from utils.functional import set_seed, get_device, save_checkpoint
 
 parser = argparse.ArgumentParser(description='train model with labeled data')
 
-parser.add_argument('--data_root', type=str, default='training2017', help='the root directory of the dataset')
-parser.add_argument('--data', type=str, default='cinc2017', choices=['cinc2017'], help='the dataset to be used')
+parser.add_argument('--data_root', type=str, default='trainingchapman', help='the root directory of the dataset')
+parser.add_argument('--data', type=str, default='chapman', choices=['chapman'], help='the dataset to be used')
 parser.add_argument('--model', type=str, default='ts', choices=['ts'], help='the backbone model to be used')
-parser.add_argument('--epochs', type=int, default=400, help='the number of epochs for training')
+parser.add_argument('--epochs', type=int, default=100, help='the number of epochs for training')
 parser.add_argument('--batch_size', type=int, default=256, help='the batch size for training')
 parser.add_argument('--lr', type=float, default=0.0001, help='the learning rate for training')
 # parser.add_argument('--schedule', type=int, default=[100, 200, 300], help='schedule the learning rate where scale lr by 0.1')
 parser.add_argument('--resume', type=str, default='', help='path to the checkpoint to be resumed')
 parser.add_argument('--seed', type=int, default=42, help='random seed for reproducibility')
 parser.add_argument('--dim', type=int, default=256, help='the dimension of the embedding in contrastive loss')
-parser.add_argument('--depth', type=int, default=2, help='the depth of the convolutional layers')
+parser.add_argument('--depth', type=int, default=10, help='the depth of the convolutional layers')
 parser.add_argument('--check', type=int, default=10, help='the interval of epochs to save the checkpoint')
 parser.add_argument('--log', type=str, default='log', help='the directory to save the log')
 parser.add_argument('--pretrain', type=str, default='', help='path to the pretrained model')
@@ -117,7 +117,7 @@ def main():
             task = args.pretrain.split(os.sep)[-3]
             task = task.split('_')[0]
             # task = args.task
-            if task in ['moco', 'mcp']:
+            if task in ['mcp']:
                 for k in list(checkpoint['model'].keys()):
                     if 'encoder_q' in k:
                         checkpoint['model'][k.replace('encoder_q', 'encoder')] = checkpoint['model'][k]

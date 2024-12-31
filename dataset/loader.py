@@ -1,73 +1,60 @@
 import random
-from torch.utils.data import DataLoader, BatchSampler
-from .cinc2017 import CINC2017Dataset
-from .chapman import ChapmanDataset
-from utils.transform import Compose, Normalize, ToTensor
+import torch
+from torch.utils.data import DataLoader, TensorDataset, BatchSampler
+from base import load_chapman
+from utils.functional import trial_shuffle
 
-def load_data(root, task, transform=None, batch_size=256, dataset_name='cinc2017'):
+def load_data(root, task, batch_size=256, dataset_name='chapman'):
     '''
     return dataloaders based on the task and dataset
     '''
-    if task in ['cmsc', 'simclr', 'moco', 'mcp', 'comet', 'isl']:
+    if task in ['comet', 'isl']:
         if dataset_name == 'chapman':
-            train_dataset = ChapmanDataset(root=root, split='train', keep_lead=False, transform=transform)
-
-        elif dataset_name == 'chapman_lead': # don't flatten the lead dimension
-            train_dataset = ChapmanDataset(root=root, split='train', transform=transform)
+            X_train, _, _, y_train, _, _ = load_chapman(root=root, split=True)
+            X_train, y_train = trial_shuffle(X_train, y_train)
             
-        elif dataset_name == 'chapman_trial': # segment the data into trials and samples
-            train_dataset = ChapmanDataset(root=root, split='train', trial=2, sample=250, transform=transform)
+            train_dataset = TensorDataset(torch.tensor(X_train, dtype=torch.float32), torch.tensor(y_train, dtype=torch.long))
+            
+            sampler = SSBatchSampler(range(len(train_dataset)), batch_size, drop_last=True)
+            train_loader = DataLoader(train_dataset, batch_sampler=sampler)
+            
+            return train_loader, 12 # in_channels
             
         else:
-            raise ValueError(f'Unknown dataset {dataset_name}')
+            raise ValueError('Dataset not supported')
         
-        if task in ['comet']:
-            train_dataset.shuffle()
-            sampler = SSBatchSampler(range(len(train_dataset)), batch_size, drop_last=True)
-            train_dataloader = DataLoader(train_dataset, batch_sampler=sampler)
-        
-        elif task in ['cmsc']:
-            train_dataset.shuffle(by='head')
-            sampler = SSBatchSampler(range(len(train_dataset)), batch_size, drop_last=True)
-            train_dataloader = DataLoader(train_dataset, batch_sampler=sampler)
+    elif task in ['cmsc']:
+        if dataset_name == 'chapman':
+            X_train, _, _, y_train, _, _ = load_chapman(root=root, split=True)
+            X_train, y_train = trial_shuffle(X_train, y_train)
             
-        else:
-            train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, drop_last=True)
-        
-        return train_dataloader
+            X_train, y_train = X_train.reshape(-1, 2, X_train.shape[1], X_train.shape[2]), y_train.reshape(-1, 2, y_train.shape[1])
+            
+            train_dataset = TensorDataset(torch.tensor(X_train, dtype=torch.float32), torch.tensor(y_train, dtype=torch.long))
+            
+            sampler = SSBatchSampler(range(len(train_dataset)), batch_size, drop_last=True)
+            train_loader = DataLoader(train_dataset, batch_sampler=sampler)
+            
+            return train_loader, 12 # in_channels
              
-    elif task == 'supervised':
-        if dataset_name == 'cinc2017':
-            train_dataset = CINC2017Dataset(root=root, length=2500, split='train', transform=transform)
-            valid_dataset = CINC2017Dataset(root=root, length=2500, split='valid', transform=ToTensor())
-            test_dataset = CINC2017Dataset(root=root, length=2500, split='test', transform=ToTensor())
+    elif task == 'supervsied':
+        if dataset_name == 'chapman':
+            X_train, X_valid, X_test, y_train, y_valid, y_test = load_chapman(root=root, split=True)
             
-        elif dataset_name == 'chapman':
-            train_dataset = ChapmanDataset(root=root, split='train', pretrain=False, keep_lead=False, transform=transform)
-            valid_dataset = ChapmanDataset(root=root, split='valid', pretrain=False, keep_lead=False, transform=Compose([Normalize(), ToTensor()]))
-            test_dataset = ChapmanDataset(root=root, split='test', pretrain=False, keep_lead=False, transform=Compose([Normalize(), ToTensor()]))    
+            train_dataset = TensorDataset(torch.tensor(X_train, dtype=torch.float32), torch.tensor(y_train, dtype=torch.long))
+            valid_dataset = TensorDataset(torch.tensor(X_valid, dtype=torch.float32), torch.tensor(y_valid, dtype=torch.long))
+            test_dataset = TensorDataset(torch.tensor(X_test, dtype=torch.float32), torch.tensor(y_test, dtype=torch.long))
+            
+            train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
+            valid_loader = DataLoader(valid_dataset, batch_size=batch_size, shuffle=False)
+            test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
+            
+            return train_loader, valid_loader, test_loader, 12 # in_channels
         
-        elif dataset_name == 'chapman_lead':
-            train_dataset = ChapmanDataset(root=root, split='train', pretrain=False, transform=transform)
-            valid_dataset = ChapmanDataset(root=root, split='valid', pretrain=False, transform=Compose([Normalize(), ToTensor()]))
-            test_dataset = ChapmanDataset(root=root, split='test', pretrain=False, transform=Compose([Normalize(), ToTensor()]))
-            
-        elif dataset_name == 'chapman_trial':
-            train_dataset = ChapmanDataset(root=root, split='train', pretrain=False, trial=2, sample=250, transform=transform)
-            valid_dataset = ChapmanDataset(root=root, split='valid', pretrain=False, trial=2, sample=250, transform=Compose([Normalize(), ToTensor()]))
-            test_dataset = ChapmanDataset(root=root, split='test', pretrain=False, trial=2, sample=250, transform=Compose([Normalize(), ToTensor()]))
-                
         else:
-            raise ValueError(f'Unknown dataset {dataset_name}')
-        
-        train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, drop_last=True)
-        valid_dataloader = DataLoader(valid_dataset, batch_size=batch_size, shuffle=False)
-        test_dataloader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
-    
-        return train_dataloader, valid_dataloader, test_dataloader 
-    
+            raise ValueError('Dataset not supported') 
     else:
-        raise ValueError(f'Unknown task {task}')
+        raise ValueError('Task not supported')
     
     
 class SSBatchSampler(BatchSampler):
