@@ -160,3 +160,21 @@ def trial_shuffle(X, y):
     X_shuffled = X[shuffled_sorted_indices]
     y_shuffled = y[shuffled_sorted_indices]
     return X_shuffled, y_shuffled
+
+
+def create_views(X, y, nviews=2, flatten=False):
+    '''
+    create the views for the contrastive learning
+    '''
+    nchannels = X.shape[-1]
+    
+    X = X.reshape(-1, nviews, X.shape[1], X.shape[2])
+    y = y.reshape(-1, nviews, y.shape[1])
+    
+    if flatten:
+        X = X.transpose(3, 0, 1, 2).reshape(-1, nviews, X.shape[1], 1)
+        y = np.tile(y, (nchannels, 1, 1))
+        
+    return X, y
+        
+    

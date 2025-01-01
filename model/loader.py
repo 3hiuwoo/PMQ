@@ -5,7 +5,7 @@ from torch import nn
 from model.base import TSEncoder
 
 
-def load_model(model_name, task, in_channels=12, out_channels=256, depth=10, num_classes=4):
+def load_model(task, in_channels=12, out_channels=256, depth=10, num_classes=4):
     '''
     load model
     '''
@@ -51,7 +51,7 @@ class ContrastModel(nn.Module):
     def forward(self, x):
         """
         Args:
-            x (torch.Tensor): inputs with N views (BxNxCxT)
+            x (torch.Tensor): inputs with N views (BxNxTxC)
         Returns:
             h (torch.Tensor): latent embedding for each of the N views (NxBxH)
         """
@@ -68,7 +68,7 @@ class COMETModel(nn.Module):
     def __init__(self, network, in_channels=12, out_channels=256, depth=10):
         super(COMETModel, self).__init__()
         self.out_channels = out_channels
-        self.encoder = network(in_channels=in_channels, out_channels=out_channels, depth=depth, keep_dim=True)
+        self.encoder = network(in_channels=in_channels, out_channels=out_channels, depth=depth, pool=True)
         
     
     def forward(self, x):

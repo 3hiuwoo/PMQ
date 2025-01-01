@@ -17,7 +17,6 @@ from torchmetrics import MeanMetric
 from tqdm import tqdm
 from dataset.loader import load_data
 from model.loader import load_model
-from utils.transform import load_transforms
 from utils.functional import set_seed, get_device, save_checkpoint
 
 parser = argparse.ArgumentParser(description='pretraining chosen model on chosen dataset under CMSC paradigm')
@@ -55,14 +54,11 @@ def main():
         torch.backends.cudnn.benchmark = True
         
     print(f'=> loading dataset {args.data} from {args.data_root}')
-    # get transformations
-    trans = load_transforms(task='cmsc', dataset_name=args.data)
-    train_loader = load_data(root=args.data_root, task='cmsc', dataset_name=args.data, batch_size=args.batch_size, transform=trans)
+    train_loader, in_channels = load_data(root=args.data_root, task='cmsc', dataset_name=args.data, batch_size=args.batch_size)
     print(f'=> dataset contains {len(train_loader.dataset)} samples')
     print(f'=> loaded with batch size of {args.batch_size}')
     
     print(f'=> creating model {model_name}')
-    in_channels = len(train_loader.dataset.leads) if train_loader.dataset.keep_lead else 1
     model = load_model(args.model, task='cmsc', in_channels=in_channels, out_channels=args.dim, depth=args.depth)
     model.to(device)
 

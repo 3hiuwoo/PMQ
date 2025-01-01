@@ -2,7 +2,7 @@ import random
 import torch
 from torch.utils.data import DataLoader, TensorDataset, BatchSampler
 from base import load_chapman
-from utils.functional import trial_shuffle
+from utils.functional import trial_shuffle, create_views
 
 def load_data(root, task, batch_size=256, dataset_name='chapman'):
     '''
@@ -26,16 +26,17 @@ def load_data(root, task, batch_size=256, dataset_name='chapman'):
     elif task in ['cmsc']:
         if dataset_name == 'chapman':
             X_train, _, _, y_train, _, _ = load_chapman(root=root, split=True)
-            X_train, y_train = trial_shuffle(X_train, y_train)
+            # X_train, y_train = trial_shuffle(X_train, y_train)
             
-            X_train, y_train = X_train.reshape(-1, 2, X_train.shape[1], X_train.shape[2]), y_train.reshape(-1, 2, y_train.shape[1])
+            X_train, y_train = create_views(X_train, y_train, nviews=2, flatten=True)
             
             train_dataset = TensorDataset(torch.tensor(X_train, dtype=torch.float32), torch.tensor(y_train, dtype=torch.long))
             
-            sampler = SSBatchSampler(range(len(train_dataset)), batch_size, drop_last=True)
-            train_loader = DataLoader(train_dataset, batch_sampler=sampler)
+            # sampler = SSBatchSampler(range(len(train_dataset)), batch_size, drop_last=True)
+            # train_loader = DataLoader(train_dataset, batch_sampler=sampler)
+            train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, drop_last=True)
             
-            return train_loader, 12 # in_channels
+            return train_loader, 1 # in_channels
              
     elif task == 'supervsied':
         if dataset_name == 'chapman':

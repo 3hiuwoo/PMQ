@@ -86,7 +86,7 @@ class TSEncoder(nn.Module):
     '''
     a time series model with dilated convolutional layers
     '''
-    def __init__(self, in_channels=12, hid_channels=64, out_channels=256, depth=10, keep_dim=False):
+    def __init__(self, in_channels=12, hid_channels=64, out_channels=256, depth=10, pool=False):
         super().__init__()
         self.in_dims = in_channels
         self.out_dims = out_channels
@@ -94,7 +94,7 @@ class TSEncoder(nn.Module):
         self.proj = nn.Linear(in_channels, hid_channels)
         self.backbone = DilatedConvNet(hid_channels, [hid_channels] * depth + [out_channels], 3)
         self.dropout = nn.Dropout(0.1)
-        self.maxpool = nn.AdaptiveMaxPool1d(1) if not keep_dim else None
+        self.maxpool = nn.AdaptiveMaxPool1d(1) if not pool else None
         
         
     def forward(self, x, mask=False):
