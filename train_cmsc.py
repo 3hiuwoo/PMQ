@@ -138,7 +138,7 @@ def cmsc_loss(outputs, pid):
     '''
     # find the diagonal and off-diagonal positions that need to calculate the loss
     pid = pid.detach().numpy() 
-    pos_matrix = np.equal.outer(pid, pid).astype(bool)
+    pos_matrix = np.equal.outer(pid, pid)
     
     # get normalized embeddings for each view
     view1 = outputs[0]

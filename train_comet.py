@@ -181,7 +181,7 @@ def sample_contrastive_loss(z1, z2):
 
 def id_contrastive_loss(z1, z2, id):
     id = id.detach().numpy()
-    pos_matrix = np.equal.outer(id, id).astype(bool)
+    pos_matrix = np.equal.outer(id, id)
     
     rows1, cols1 = np.where(np.triu(pos_matrix, 1))  # upper triangle same patient combs
     rows2, cols2 = np.where(np.tril(pos_matrix, -1))  # down triangle same patient combs
