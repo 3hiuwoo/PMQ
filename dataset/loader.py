@@ -46,7 +46,7 @@ def load_data(root, task, batch_size=256, dataset_name='chapman'):
             valid_dataset = TensorDataset(torch.tensor(X_valid, dtype=torch.float32), torch.tensor(y_valid, dtype=torch.long))
             test_dataset = TensorDataset(torch.tensor(X_test, dtype=torch.float32), torch.tensor(y_test, dtype=torch.long))
             
-            train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
+            train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, drop_last=True)
             valid_loader = DataLoader(valid_dataset, batch_size=batch_size, shuffle=False)
             test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
             
