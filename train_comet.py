@@ -2,7 +2,7 @@ import os
 import argparse
 import torch
 import numpy as np
-from torch import functional as F
+from torch.nn import functional as F    
 from torch import optim
 from torch.utils.tensorboard import SummaryWriter
 from torchmetrics import MeanMetric
