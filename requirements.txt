@@ -1,0 +1,8 @@
+torch
+torchmetrics
+scikit-learn
+numpy
+pandas
+scipy
+wfdb
+neurokit2

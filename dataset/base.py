@@ -6,7 +6,7 @@ from tqdm import tqdm
 from utils.functional import segment
 
 
-def load_chapman(root='data/chapman', split=True):
+def load_chapman(root='data/chapman', split=None):
     data_path = os.path.join(root, 'feature')
     label_path = os.path.join(root, 'label', 'label.npy')
     
@@ -55,8 +55,8 @@ def load_chapman(root='data/chapman', split=True):
     y_test = np.array(test_labels)
         
     if split:
-        X_train, y_train = segment(X_train, y_train, 300)
-        X_val, y_val = segment(X_val, y_val, 300)
-        X_test, y_test = segment(X_test, y_test, 300)
+        X_train, y_train = segment(X_train, y_train, split)
+        X_val, y_val = segment(X_val, y_val, split)
+        X_test, y_test = segment(X_test, y_test, split)
     
     return X_train, X_val, X_test, y_train, y_val, y_test

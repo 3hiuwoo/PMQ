@@ -10,7 +10,7 @@ def load_data(root, task, batch_size=256, dataset_name='chapman'):
     '''
     if task in ['comet', 'isl']:
         if dataset_name == 'chapman':
-            X_train, _, _, y_train, _, _ = load_chapman(root=root, split=True)
+            X_train, _, _, y_train, _, _ = load_chapman(root=root, split=300)
             X_train, y_train = trial_shuffle(X_train, y_train)
             
             train_dataset = TensorDataset(torch.tensor(X_train, dtype=torch.float32), torch.tensor(y_train, dtype=torch.long))
@@ -25,7 +25,7 @@ def load_data(root, task, batch_size=256, dataset_name='chapman'):
         
     elif task in ['cmsc']:
         if dataset_name == 'chapman':
-            X_train, _, _, y_train, _, _ = load_chapman(root=root, split=True)
+            X_train, _, _, y_train, _, _ = load_chapman(root=root, split=900)
             # X_train, y_train = trial_shuffle(X_train, y_train)
             
             X_train, y_train = create_views(X_train, y_train, nviews=2, flatten=True)
