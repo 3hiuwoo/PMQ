@@ -1,7 +1,7 @@
 import random
 import torch
 from torch.utils.data import DataLoader, TensorDataset, BatchSampler
-from base import load_chapman
+from .base import load_chapman
 from utils.functional import trial_shuffle, create_views
 
 def load_data(root, task, batch_size=256, dataset_name='chapman'):
