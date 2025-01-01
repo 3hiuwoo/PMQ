@@ -59,7 +59,7 @@ def main():
     print(f'=> loaded with batch size of {args.batch_size}')
     
     print(f'=> creating model {model_name}')
-    model = load_model(args.model, task='cmsc', in_channels=in_channels, out_channels=args.dim, depth=args.depth)
+    model = load_model(task='cmsc', in_channels=in_channels, out_channels=args.dim, depth=args.depth)
     model.to(device)
 
     optimizer = optim.AdamW(model.parameters(), args.lr)
