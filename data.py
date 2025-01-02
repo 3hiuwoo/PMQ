@@ -3,7 +3,7 @@ import numpy as np
 import pandas as pd
 from torch.utils.data import Dataset
 from tqdm import tqdm
-from utils.functional import segment
+from utils import segment
 
 
 def load_chapman(root='data/chapman', split=None):
