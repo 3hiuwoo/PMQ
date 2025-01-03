@@ -6,6 +6,17 @@ from tqdm import tqdm
 from utils import segment
 
 
+def load_data(root='data', name='chapman', split=None):
+    '''
+    load correspondent training, validation, and test data and labels
+    '''
+    if name == 'chapman':
+        dir = os.path.join(root, name)
+        return load_chapman(dir, split)
+    else:
+        raise ValueError(f'Unknown dataset name: {name}')
+    
+    
 def load_chapman(root='data/chapman', split=None):
     data_path = os.path.join(root, 'feature')
     label_path = os.path.join(root, 'label', 'label.npy')
@@ -33,7 +44,7 @@ def load_chapman(root='data/chapman', split=None):
     test_trials = []
     test_labels = []
     
-    for i, fn in enumerate(tqdm(filenames)):
+    for i, fn in enumerate(tqdm(filenames, desc=f'=> Loading Chapman')):
         label = labels[i]
         feature = np.load(os.path.join(data_path, fn))
         for trial in feature:
@@ -53,10 +64,14 @@ def load_chapman(root='data/chapman', split=None):
     y_train = np.array(train_labels)
     y_val = np.array(valid_labels)
     y_test = np.array(test_labels)
-        
+    
+    # todo: normalize data
+      
     if split:
         X_train, y_train = segment(X_train, y_train, split)
         X_val, y_val = segment(X_val, y_val, split)
         X_test, y_test = segment(X_test, y_test, split)
+        
+    num_class = 4
     
-    return X_train, X_val, X_test, y_train, y_val, y_test
+    return X_train, X_val, X_test, y_train, y_val, y_test, num_class

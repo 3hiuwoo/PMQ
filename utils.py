@@ -14,9 +14,9 @@ from torch.utils.data import BatchSampler
 
 
 def seed_everything(seed=42):
-    """
-    Seed everything.
-    """
+    '''
+    Seed everything for reproducibility.
+    '''
     random.seed(seed)
     os.environ['PYTHONHASHSEED'] = str(seed)
     np.random.seed(seed)
@@ -27,30 +27,16 @@ def seed_everything(seed=42):
     # torch.backends.cudnn.benchmark = False
     # torch.backends.cudnn.deterministic = True
    
+
+def get_device():
+    '''
+    Get the device for training.
+    '''
+    return ('cuda' if torch.cuda.is_available()
+            else 'mps' if torch.backends.mps.is_available()
+            else 'cpu')
     
-class Logger(object):
-    """ A Logger for saving output of printings between functions start_logging() and stop_logging().
-
-    """
-    def __init__(self, filename="Default.log"):
-        self.terminal = sys.stdout
-        self.log = open(filename, "a")
-
-    def write(self, message):
-        self.terminal.write(message)
-        self.log.write(message)
-
-
-def start_logging(random_seed, saving_directory):
-    log_filename = f"log_{random_seed}.txt"
-    log_filepath = os.path.join(saving_directory, log_filename)
-    sys.stdout = Logger(log_filepath)
-
-
-def stop_logging():
-    sys.stdout = sys.__stdout__
-
-
+    
 class MyBatchSampler(BatchSampler):
     """ A custom BatchSampler to shuffle the samples within each batch.
         It changes the local order of samples(samples in the same batch) per epoch,
@@ -263,5 +249,6 @@ def trial_shuffle(X, y):
     X_shuffled = X[shuffled_sorted_indices]
     y_shuffled = y[shuffled_sorted_indices]
     return X_shuffled, y_shuffled
+
         
     
