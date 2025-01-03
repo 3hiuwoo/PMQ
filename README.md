@@ -1,14 +1,9 @@
 # MCP: Momentum Contrast across Patient
 
-## Dataset
-
-### CINC2017
-
-Download **training2017.zip** and **REFERENCE-v3.csv** from [here](https://physionet.org/content/challenge-2017/1.0.0/), unzip **training2017.zip** and move the reference file and a copy of **RECORDSTrain.txt**, **RECORDSValid.txt**, **RECORDSTest.txt** from [data/cinc2017](https://github.com/3hiuwoo/MCP/tree/main/data/cinc2017) into the unzipped folder.
-
+## Data Preprocessing
 
 ### Chapman
 
-Download the dataset zip file from [here](https://physionet.org/content/ecg-arrhythmia/1.0.0/), unzip it and move a copy of **RECORDTrain.txt**, **RECORDValid.txt**, **RECORDTest.txt**, **REFERENCE4.csv** from [data/chapman](https://github.com/3hiuwoo/MCP/tree/main/data/chapman) to the unzipped folder.
-
-Modification to some header file: JS01052.hea:500->5000, JS23074.hea:enter
+1. Download the **ECGDataDenoised.zip** and **Diagnostics.xlsx** files from [official](https://figshare.com/collections/ChapmanECG/4560497/1)
+2. Run the [jupyter notebook](https://github.com/3hiuwoo/MCP/blob/main/data_preprocessing/chapman_preprocess.ipynb), which allows you to select wherever you want to save the processed data folder, remember to modify the path to read unzipped original data in the notebook.
+3. Use the processed dataset to run following codes.

@@ -71,7 +71,5 @@ def load_chapman(root='data/chapman', split=None):
         X_train, y_train = segment(X_train, y_train, split)
         X_val, y_val = segment(X_val, y_val, split)
         X_test, y_test = segment(X_test, y_test, split)
-        
-    num_class = 4
     
-    return X_train, X_val, X_test, y_train, y_val, y_test, num_class
+    return X_train, X_val, X_test, y_train, y_val, y_test

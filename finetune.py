@@ -1,259 +1,201 @@
-'''2024-11-13
-
-This script is used to train the model under the supervised paradigm.
-Run the script for finetuning/linear evaluation with pretrained model or training from scratch.
-
-For training from scratch, run the script with the following command:
-    python train_supervised.py {options}
-    
-For finetuning/linear evaluation with pretrained model, run the script with the following command:
-    python train_supervised.py --pretrain {path_to_pretrained_model} (--freeze) {options}
-    
-See python train_supervised.py -h for training options
+''' Run this script to perform partial/full finetuning or training from scratch
 '''
 import os
 import argparse
 import torch
-from torch import optim
-from torch.utils.tensorboard import SummaryWriter
-from torchmetrics import MeanMetric, AUROC, Accuracy, F1Score, MetricCollection
+import numpy as np
+from torch import nn
+from torch.utils.data import TensorDataset, DataLoader
 from tqdm import tqdm
-from data.loader import load_data
-from model.loader import load_model
-from utils.transform import load_transforms
-from utils.functional import set_seed, get_device, save_checkpoint
-
-parser = argparse.ArgumentParser(description='train model with labeled data')
-
-parser.add_argument('--data_root', type=str, default='trainingchapman', help='the root directory of the dataset')
-parser.add_argument('--data', type=str, default='chapman', choices=['chapman'], help='the dataset to be used')
-parser.add_argument('--model', type=str, default='ts', choices=['ts'], help='the backbone model to be used')
-parser.add_argument('--epochs', type=int, default=100, help='the number of epochs for training')
-parser.add_argument('--batch_size', type=int, default=256, help='the batch size for training')
-parser.add_argument('--lr', type=float, default=0.0001, help='the learning rate for training')
-# parser.add_argument('--schedule', type=int, default=[100, 200, 300], help='schedule the learning rate where scale lr by 0.1')
-parser.add_argument('--resume', type=str, default='', help='path to the checkpoint to be resumed')
-parser.add_argument('--seed', type=int, default=42, help='random seed for reproducibility')
-parser.add_argument('--dim', type=int, default=256, help='the dimension of the embedding in contrastive loss')
-parser.add_argument('--depth', type=int, default=10, help='the depth of the convolutional layers')
-parser.add_argument('--check', type=int, default=10, help='the interval of epochs to save the checkpoint')
-parser.add_argument('--log', type=str, default='log', help='the directory to save the log')
-parser.add_argument('--pretrain', type=str, default='', help='path to the pretrained model')
-parser.add_argument('--freeze', action='store_true', help='freeze the pretrained part of the model for linear evaluation')
-parser.add_argument('--test', type=str, default='', help='path to the best model to be tested')
-# parser.add_argument('--early_stop', type=int, default=20, help='stop training if the auc does not improve for n epochs')
+from model.encoder import FTClassifier
+from data import load_data
+from utils import seed_everything, get_device
+from torchmetrics import Accuracy, F1Score, AUROC, Precision, Recall, AveragePrecision, MetricCollection
 
 
-def main():
-    args = parser.parse_args()
-    # directory to save the tensorboard log files and checkpoints
-    prefix = 'lineval' if args.freeze else 'finetune' if args.pretrain else 'scratch'
-    model_name = args.model + str(args.depth)
-    dirname = f'{prefix}_{model_name}_{args.data}_{args.batch_size}'
-    
-    # capture the pretrain information and append to the directory name
-    if args.pretrain:
-        postfix = args.pretrain.split(os.sep)[-3]
-        dirname += f'__{postfix}'
-        filename = args.pretrain.split(os.sep)[-1].split('.')[0]
-        num_epochs = int(filename.split('_')[-1])
-        dirname += f'_{num_epochs}'
+parser = argparse.ArgumentParser(description='Full/Partial Finetuning')
+parser.add_argument('--seed', type=int, default=42, help='random seed')
+# for the data
+parser.add_argument('--root', type=str, default='dataset', help='root directory of datasets')
+parser.add_argument('--data', type=str, default='chapman', help='select pretraining dataset')
+parser.add_argument('--length', type=int, default=300, help='length of each sample')
+# for the model
+parser.add_argument('--depth', type=int, default=10, help='depth of the encoder')
+parser.add_argument('--hidden_dim', type=int, default=64, help='hidden dimension of the model')
+parser.add_argument('--output_dim', type=int, default=320, help='output dimension of the model')
+parser.add_argument('--p_hidden_dim', type=float, default=0.999, help='momentum for the model')
+parser.add_argument('--partial', action='store_true', help='partial finetuning')
+parser.add_argument('--pretrain', type=str, default='', help='pretrained model weight file path')
+# for the training
+parser.add_argument('--lr', type=float, default=1e-4, help='learning rate')
+parser.add_argument('--batch_size', type=int, default=256, help='batch size')
+parser.add_argument('--epochs', type=int, default=50, help='number of epochs')
+parser.add_argument('--fraction', type=float, default=None, help='fraction of training data used')
+parser.add_argument('--logdir', type=str, default='log', help='directory to save logs')
+parser.add_argument('--checkpoint', type=int, default=1, help='save model after each checkpoint')
+parser.add_argument('--multi_gpu', action='store_true', help='use multiple GPUs')
+parser.add_argument('--verbose', type=int, default=1, help='print loss after each epoch')
+# test
+parser.add_argument('--test', type=str, default='', help='model weight file path to perform testing')
+# todo
+# parser.add_argument('--resume', type=str, default='', help='resume training from a checkpoint')
 
-    dir = os.path.join(args.log, dirname)
-    # dir = args.log
-        
-    if args.seed is not None:
-        set_seed(args.seed)
-        print(f'=> set seed to {args.seed}')
-        
-    device = get_device()
-    print(f'=> using device {device}')
-    
-    if device == 'cuda':
-        torch.backends.cudnn.benchmark = True
+args = parser.parse_args()
 
-    print(f'=> loading dataset {args.data} from {args.data_root}')
-    trans = load_transforms(task='supervised', dataset_name=args.data)
-    train_loader, valid_loader, test_loader = load_data(root=args.data_root, task='supervised',
-                                                        dataset_name=args.data, batch_size=args.batch_size, transform=trans)
-    print(f'=> dataset contains {len(train_loader.dataset)}|{len(valid_loader.dataset)}|{len(valid_loader.dataset)} samples')
-    print(f'=> loaded with batch size of {args.batch_size}')
-    
-    print(f'=> creating model with {model_name}')
-    in_channels = len(train_loader.dataset.leads)
-    num_classes = len(train_loader.dataset.classes)
-    model = load_model(args.model, task='supervised', in_channels=in_channels, out_channels=args.dim,
-                       depth=args.depth, num_classes=num_classes)
-    model.to(device)
-    
-    if args.freeze:
-        for name, params in model.named_parameters():
-            if name not in ['fc.weight', 'fc.bias']:
-                params.requires_grad = False
-        
-        model.fc.weight.data.normal_(mean=0.0, std=0.01)
-        model.fc.bias.data.zero_()
-        
-    params = list(filter(lambda p: p.requires_grad, model.parameters()))
-    optimizer = optim.AdamW(params, args.lr)
-    
-    if args.resume:
-        if os.path.isfile(args.resume):
-            print(f'=> loading checkpoint from {args.resume}')
-            checkpoint = torch.load(args.resume, map_location=device)
-            start_epoch = checkpoint['epoch']
-            model.load_state_dict(checkpoint['model'])
-            optimizer.load_state_dict(checkpoint['optimizer'])
-            
-        else:
-            print(f'=> no checkpoint found at {args.resume}')
-            
-    elif args.pretrain:
-        if os.path.isfile(args.pretrain):
-            print(f'=> loading pretrained model from {args.pretrain}')
-            checkpoint = torch.load(args.pretrain, map_location=device)
-            
-            # to match with moco/mcp
-            task = args.pretrain.split(os.sep)[-3]
-            task = task.split('_')[0]
-            # task = args.task
-            if task in ['mcp']:
-                for k in list(checkpoint['model'].keys()):
-                    if 'encoder_q' in k:
-                        checkpoint['model'][k.replace('encoder_q', 'encoder')] = checkpoint['model'][k]
-                    del checkpoint['model'][k]
-                    
-            msg = model.load_state_dict(checkpoint['model'], strict=False)
-            # assert set(msg.missing_keys) == {'fc.weight', 'fc.bias'}
-            print(f'=> loaded with missing keys: {msg.missing_keys}')
-            
-        else:
-            print(f'=> no pretrained model found at {args.pretrain}')
-            
-        start_epoch = 0
-            
+# figure out the task
+if args.pretrain:
+    if args.partial:
+        task = 'pft'
     else:
-        start_epoch = 0    
+        task = 'fft'
+else:
+    task = 'scr'
+        
+logdir = os.path.join(args.logdir, f'{task}_{args.data}_{args.seed}')
+if not os.path.exists(logdir):
+    os.makedirs(logdir)
+    
+def main():
+    seed_everything(args.seed)
+    print(f'=> set seed to {args.seed}')
+    
+    X_train, X_val, X_test, y_train, y_val, y_test = load_data(args.root, args.data, split=args.length)
+    
+    train_dataset = TensorDataset(torch.from_numpy(X_train).to(torch.float),
+                                  torch.from_numpy(y_train[:, 0]).to(torch.float))
+    
+    val_dataset = TensorDataset(torch.from_numpy(X_val).to(torch.float),
+                                torch.from_numpy(y_val[:, 0]).to(torch.float))
+    
+    test_dataset = TensorDataset(torch.from_numpy(X_test).to(torch.float),
+                                 torch.from_numpy(y_test[:, 0]).to(torch.float))
+    
+    train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True)
+    val_loader = DataLoader(val_dataset, batch_size=args.batch_size, shuffle=True)
+    test_loader = DataLoader(test_dataset, batch_size=args.batch_size, shuffle=True)
+    
+    device = get_device()
+    print(f'=> Running on {device}')
+    
+    assert X_train.ndim == 3
+    device = torch.device(device)
+    
+    num_classes = np.unique(y_test[:, 0]).shape[0]
+    model = FTClassifier(
+        input_dims=X_test.shape[-1],
+        output_dims=args.output_dim,
+        hidden_dims=args.hidden_dim,
+        p_hidden_dims=args.p_hidden_dim,
+        p_output_dims=num_classes,
+        depth=args.depth,
+        device=device,
+        multi_gpu=args.multi_gpu,
+        )
+    
+    metrics = MetricCollection({
+        'acc': Accuracy(task='multiclass', num_classes=num_classes), 
+        'auroc': AUROC(task='multiclass', num_classes=num_classes),
+        'f1': F1Score(task='multiclass', num_classes=num_classes, average='macro'),
+        'precision': Precision(task='multiclass', num_classes=num_classes, average='macro'),
+        'recall': Recall(task='multiclass', num_classes=num_classes, average='macro'),
+        'auprc': AveragePrecision(task='multiclass', num_classes=num_classes) 
+        }).to(device)
 
     if args.test:
         if os.path.isfile(args.test):
-            print(f'=> testing model from {args.test}')
-            checkpoint = torch.load(args.test, map_location=device)
-            model.load_state_dict(checkpoint['model'])
+            print(f'=> test on {args.test}')
+            model.load_state_dict(torch.load(args.test))
+            val_metrics_dict = evaluate(model, val_loader, metrics, device)
+            print('metrics for validation set\n', val_metrics_dict)
             
-            test_metrics = MetricCollection({
-                'acc': Accuracy(task='multiclass', num_classes=4),
-                'auc': AUROC(task='multiclass', num_classes=4),
-                'f1': F1Score(task='multiclass', num_classes=4, average='macro')}).to(device)
-            metrics = test(test_loader, model, test_metrics, device)
-            print(f'=> auc: {metrics["auc"].item()}, acc: {metrics["acc"].item()}, f1: {metrics["f1"].item()}')
-            return
-        
+            test_metrics_dict = evaluate(model, test_loader, metrics, device)
+            print('metrics for test set\n', test_metrics_dict)   
         else:
-            print(f'=> no model found at {args.test}')
-            return # exit here if just test
-    
-    # track loss and validation metrics
-    train_loss = MeanMetric().to(device)
-    valid_metrics = MetricCollection({
-        'acc': Accuracy(task='multiclass', num_classes=4), 
-        'auc': AUROC(task='multiclass', num_classes=4),
-        'f1': F1Score(task='multiclass', num_classes=4, average='macro')}).to(device)
-    logdir = os.path.join(dir, 'log')
-    writer = SummaryWriter(log_dir=logdir)
-    
-    criterion = torch.nn.CrossEntropyLoss().to(device)
-
-    if len(params) == 2:
-        print(f'=> running linear evaluation for {args.epochs} epochs')
-    elif args.pretrain:
-        print(f'=> running finetune for {args.epochs} epochs')
-    else:
-        print(f'=> running train from scratch for {args.epochs} epochs')
-
-    # training loop
-    best_f1 = 0
-    for epoch in range(start_epoch, args.epochs):
-        # adjust_lr(optimizer, epoch, args.schedule)
-        
-        train(train_loader, model, optimizer, criterion, epoch, train_loss, writer, args.freeze, device)
-        metrics = validate(valid_loader, model, epoch, valid_metrics, writer, device)
-        
-        f1 = metrics['f1'].item()
-        isbest = f1 > best_f1
-        best_f1 = max(f1, best_f1)
-
-        if (epoch + 1) % args.check == 0 or isbest:
-            checkpoint = {
-                'epoch': epoch + 1,
-                'model': model.state_dict(),
-                'optimizer': optimizer.state_dict()
-            }
-            path = os.path.join(dir, 'cp', f'checkpoint_{epoch + 1}.pth')
-            save_checkpoint(checkpoint, is_best=isbest, path=path)  
+            print(f'=> find nothing in {args.test}')
+            return
             
-    print('=> training finished')
-    writer.close()
-
-
-def train(train_loader, model, optimizer, criterion, epoch, metric, writer, freeze, device):
+    # freeze the backbone encoder in PFT
+    if args.partial:
+        for name, params in model.named_parameters():
+            if not name.startswith('proj_head'):
+                params.requires_grad = False
+       
+    # todo: resume training
+               
+    if args.pretrain:
+        if os.path.isfile(args.pretrain):
+            print(f'=> load pretrained model from {args.pretrain}')
+            model.net.load_state_dict(torch.load(args.pretrain))
+            
+    # only use fraction of training samples.
+    if args.fraction:
+        X_train = X_train[:int(X_train.shape[0] * args.fraction)]
+        y_train = y_train[:int(y_train.shape[0] * args.fraction)]
+        print(f'=> use {args.fraction} of training data')
+        
     model.train()
     
-    if freeze:
-        model.eval()
-    
-    bar = tqdm(train_loader, desc=f'=> Epoch {epoch+1}', leave=False)
-    for signals, labels in bar:
-        signals = signals.to(device)
-        labels = labels.to(device)
-        outputs = model(signals)
+    params = list(filter(lambda p: p.requires_grad, model.parameters()))
+    print(f'=> number of trainable parameters groups: {len(params)}') # for debug
+    optimizer = torch.optim.AdamW(params, lr=args.lr)
+
+    criterion = nn.CrossEntropyLoss()
+
+    epoch_lost_list, epoch_f1_list = [], [], []
+
+    for epoch in range(args.epochs):
+        # training loop
+        cum_loss = 0
+        for x, y in tqdm(train_loader, desc=f'=> Epoch {epoch+1}', leave=False):
+            x, y = x.to(device), y.to(device)
+            optimizer.zero_grad()
+
+            y_pred = model(x)
+            loss = criterion(y_pred, y)
+            loss.backward()
+            optimizer.step()
+            cum_loss += loss.item()
+
+        epoch_lost_list.append(cum_loss / len(train_loader))
+
+        if args.verbose:
+            print(f"=> Epoch {epoch+1} loss: {cum_loss}")
         
-        loss = criterion(outputs, labels)
-        metric.update(loss)
+        # validation
+        val_metrics_dict = evaluate(model, val_loader, metrics, device)
+        epoch_f1_list.append(val_metrics_dict['f1'].item())
+        finetune_callback(model, epoch, val_metrics_dict['f1'].item(), fraction=args.fraction, checkpoint=args.checkpoint)
         
-        optimizer.zero_grad()
-        loss.backward()
-        optimizer.step()
-        
-        bar.set_postfix(loss=loss.item())
-        
-    total_loss = metric.compute()
-    writer.add_scalar('loss', total_loss, epoch)
-    metric.reset()
-    
-    
-def validate(valid_loader, model, epoch, metrics, writer, device):
+    # save loss and f1score
+    np.save(os.path.join(logdir, 'loss.npy'), epoch_lost_list)
+    np.save(os.path.join(logdir, 'f1.npy'), epoch_f1_list)
+
+  
+def evaluate(model, loader, metrics, device):
+    '''
+    do validation or test
+    '''
     model.eval()
-    
     with torch.no_grad():
-        for signals, labels in tqdm(valid_loader, desc=f'=> Validating', leave=False):
-            signals = signals.to(device)
-            labels = labels.to(device)
-            outputs = model(signals)
-            
-            metrics.update(outputs, labels)
-        
-        total_metrics = metrics.compute()
-        writer.add_scalars('metrics', total_metrics, epoch)
-        metrics.reset()
+        for x, y in tqdm(loader, desc=f'=> Evaluating', leave=False):
+            x, y = x.to(device), y.to(device)
+            y_pred = model(x)
+            metrics.update(y_pred, y)
+    metrics_dict = metrics.compute()
+    metrics.reset()
     
-    return total_metrics
+    return metrics_dict
 
 
-def test(test_loader, model, metrics, device):
-    model.eval()
-    
-    with torch.no_grad():
-        for signals, labels in tqdm(test_loader, desc='=> Testing'):
-            signals = signals.to(device)
-            labels = labels.to(device)
-            outputs = model(signals)
-            
-            metrics.update(outputs, labels)
-        
-        total_metrics = metrics.compute()
-    
-    return total_metrics
+def finetune_callback(model, epoch, f1, fraction=1.0, checkpoint=1):
+    if (epoch+1) == 1:
+        model.finetune_f1 = f1
+        torch.save(model.state_dict(), os.path.join(logdir, f'bestf1_{fraction}.pth'))
+    # control the saving frequency
+    if (epoch+1) % checkpoint == 0:
+        if f1 > model.finetune_f1:
+            model.finetune_f1 = f1
+            torch.save(model.state_dict(), os.path.join(logdir, f'bestf1_{fraction}.pth'))
 
 
 if __name__ == '__main__':

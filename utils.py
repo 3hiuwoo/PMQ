@@ -1,9 +1,11 @@
+''' Utilize COMET code from from:
+    https://github.com/DL4mHealth/COMET/blob/main/utils.py
+    https://github.com/DL4mHealth/COMET/blob/main/data_preprocessing/PTB/PTB_preprocessing.ipynb
+'''
 import itertools
-import sys
 import torch
 import random
-import os
-import shutil
+import os 
 import numpy as np
 import pandas as pd
 import neurokit2 as nk
@@ -38,12 +40,12 @@ def get_device():
     
     
 class MyBatchSampler(BatchSampler):
-    """ A custom BatchSampler to shuffle the samples within each batch.
-        It changes the local order of samples(samples in the same batch) per epoch,
-        which does not break too much the distribution of pre-shuffled samples by function shuffle_feature_label().
-        The goal is to shuffle the samples per epoch but make sure that there are samples from the same trial in a batch.
-
-    """
+    ''' 
+    A custom BatchSampler to shuffle the samples within each batch.
+    It changes the local order of samples(samples in the same batch) per epoch,
+    which does not break too much the distribution of pre-shuffled samples by function shuffle_feature_label().
+    The goal is to shuffle the samples per epoch but make sure that there are samples from the same trial in a batch.
+    '''
     def __init__(self, sampler, batch_size, drop_last):
         super().__init__(sampler, batch_size, drop_last)
 
@@ -61,14 +63,14 @@ class MyBatchSampler(BatchSampler):
 
 
 def shuffle_feature_label(X, y, shuffle_function='trial', batch_size=128):
-    """ Call shuffle functions.
-        The goal is to guarantee that there are samples from the same trial in a batch,
-        while avoiding all the samples are from the same trial/patient (low diversity).
+    '''Call shuffle functions.
+    The goal is to guarantee that there are samples from the same trial in a batch,
+    while avoiding all the samples are from the same trial/patient (low diversity).
 
     Args:
         shuffle_function (str): specify the shuffle function
         batch_size (int): batch_size if apply batch shuffle
-    """
+    '''
 
     # do trial shuffle
     if shuffle_function == 'trial':
@@ -80,7 +82,7 @@ def shuffle_feature_label(X, y, shuffle_function='trial', batch_size=128):
 
     # do random shuffle
     elif shuffle_function == 'random':
-        return shuffle(X, y, random_state=42)
+        return shuffle(X, y)
 
     else:
         # print(shuffle_function)
@@ -88,10 +90,9 @@ def shuffle_feature_label(X, y, shuffle_function='trial', batch_size=128):
 
 
 def trial_shuffle_feature_label(X, y):
-    """ shuffle each samples in a trial first, then shuffle the order of trials
-
-    """
-
+    '''
+    shuffle each samples in a trial first, then shuffle the order of trials
+    '''
     # sort X, y by trial ID
     sorted_indices = np.argsort(y[:, 2], axis=0)
     # concatenate sorted indices and labels
@@ -113,10 +114,10 @@ def trial_shuffle_feature_label(X, y):
     return X_shuffled, y_shuffled
 
 
-def batch_shuffle_feature_label(X, y, batch_size=128):
-    """ shuffle the order of batches first, then shuffle the samples in the batch
-
-    """
+def batch_shuffle_feature_label(X, y, batch_size=256):
+    '''
+    shuffle the order of batches first, then shuffle the samples in the batch
+    '''
 
     # sort X, y by trial ID
     sorted_indices = np.argsort(y[:, 2], axis=0)
@@ -224,31 +225,6 @@ def segment(X, y, sample):
     labels = np.repeat(y, nsample, axis=0)
     labels = np.hstack([labels, tids.reshape(labels.shape[0], -1)])
     return samples, labels
-
-
-def trial_shuffle(X, y):
-    '''
-    shuffle the data by the intra-inter trial procedure
-    '''
-    # sort X, y by trial ID
-    sorted_indices = np.argsort(y[:, 2], axis=0)
-    # concatenate sorted indices and labels
-    sorted_indices_labels = np.concatenate((sorted_indices.reshape(-1, 1), y[sorted_indices]), axis=1).astype(int)
-    trials_list = []
-    # group each trial by trial ID
-    for _, trials in itertools.groupby(sorted_indices_labels, lambda x: x[3]):
-        trials = list(trials)
-        # shuffle each sample in a trial
-        trials = shuffle(trials)
-        trials_list.append(trials)
-    # shuffle the order of trials
-    shuffled_trials_list = shuffle(trials_list)
-    shuffled_trials = np.concatenate(shuffled_trials_list, axis=0)
-    # get the sorted indices
-    shuffled_sorted_indices = shuffled_trials[:, 0]
-    X_shuffled = X[shuffled_sorted_indices]
-    y_shuffled = y[shuffled_sorted_indices]
-    return X_shuffled, y_shuffled
 
         
     

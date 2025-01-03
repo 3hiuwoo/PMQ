@@ -1,3 +1,9 @@
+''' Referenced from MoCo official & unofficial implementations and COMET implementation.
+    See:
+        https://github.com/DL4mHealth/COMET
+        https://github.com/facebookresearch/moco
+        https://github.com/leftthomas/MoCo
+'''
 import torch
 import torch.nn.functional as F
 from tqdm import tqdm
@@ -18,13 +24,16 @@ class MCP:
         input_dims (int): The input dimension. For a uni-variate time series, this should be set to 1.
         output_dims (int): The representation dimension.
         hidden_dims (int): The hidden dimension of the encoder.
+        length (int): The length of the representation/series.
         depth (int): The number of hidden residual blocks in the encoder.
         device (str): The gpu used for training and inference.
         lr (float): The learning rate.
         batch_size (int): The batch size of samples.
-        after_iter_callback (Union[Callable, NoneType]): A callback function that would be called after each iteration.
-        after_epoch_callback (Union[Callable, NoneType]): A callback function that would be called after each epoch.
+        momentum (float): The momentum used for the key encoder.
+        queue_size (int): The size of the queue.
+        num_queue (int): The number of queues.
         multi_gpu (bool): A flag to indicate whether using multiple gpus
+        callback_func (Union[Callable, NoneType]): A callback function that would be called after each epoch.
     '''
     def __init__(
         self,
@@ -56,6 +65,7 @@ class MCP:
         
         self.momentum = momentum
         self.queue_size = queue_size
+        # todo: multiple queues
         self.num_queue = num_queue
         
         self.net_q = TSEncoder(input_dims=input_dims, output_dims=output_dims, hidden_dims=hidden_dims, depth=depth)
@@ -106,11 +116,10 @@ class MCP:
             
         Returns:
             epoch_loss_list: a list containing the training losses on each epoch.
-            epoch_f1_list: a list containing the linear evaluation on validation f1 score on each epoch.
         """
         assert X.ndim == 3
         assert y.shape[1] == 3
-        # Important!!! Shuffle the training set for contrastive learning pretraining. Check details in utils.py.
+        # Shuffle the training set for contrastive learning pretraining.
         X, y = shuffle_feature_label(X, y, shuffle_func=shuffle_func, batch_size=self.batch_size)
 
         # we need patient id for patient-level contrasting and trial id for trial-level contrasting
