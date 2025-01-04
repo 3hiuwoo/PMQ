@@ -278,7 +278,7 @@ class MCP:
     def _dequeue_and_enqueue(self, keys, pid, tid):
         # gather keys before updating queue
         batch_size = keys.shape[0]
-
+        
         ptr = int(self.queue_ptr)
         assert self.queue_size % batch_size == 0  # for simplicity
 

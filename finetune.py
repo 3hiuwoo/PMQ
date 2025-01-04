@@ -93,9 +93,9 @@ def main():
         )
     
     metrics = MetricCollection({
-        'acc': Accuracy(task='multiclass', num_classes=num_classes), 
+        'acc': Accuracy(task='multiclass', num_classes=num_classes),
+        'f1': F1Score(task='multiclass', num_classes=num_classes, average='macro'), 
         'auroc': AUROC(task='multiclass', num_classes=num_classes),
-        'f1': F1Score(task='multiclass', num_classes=num_classes, average='macro'),
         'precision': Precision(task='multiclass', num_classes=num_classes, average='macro'),
         'recall': Recall(task='multiclass', num_classes=num_classes, average='macro'),
         'auprc': AveragePrecision(task='multiclass', num_classes=num_classes) 
@@ -158,13 +158,16 @@ def main():
 
         epoch_lost_list.append(cum_loss / len(train_loader))
 
-        if args.verbose:
-            print(f"=> Epoch {epoch+1} loss: {cum_loss}")
-        
         # validation
         val_metrics_dict = evaluate(model, val_loader, metrics, device)
-        epoch_f1_list.append(val_metrics_dict['f1'].item())
-        finetune_callback(model, epoch, val_metrics_dict['f1'].item(), fraction=args.fraction, checkpoint=args.checkpoint)
+        f1 = val_metrics_dict['f1'].item()
+        epoch_f1_list.append(f1)
+        finetune_callback(model, epoch, f1, fraction=args.fraction, checkpoint=args.checkpoint)
+        
+        if args.verbose:
+            print(f"=> Epoch {epoch+1} loss: {cum_loss}")
+            if args.verbose > 1:
+                print(val_metrics_dict)
         
     # save loss and f1score
     np.save(os.path.join(logdir, 'loss.npy'), epoch_lost_list)

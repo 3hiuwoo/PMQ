@@ -72,7 +72,7 @@ def main():
         callback_func=pretrain_callback
     )
     
-    if args.eval:
+    if args.eval: # linear evaluation
         if os.path.isfile(args.eval):
             print(f'=> perform linear evaluation on {args.eval}')
             model.load(args.eval)
