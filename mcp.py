@@ -94,10 +94,10 @@ class MCP:
         # self.proj_head = ProjectionHead(input_dims=self.output_dims, output_dims=2, hidden_dims=128).to(self.device)
         
         # create the queues
-        # self.register_buffer('queue', torch.randn(queue_size, length, output_dims), device=device)
-        # self.register_buffer('pid_queue', torch.zeros(queue_size, dtype=torch.long), device=device)
-        # self.register_buffer('tid_queue', torch.zeros(queue_size, dtype=torch.long), device=device)
-        # self.register_buffer('queue_ptr', torch.zeros(1, dtype=torch.long), device=device)
+        # self.register_buffer('queue', torch.randn(queue_size, length, output_dims))
+        # self.register_buffer('pid_queue', torch.zeros(queue_size, dtype=torch.long))
+        # self.register_buffer('tid_queue', torch.zeros(queue_size, dtype=torch.long))
+        # self.register_buffer('queue_ptr', torch.zeros(1, dtype=torch.long))
         self.queue = torch.randn(queue_size, length, output_dims, device=device)
         self.queue = nn.functional.normalize(self.queue, dim=1)
         
@@ -254,13 +254,13 @@ class MCP:
                     continue
                 else:
                     if idx == 0:
-                        self._dequeue_and_enqueue(patient_out2, )
+                        self._dequeue_and_enqueue(patient_out2, pid, tid)
                     elif idx == 1:
-                        self._dequeue_and_enqueue(trial_out2)
+                        self._dequeue_and_enqueue(trial_out2, pid, tid)
                     elif idx == 2:
-                        self._dequeue_and_enqueue(sample_out2)
+                        self._dequeue_and_enqueue(sample_out2, pid, tid)
                     elif idx == 3:
-                        self._dequeue_and_enqueue(observation_out2)
+                        self._dequeue_and_enqueue(observation_out2, pid, tid)
                     break
         
         end_time = datetime.now()
