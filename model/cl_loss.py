@@ -103,7 +103,7 @@ def id_contrastive_loss(q, k, queue, id, id_queue):
     # queue = queue.permute(0, 2, 1).reshape((queue.size(0), -1))
     new_queue = []
     for i in range(0, queue.size(0), 256):
-        batch = queue[i:i+256].permute(0, 2, 1).reshape((batch.size(0), -1))
+        batch = queue[i:i+256].permute(0, 2, 1).reshape((256, -1))
         new_queue.append(batch)
     queue = torch.cat(new_queue, dim=0)
     
