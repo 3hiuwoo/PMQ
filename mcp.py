@@ -243,7 +243,7 @@ class MCP:
             epoch_loss_list.append(cum_loss)
             
             if verbose:
-                print(f"=> Epoch {epoch+1} loss: {cum_loss}")
+                print(f"=> Epoch {epoch+1}: loss: {cum_loss}")
                 
             if self.callback_func is not None:
                 self.callback_func(self, epoch)

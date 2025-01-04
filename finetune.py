@@ -61,6 +61,12 @@ def main():
     
     X_train, X_val, X_test, y_train, y_val, y_test = load_data(args.root, args.data, split=args.length)
     
+    # only use fraction of training samples.
+    if args.fraction:
+        X_train = X_train[:int(X_train.shape[0] * args.fraction)]
+        y_train = y_train[:int(y_train.shape[0] * args.fraction)]
+        print(f'=> use {args.fraction} of training data')
+    
     train_dataset = TensorDataset(torch.from_numpy(X_train).to(torch.float),
                                   torch.from_numpy(y_train[:, 0]).to(torch.float))
     
@@ -127,14 +133,6 @@ def main():
             print(f'=> load pretrained model from {args.pretrain}')
             model.net.load_state_dict(torch.load(args.pretrain))
             
-    # only use fraction of training samples.
-    if args.fraction:
-        X_train = X_train[:int(X_train.shape[0] * args.fraction)]
-        y_train = y_train[:int(y_train.shape[0] * args.fraction)]
-        print(f'=> use {args.fraction} of training data')
-        
-    model.train()
-    
     params = list(filter(lambda p: p.requires_grad, model.parameters()))
     print(f'=> number of trainable parameters groups: {len(params)}') # for debug
     optimizer = torch.optim.AdamW(params, lr=args.lr)
@@ -142,7 +140,8 @@ def main():
     criterion = nn.CrossEntropyLoss()
 
     epoch_lost_list, epoch_f1_list = [], [], []
-
+    
+    model.train()
     for epoch in range(args.epochs):
         # training loop
         cum_loss = 0
