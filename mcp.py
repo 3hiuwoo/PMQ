@@ -163,7 +163,9 @@ class MCP:
                     self._momentum_update_key_encoder()
                     
                 optimizer.zero_grad()
-
+                
+                queue = self.queue.clone().detach()
+                
                 if factors[0] != 0:
                     # do augmentation and compute representation
                     patient_out1 = self.net_q(x, mask=masks[0])
@@ -173,7 +175,7 @@ class MCP:
                     patient_loss = contrastive_loss(
                         patient_out1,
                         patient_out2,
-                        self.queue.clone().detach(),
+                        queue,
                         patient_contrastive_loss,
                         id=pid,
                         id_queue=self.pid_queue.clone().detach(),
@@ -190,7 +192,7 @@ class MCP:
                     trial_loss = contrastive_loss(
                         trial_out1,
                         trial_out2,
-                        self.queue.clone().detach(),
+                        queue,
                         trial_contrastive_loss,
                         id=tid,
                         id_queue=self.tid_queue.clone().detach(),
@@ -207,7 +209,7 @@ class MCP:
                     sample_loss = contrastive_loss(
                         sample_out1,
                         sample_out2,
-                        self.queue.clone().detach(),
+                        None,
                         sample_contrastive_loss,
                         hierarchical=True,
                         factor=factors[2],
@@ -222,7 +224,7 @@ class MCP:
                     observation_loss = contrastive_loss(
                         observation_out1,
                         observation_out2,
-                        self.queue.clone().detach(),
+                        None,
                         observation_contrastive_loss,
                         hierarchical=True,
                         factor=factors[3],
