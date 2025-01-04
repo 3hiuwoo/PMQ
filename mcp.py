@@ -106,7 +106,7 @@ class MCP:
         self.queue_ptr = torch.zeros(1, dtype=torch.long, device=device)
         
 
-    def fit(self, X, y, shuffle_func='trial', masks=None, factors=None, epochs=None, verbose=True):
+    def fit(self, X, y, shuffle_function='trial', masks=None, factors=None, epochs=None, verbose=True):
         """ Training the MCP model.
         
         Args:
@@ -124,7 +124,7 @@ class MCP:
         assert X.ndim == 3
         assert y.shape[1] == 3
         # Shuffle the training set for contrastive learning pretraining.
-        X, y = shuffle_feature_label(X, y, shuffle_func=shuffle_func, batch_size=self.batch_size)
+        X, y = shuffle_feature_label(X, y, shuffle_function=shuffle_function, batch_size=self.batch_size)
 
         # we need patient id for patient-level contrasting and trial id for trial-level contrasting
         train_dataset = TensorDataset(
@@ -132,7 +132,7 @@ class MCP:
             torch.from_numpy(y).to(torch.float)
             )
         
-        if shuffle_func == 'random':
+        if shuffle_function == 'random':
             train_loader = DataLoader(train_dataset, batch_size=self.batch_size, shuffle=True, drop_last=True)
         else:
             # Important!!! A customized batch_sampler to shuffle samples before each epoch. Check details in utils.py.
