@@ -161,10 +161,9 @@ class MCP:
                 
                 with torch.no_grad():
                     self._momentum_update_key_encoder()
+                    queue = self.queue
                     
                 optimizer.zero_grad()
-                
-                queue = self.queue.clone().detach()
                 
                 if factors[0] != 0:
                     # do augmentation and compute representation
