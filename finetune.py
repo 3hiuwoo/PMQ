@@ -139,7 +139,7 @@ def main():
 
     criterion = nn.CrossEntropyLoss()
 
-    epoch_lost_list, epoch_f1_list = [], [], []
+    epoch_lost_list, epoch_f1_list = [], []
     
     model.train()
     for epoch in range(args.epochs):
