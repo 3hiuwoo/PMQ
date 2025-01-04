@@ -161,6 +161,7 @@ class MCP:
                 
                 with torch.no_grad():
                     self._momentum_update_key_encoder()
+                    queue = self.queue.clone().detach()
                     
                 optimizer.zero_grad()
                 
@@ -173,7 +174,7 @@ class MCP:
                     patient_loss = contrastive_loss(
                         patient_out1,
                         patient_out2,
-                        self.queue.contiguous(),
+                        queue,
                         patient_contrastive_loss,
                         id=pid,
                         id_queue=self.pid_queue.clone().detach(),
@@ -190,7 +191,7 @@ class MCP:
                     trial_loss = contrastive_loss(
                         trial_out1,
                         trial_out2,
-                        self.queue.contiguous(),
+                        queue,
                         trial_contrastive_loss,
                         id=tid,
                         id_queue=self.tid_queue.clone().detach(),
@@ -207,7 +208,7 @@ class MCP:
                     sample_loss = contrastive_loss(
                         sample_out1,
                         sample_out2,
-                        None,
+                        queue,
                         sample_contrastive_loss,
                         hierarchical=True,
                         factor=factors[2],
@@ -222,7 +223,7 @@ class MCP:
                     observation_loss = contrastive_loss(
                         observation_out1,
                         observation_out2,
-                        None,
+                        queue,
                         observation_contrastive_loss,
                         hierarchical=True,
                         factor=factors[3],
