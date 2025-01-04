@@ -100,18 +100,11 @@ def id_contrastive_loss(q, k, queue, id, id_queue):
     # B x O x C -> B x C x O -> B x (C x O), don't disrupt each feature
     q = q.permute(0, 2, 1).reshape((B, -1))
     k = k.permute(0, 2, 1).reshape((B, -1))
-    # queue = queue.permute(0, 2, 1).reshape((queue.size(0), -1))
-    new_queue = []
-    for i in range(0, queue.size(0), 256):
-        batch = queue[i:i+256].permute(0, 2, 1).reshape((256, -1))
-        new_queue.append(batch)
-    queue = torch.cat(new_queue, dim=0)
+    queue = queue.permute(0, 2, 1).reshape((queue.size(0), -1))
     
     q = nn.functional.normalize(q, dim=1)
     k = nn.functional.normalize(k, dim=1)
-    # queue = nn.functional.normalize(queue, dim=1)
-    with torch.no_grad():
-        queue.div_(queue.norm(dim=1, keepdim=True).clamp_min(1e-12))
+    queue = nn.functional.normalize(queue, dim=1)
 
     batch_sim = torch.mm(q, k.t()) # B x B
     queue_sim = torch.mm(q, queue.t()) # B x K
