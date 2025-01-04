@@ -98,12 +98,12 @@ class MCP:
         # self.register_buffer('pid_queue', torch.zeros(queue_size, dtype=torch.long))
         # self.register_buffer('tid_queue', torch.zeros(queue_size, dtype=torch.long))
         # self.register_buffer('queue_ptr', torch.zeros(1, dtype=torch.long))
-        self.queue = torch.randn(queue_size, length, output_dims, device=device)
+        self.queue = torch.randn(queue_size, length, output_dims, device=device, requires_grad=False)
         self.queue = nn.functional.normalize(self.queue, dim=1)
         
-        self.pid_queue = torch.zeros(queue_size, dtype=torch.long, device=device)
-        self.tid_queue = torch.zeros(queue_size, dtype=torch.long, device=device)
-        self.queue_ptr = torch.zeros(1, dtype=torch.long, device=device)
+        self.pid_queue = torch.zeros(queue_size, dtype=torch.long, device=device, requires_grad=False)
+        self.tid_queue = torch.zeros(queue_size, dtype=torch.long, device=device, requires_grad=False)
+        self.queue_ptr = torch.zeros(1, dtype=torch.long, device=device, requires_grad=False)
         
 
     def fit(self, X, y, shuffle_function='trial', masks=None, factors=None, epochs=None, verbose=True):
@@ -161,7 +161,6 @@ class MCP:
                 
                 with torch.no_grad():
                     self._momentum_update_key_encoder()
-                    queue = self.queue
                     
                 optimizer.zero_grad()
                 
@@ -174,7 +173,7 @@ class MCP:
                     patient_loss = contrastive_loss(
                         patient_out1,
                         patient_out2,
-                        queue,
+                        self.queue.contiguous(),
                         patient_contrastive_loss,
                         id=pid,
                         id_queue=self.pid_queue.clone().detach(),
@@ -191,7 +190,7 @@ class MCP:
                     trial_loss = contrastive_loss(
                         trial_out1,
                         trial_out2,
-                        queue,
+                        self.queue.contiguous(),
                         trial_contrastive_loss,
                         id=tid,
                         id_queue=self.tid_queue.clone().detach(),
