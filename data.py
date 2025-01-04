@@ -2,20 +2,22 @@ import os
 import numpy as np
 from tqdm import tqdm
 from utils import segment
+from sklearn.utils import shuffle
+from utils import process_batch_ts
 
 
-def load_data(root='data', name='chapman', split=None):
+def load_data(root='data', name='chapman', split=None, norm=True, shuffle=True):
     '''
     load correspondent training, validation, and test data and labels
     '''
     if name == 'chapman':
         dir = os.path.join(root, name)
-        return load_chapman(dir, split)
+        return load_chapman(dir, split, norm, shuffle)
     else:
         raise ValueError(f'Unknown dataset name: {name}')
     
     
-def load_chapman(root='data/chapman', split=None):
+def load_chapman(root='data/chapman', split=None, norm=True, shuff=True):
     data_path = os.path.join(root, 'feature')
     label_path = os.path.join(root, 'label', 'label.npy')
     
@@ -63,7 +65,15 @@ def load_chapman(root='data/chapman', split=None):
     y_val = np.array(valid_labels)
     y_test = np.array(test_labels)
     
-    # todo: normalize data
+    if shuff:
+        X_train, y_train = shuffle(X_train, y_train)
+        X_val, y_val = shuffle(X_val, y_val)
+        X_test, y_test = shuffle(X_test, y_test)
+    
+    if norm:
+        X_train = process_batch_ts(X_train, normalized=True, bandpass_filter=False)
+        X_val = process_batch_ts(X_val, normalized=True, bandpass_filter=False)
+        X_test = process_batch_ts(X_test, normalized=True, bandpass_filter=False)
       
     if split:
         X_train, y_train = segment(X_train, y_train, split)
