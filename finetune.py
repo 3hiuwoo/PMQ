@@ -157,7 +157,8 @@ def main():
             optimizer.step()
             cum_loss += loss.item()
 
-        epoch_lost_list.append(cum_loss / len(train_loader))
+        cum_loss /= len(train_loader)
+        epoch_lost_list.append(cum_loss)
 
         # validation
         val_metrics_dict = evaluate(model, val_loader, metrics, device)
