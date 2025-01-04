@@ -129,7 +129,7 @@ class MCP:
         # we need patient id for patient-level contrasting and trial id for trial-level contrasting
         train_dataset = TensorDataset(
             torch.from_numpy(X).to(torch.float),
-            torch.from_numpy(y).to(torch.float)
+            torch.from_numpy(y).to(torch.long)
             )
         
         if shuffle_function == 'random':

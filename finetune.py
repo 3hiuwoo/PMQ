@@ -68,13 +68,13 @@ def main():
         print(f'=> use {args.fraction} of training data')
     
     train_dataset = TensorDataset(torch.from_numpy(X_train).to(torch.float),
-                                  torch.from_numpy(y_train[:, 0]).to(torch.float))
+                                  torch.from_numpy(y_train[:, 0]).to(torch.long))
     
     val_dataset = TensorDataset(torch.from_numpy(X_val).to(torch.float),
-                                torch.from_numpy(y_val[:, 0]).to(torch.float))
+                                torch.from_numpy(y_val[:, 0]).to(torch.long))
     
     test_dataset = TensorDataset(torch.from_numpy(X_test).to(torch.float),
-                                 torch.from_numpy(y_test[:, 0]).to(torch.float))
+                                 torch.from_numpy(y_test[:, 0]).to(torch.long))
     
     train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True)
     val_loader = DataLoader(val_dataset, batch_size=args.batch_size, shuffle=True)
