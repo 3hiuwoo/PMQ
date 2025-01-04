@@ -100,7 +100,7 @@ def main():
     
 def pretrain_callback(model, epoch, checkpoint=args.checkpoint):
     if (epoch+1) % checkpoint == 0:
-        model.save(os.path.join(logdir, 'weight', f'pretrain_{epoch+1}.pth'))
+        model.save(os.path.join(logdir, f'pretrain_{epoch+1}.pth'))
         
 
 def eval_classification(model, train_data, train_labels, test_data, test_labels, fraction=None):
