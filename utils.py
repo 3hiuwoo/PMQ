@@ -50,16 +50,28 @@ class MyBatchSampler(BatchSampler):
         super().__init__(sampler, batch_size, drop_last)
 
     def __iter__(self):
-        batch = []
-        for idx in self.sampler:
-            batch.append(idx)
-            if len(batch) == self.batch_size:
-                random.shuffle(batch)
-                yield batch
-                batch = []
-        if len(batch) > 0 and not self.drop_last:
-            random.shuffle(batch)
-            yield batch
+        if self.drop_last:
+            sampler_iter = iter(self.sampler)
+            while True:
+                try:
+                    batch = [next(sampler_iter) for _ in range(self.batch_size)]
+                    random.shuffle(batch)
+                    yield batch
+                except StopIteration:
+                    break
+        else:
+            batch = [0] * self.batch_size
+            idx_in_batch = 0
+            for idx in self.sampler:
+                batch[idx_in_batch] = idx
+                idx_in_batch += 1
+                if idx_in_batch == self.batch_size:
+                    random.shuffle(batch)
+                    yield batch
+                    idx_in_batch = 0
+                    batch = [0] * self.batch_size
+            if idx_in_batch > 0:
+                yield batch[:idx_in_batch]
 
 
 def shuffle_feature_label(X, y, shuffle_function='trial', batch_size=128):
