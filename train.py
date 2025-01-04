@@ -88,7 +88,7 @@ def main():
         loss_list = model.fit(
             X_train,
             y_train,
-            shuffle_function=args.shuffle,
+            shuffle_func=args.shuffle,
             masks=args.masks,
             factors=args.factors,
             epochs=args.epochs,
