@@ -23,7 +23,7 @@ parser.add_argument('--length', type=int, default=300, help='length of each samp
 parser.add_argument('--depth', type=int, default=10, help='depth of the encoder')
 parser.add_argument('--hidden_dim', type=int, default=64, help='hidden dimension of the model')
 parser.add_argument('--output_dim', type=int, default=320, help='output dimension of the model')
-parser.add_argument('--p_hidden_dim', type=float, default=0.999, help='momentum for the model')
+parser.add_argument('--p_hidden_dim', type=int, default=128, help='hidden dimension of the projection head')
 parser.add_argument('--partial', action='store_true', help='partial finetuning')
 parser.add_argument('--pretrain', type=str, default='', help='pretrained model weight file path')
 # for the training
