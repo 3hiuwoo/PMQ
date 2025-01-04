@@ -94,14 +94,18 @@ class MCP:
         # self.proj_head = ProjectionHead(input_dims=self.output_dims, output_dims=2, hidden_dims=128).to(self.device)
         
         # create the queues
-        self.register_buffer('queue', torch.randn(queue_size, length, output_dims), device=device)
+        # self.register_buffer('queue', torch.randn(queue_size, length, output_dims), device=device)
+        # self.register_buffer('pid_queue', torch.zeros(queue_size, dtype=torch.long), device=device)
+        # self.register_buffer('tid_queue', torch.zeros(queue_size, dtype=torch.long), device=device)
+        # self.register_buffer('queue_ptr', torch.zeros(1, dtype=torch.long), device=device)
+        self.queue = torch.randn(queue_size, length, output_dims, device=device)
         self.queue = nn.functional.normalize(self.queue, dim=1)
         
-        self.register_buffer('pid_queue', torch.zeros(queue_size, dtype=torch.long), device=device)
-        self.register_buffer('tid_queue', torch.zeros(queue_size, dtype=torch.long), device=device)
-        self.register_buffer('queue_ptr', torch.zeros(1, dtype=torch.long), device=device)
-    
-    
+        self.pid_queue = torch.zeros(queue_size, dtype=torch.long, device=device)
+        self.tid_queue = torch.zeros(queue_size, dtype=torch.long, device=device)
+        self.queue_ptr = torch.zeros(1, dtype=torch.long, device=device)
+        
+
     def fit(self, X, y, shuffle_func='trial', masks=None, factors=None, epochs=None, verbose=True):
         """ Training the MCP model.
         

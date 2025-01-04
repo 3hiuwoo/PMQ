@@ -26,7 +26,7 @@ parser.add_argument('--momentum', type=float, default=0.999, help='momentum for 
 parser.add_argument('--queue_size', type=int, default=16384, help='queue size for the model')
 parser.add_argument('--num_queues', type=int, default=1, help='number of queues for the model')
 parser.add_argument('--masks', type=str, default=['all_true', 'all_true', 'continuous', 'continuous'], nargs='*', help='masks for the model')
-parser.add_argument('--factors', type=int, default=[0.25, 0.25, 0.25, 0.25], nargs='*', help='factors for each level')
+parser.add_argument('--factors', type=float, default=[0.25, 0.25, 0.25, 0.25], nargs='*', help='factors for each level')
 # for the training
 parser.add_argument('--lr', type=float, default=1e-4, help='learning rate')
 parser.add_argument('--batch_size', type=int, default=256, help='batch size')
