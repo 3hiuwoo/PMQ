@@ -9,7 +9,7 @@ from torch.utils.data import TensorDataset, DataLoader
 from tqdm import tqdm
 from model.encoder import FTClassifier
 from data import load_data
-from utils import seed_everything, get_device
+from utils import seed_everything, get_device, start_logging, stop_logging
 from torchmetrics import Accuracy, F1Score, AUROC, Precision, Recall, AveragePrecision, MetricCollection
 
 
@@ -19,6 +19,7 @@ parser.add_argument('--seed', type=int, default=42, help='random seed')
 parser.add_argument('--root', type=str, default='dataset', help='root directory of datasets')
 parser.add_argument('--data', type=str, default='chapman', help='select pretraining dataset')
 parser.add_argument('--length', type=int, default=300, help='length of each sample')
+parser.add_argument('--overlap', type=float, default=0., help='overlap of each sample')
 # for the model
 parser.add_argument('--depth', type=int, default=10, help='depth of the encoder')
 parser.add_argument('--hidden_dim', type=int, default=64, help='hidden dimension of the model')
@@ -59,7 +60,7 @@ def main():
     seed_everything(args.seed)
     print(f'=> set seed to {args.seed}')
     
-    X_train, X_val, X_test, y_train, y_val, y_test = load_data(args.root, args.data, split=args.length)
+    X_train, X_val, X_test, y_train, y_val, y_test = load_data(args.root, args.data, length=args.length, overlap=args.overlap, shuffle=True)
     
     # only use fraction of training samples.
     if args.fraction:
@@ -109,6 +110,7 @@ def main():
 
     if args.test:
         if os.path.isfile(args.test):
+            start_logging(args.seed, logdir)
             print(f'=> test on {args.test}')
             model.load_state_dict(torch.load(args.test))
             val_metrics_dict = evaluate(model, val_loader, metrics, device)
@@ -117,7 +119,8 @@ def main():
             
             test_metrics_dict = evaluate(model, test_loader, metrics, device)
             test_metrics_dict = {k: v.item() for k, v in test_metrics_dict.items()}
-            print('metrics for test set\n', test_metrics_dict)   
+            print('metrics for test set\n', test_metrics_dict)
+            stop_logging()   
         else:
             print(f'=> find nothing in {args.test}')
         return

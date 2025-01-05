@@ -8,7 +8,7 @@ import numpy as np
 import torch.nn.functional as F
 from mcp import MCP
 from data import load_data
-from utils import seed_everything, get_device
+from utils import seed_everything, get_device, start_logging, stop_logging
 from eval_protocols import fit_lr
 
 
@@ -18,6 +18,7 @@ parser.add_argument('--seed', type=int, default=42, help='random seed')
 parser.add_argument('--root', type=str, default='dataset', help='root directory of datasets')
 parser.add_argument('--data', type=str, default='chapman', help='select pretraining dataset')
 parser.add_argument('--length', type=int, default=300, help='length of each sample')
+parser.add_argument('--overlap', type=float, default=0., help='overlap of each sample')
 # for the model
 parser.add_argument('--depth', type=int, default=10, help='depth of the encoder')
 parser.add_argument('--hidden_dim', type=int, default=64, help='hidden dimension of the model')
@@ -51,7 +52,7 @@ def main():
     seed_everything(args.seed)
     print(f'=> set seed to {args.seed}')
     
-    X_train, X_val, X_test, y_train, y_val, y_test = load_data(args.root, args.data, split=args.length)
+    X_train, X_val, X_test, y_train, y_val, y_test = load_data(args.root, args.data, length=args.length, overlap=args.overlap, shuffle=True)
     
     device = get_device()
     print(f'=> Running on {device}')
@@ -74,6 +75,7 @@ def main():
     
     if args.eval: # linear evaluation
         if os.path.isfile(args.eval):
+            start_logging(args.seed, logdir)
             print(f'=> perform linear evaluation on {args.eval}')
             model.load(args.eval)
             
@@ -82,6 +84,7 @@ def main():
             
             test_metrics_dict = eval_classification(model, X_train, y_train[:, 0], X_test, y_test[:, 0])
             print('=> Linear evaluation for test set\n', test_metrics_dict)
+            stop_logging()
         else:
             print(f'=> find nothing in {args.eval}')
     else: # train the model

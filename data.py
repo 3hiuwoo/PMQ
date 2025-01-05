@@ -1,23 +1,22 @@
 import os
 import numpy as np
 from tqdm import tqdm
-from utils import segment
+from utils import segment, split_data_label, process_batch_ts
 from sklearn.utils import shuffle
-from utils import process_batch_ts
 
 
-def load_data(root='data', name='chapman', split=None, norm=True, shuffle=True):
+def load_data(root='data', name='chapman', length=None, overlap=0, norm=True, shuffle=True):
     '''
     load correspondent training, validation, and test data and labels
     '''
     if name == 'chapman':
         dir = os.path.join(root, name)
-        return load_chapman(dir, split, norm, shuffle)
+        return load_chapman(dir, length, overlap, norm, shuffle)
     else:
         raise ValueError(f'Unknown dataset name: {name}')
     
     
-def load_chapman(root='data/chapman', split=None, norm=True, shuff=True):
+def load_chapman(root='data/chapman', length=None, overlap=0, norm=True, shuff=True):
     data_path = os.path.join(root, 'feature')
     label_path = os.path.join(root, 'label', 'label.npy')
     
@@ -75,9 +74,14 @@ def load_chapman(root='data/chapman', split=None, norm=True, shuff=True):
         X_val = process_batch_ts(X_val, normalized=True, bandpass_filter=False)
         X_test = process_batch_ts(X_test, normalized=True, bandpass_filter=False)
       
-    if split:
-        X_train, y_train = segment(X_train, y_train, split)
-        X_val, y_val = segment(X_val, y_val, split)
-        X_test, y_test = segment(X_test, y_test, split)
+    if length:
+        # X_train, y_train = segment(X_train, y_train, split)
+        # X_val, y_val = segment(X_val, y_val, split)
+        # X_test, y_test = segment(X_test, y_test, split)
+        
+        X_train, y_train = split_data_label(X_train,y_train, sample_timestamps=length, overlapping=overlap)
+        X_val, y_val = split_data_label(X_val,y_val, sample_timestamps=length, overlapping=overlap)
+        X_test, y_test = split_data_label(X_test,y_test, sample_timestamps=length, overlapping=overlap)
+        
     
     return X_train, X_val, X_test, y_train, y_val, y_test
