@@ -114,11 +114,9 @@ def main():
             print(f'=> test on {args.test}')
             model.load_state_dict(torch.load(args.test))
             val_metrics_dict = evaluate(model, val_loader, metrics, device)
-            val_metrics_dict = {k: v.item() for k, v in val_metrics_dict.items()}
             print('metrics for validation set\n', val_metrics_dict)
             
             test_metrics_dict = evaluate(model, test_loader, metrics, device)
-            test_metrics_dict = {k: v.item() for k, v in test_metrics_dict.items()}
             print('metrics for test set\n', test_metrics_dict)
             stop_logging()   
         else:
@@ -192,6 +190,7 @@ def evaluate(model, loader, metrics, device):
     metrics_dict = metrics.compute()
     metrics.reset()
     
+    metrics_dict = {k: v.item() for k, v in metrics_dict.items()}
     return metrics_dict
 
 

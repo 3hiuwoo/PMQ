@@ -1,9 +1,9 @@
-training*/
 test*/
 test*.*
 __pycache__/
 log*/
 .*
-**/.DS_Store
+**/.*
 dataset/
 ECG*/
+training*/

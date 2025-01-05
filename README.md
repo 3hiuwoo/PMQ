@@ -1,4 +1,4 @@
-# MCP: Momentum Contrast across Patient
+# MCP: Momentum Contrast cross Patient
 
 ## Data Preprocessing
 

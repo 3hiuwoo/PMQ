@@ -140,6 +140,8 @@ def eval_classification(model, train_data, train_labels, test_data, test_labels,
     metrics_dict['F1'] = sklearn.metrics.f1_score(target, pred, average='macro')
     metrics_dict['AUROC'] = sklearn.metrics.roc_auc_score(target_prob, pred_prob, average='macro', multi_class='ovr')
     metrics_dict['AUPRC'] = sklearn.metrics.average_precision_score(target_prob, pred_prob, average='macro')
+    
+    metrics_dict = {k: float(v) for k, v in metrics_dict.items()}
 
     return metrics_dict
         
