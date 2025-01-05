@@ -50,12 +50,15 @@ class Logger(object):
         self.terminal = sys.stdout
         self.log = open(filename, "a")
 
+
     def write(self, message):
         self.terminal.write(message)
         self.log.write(message)
-
-    def close(self):
-        self.log.close()
+      
+        
+    def flush(self):
+        self.terminal.flush()
+        self.log.flush()
 
 
 def start_logging(random_seed, saving_directory):
@@ -65,7 +68,7 @@ def start_logging(random_seed, saving_directory):
 
 
 def stop_logging():
-    sys.stdout.close()
+    print()
     sys.stdout = sys.__stdout__
     
     

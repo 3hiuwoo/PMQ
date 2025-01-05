@@ -13,10 +13,10 @@ def contrastive_loss(q, k, queue, loss_func, id=None, id_queue=None,
     if not hierarchical:
         if id is not None:
             # pass patient and trial loss function
-            return loss_func(q, k, queue, id, id_queue)
+            return loss_func(q, k, queue, id, id_queue) * factor
         else:
             # pass sample and observation loss function
-            return loss_func(q, k)
+            return loss_func(q, k) * factor
         
     # enable hierarchical loss
     else:
