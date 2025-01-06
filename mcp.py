@@ -266,7 +266,7 @@ class MCP:
             self._dequeue_and_enqueue(trial_out2, pid, tid)
         
         end_time = datetime.now()
-        print(f'Training finished in time: {end_time - start_time}')
+        print(f'Training finished in {end_time - start_time}')
             
         return epoch_loss_list
     

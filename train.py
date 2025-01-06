@@ -50,7 +50,7 @@ if not os.path.exists(logdir):
 
 def main():
     seed_everything(args.seed)
-    print(f'=> set seed to {args.seed}')
+    print(f'=> Set seed to {args.seed}')
     
     X_train, X_val, X_test, y_train, y_val, y_test = load_data(args.root, args.data, length=args.length, overlap=args.overlap, shuffle=True)
     
@@ -76,7 +76,7 @@ def main():
     if args.eval: # linear evaluation
         if os.path.isfile(args.eval):
             start_logging(args.seed, logdir) # simultaneously save the print out to file
-            print(f'=> perform linear evaluation on {args.eval}')
+            print(f'=> Perform linear evaluation on {args.eval}')
             model.load(args.eval)
             
             val_metrics_dict = eval_classification(model, X_train, y_train[:, 0], X_val, y_val[:, 0])
@@ -86,9 +86,9 @@ def main():
             print('=> Linear evaluation for test set\n', test_metrics_dict)
             stop_logging()
         else:
-            print(f'=> find nothing in {args.eval}')
+            print(f'=> Find nothing in {args.eval}')
     else: # train the model
-        print(f'=> train MCP')
+        print(f'=> Train MCP')
         loss_list = model.fit(
             X_train,
             y_train,
@@ -117,7 +117,7 @@ def eval_classification(model, train_data, train_labels, test_data, test_labels,
 
     if fraction:
         # use first fraction number of training data
-        print(f'=> use {fraction} of training data for evaluation')
+        print(f'=> Use {fraction} of training data for evaluation')
         train_data = train_data[:int(train_data.shape[0]*fraction)]
         train_labels = train_labels[:int(train_labels.shape[0]*fraction)]
         # print(f"Fraction of train data used for semi_supervised learning:{fraction}\n")

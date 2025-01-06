@@ -7,6 +7,7 @@ import numpy as np
 from torch import nn
 from torch.utils.data import TensorDataset, DataLoader
 from tqdm import tqdm
+from datetime import datetime
 from model.encoder import FTClassifier
 from data import load_data
 from utils import seed_everything, get_device, start_logging, stop_logging
@@ -58,7 +59,7 @@ if not os.path.exists(logdir):
     
 def main():
     seed_everything(args.seed)
-    print(f'=> set seed to {args.seed}')
+    print(f'=> Set seed to {args.seed}')
     
     X_train, X_val, X_test, y_train, y_val, y_test = load_data(args.root, args.data, length=args.length, overlap=args.overlap, shuffle=True)
     
@@ -66,7 +67,7 @@ def main():
     if args.fraction:
         X_train = X_train[:int(X_train.shape[0] * args.fraction)]
         y_train = y_train[:int(y_train.shape[0] * args.fraction)]
-        print(f'=> use {args.fraction} of training data')
+        print(f'=> Use {args.fraction}% of training data')
     
     train_dataset = TensorDataset(torch.from_numpy(X_train).to(torch.float),
                                   torch.from_numpy(y_train[:, 0]).to(torch.long))
@@ -111,16 +112,16 @@ def main():
     if args.test:
         if os.path.isfile(args.test):
             start_logging(args.seed, logdir) # simultaneously save the print out to file
-            print(f'=> test on {args.test}')
+            print(f'=> Test on {args.test}')
             model.load_state_dict(torch.load(args.test))
             val_metrics_dict = evaluate(model, val_loader, metrics, device)
-            print('metrics for validation set\n', val_metrics_dict)
+            print('=> Metrics for validation set\n', val_metrics_dict)
             
             test_metrics_dict = evaluate(model, test_loader, metrics, device)
-            print('metrics for test set\n', test_metrics_dict)
+            print('=> Metrics for test set\n', test_metrics_dict)
             stop_logging()   
         else:
-            print(f'=> find nothing in {args.test}')
+            print(f'=> Find nothing in {args.test}')
         return
             
     # freeze the backbone encoder in PFT
@@ -133,21 +134,22 @@ def main():
                
     if args.pretrain:
         if os.path.isfile(args.pretrain):
-            print(f'=> load pretrained model from {args.pretrain}')
+            print(f'=> Load pretrained model from {args.pretrain}')
             model.net.load_state_dict(torch.load(args.pretrain))
         else:
-            print(f'=> find nothing in {args.pretrain}')
+            print(f'=> Find nothing in {args.pretrain}')
     else:
-        print(f'=> train from scratch')
+        print(f'=> Train from scratch')
             
     params = list(filter(lambda p: p.requires_grad, model.parameters()))
-    print(f'=> number of trainable parameters groups: {len(params)}') # for debug
+    print(f'=> Number of trainable parameters groups: {len(params)}') # for debug
     optimizer = torch.optim.AdamW(params, lr=args.lr)
 
     criterion = nn.CrossEntropyLoss()
 
     epoch_lost_list, epoch_f1_list = [], []
     
+    start_time = datetime.now()
     model.train()
     for epoch in range(args.epochs):
         # training loop
@@ -175,7 +177,9 @@ def main():
             print(f"=> Epoch {epoch+1} loss: {cum_loss}")
             if args.verbose > 1:
                 print(val_metrics_dict)
-        
+    
+    end_time = datetime.now()
+    print(f'=> Training finished in {end_time - start_time}')
     # save loss and f1score
     np.save(os.path.join(logdir, f'loss_{args.fraction}.npy'), epoch_lost_list)
     np.save(os.path.join(logdir, f'f1_{args.fraction}.npy'), epoch_f1_list)
