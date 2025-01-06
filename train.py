@@ -75,7 +75,7 @@ def main():
     
     if args.eval: # linear evaluation
         if os.path.isfile(args.eval):
-            start_logging(args.seed, logdir)
+            start_logging(args.seed, logdir) # simultaneously save the print out to file
             print(f'=> perform linear evaluation on {args.eval}')
             model.load(args.eval)
             
@@ -88,6 +88,7 @@ def main():
         else:
             print(f'=> find nothing in {args.eval}')
     else: # train the model
+        print(f'=> train MCP')
         loss_list = model.fit(
             X_train,
             y_train,

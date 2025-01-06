@@ -110,7 +110,7 @@ def main():
 
     if args.test:
         if os.path.isfile(args.test):
-            start_logging(args.seed, logdir)
+            start_logging(args.seed, logdir) # simultaneously save the print out to file
             print(f'=> test on {args.test}')
             model.load_state_dict(torch.load(args.test))
             val_metrics_dict = evaluate(model, val_loader, metrics, device)
@@ -135,6 +135,10 @@ def main():
         if os.path.isfile(args.pretrain):
             print(f'=> load pretrained model from {args.pretrain}')
             model.net.load_state_dict(torch.load(args.pretrain))
+        else:
+            print(f'=> find nothing in {args.pretrain}')
+    else:
+        print(f'=> train from scratch')
             
     params = list(filter(lambda p: p.requires_grad, model.parameters()))
     print(f'=> number of trainable parameters groups: {len(params)}') # for debug
