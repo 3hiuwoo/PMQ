@@ -50,6 +50,8 @@ if args.pretrain:
         task = 'pft'
     else:
         task = 'fft'
+elif args.test:
+    task = os.path.basename(args.test).split('_')[0]
 else:
     task = 'scr'
         
