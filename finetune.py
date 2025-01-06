@@ -32,7 +32,7 @@ parser.add_argument('--pretrain', type=str, default='', help='pretrained model w
 parser.add_argument('--lr', type=float, default=1e-4, help='learning rate')
 parser.add_argument('--batch_size', type=int, default=256, help='batch size')
 parser.add_argument('--epochs', type=int, default=50, help='number of epochs')
-parser.add_argument('--fraction', type=float, default=None, help='fraction of training data used')
+parser.add_argument('--fraction', type=float, default=1.0, help='fraction of training data used')
 parser.add_argument('--logdir', type=str, default='log', help='directory to save logs')
 parser.add_argument('--checkpoint', type=int, default=1, help='save model after each checkpoint')
 parser.add_argument('--multi_gpu', action='store_true', help='use multiple GPUs')
@@ -51,7 +51,8 @@ if args.pretrain:
     else:
         task = 'fft'
 elif args.test:
-    task = os.path.basename(args.test).split('_')[0]
+    dir = args.test.split(os.sep)[-1]
+    task = dir.split('_')[0]
 else:
     task = 'scr'
         
@@ -66,7 +67,7 @@ def main():
     X_train, X_val, X_test, y_train, y_val, y_test = load_data(args.root, args.data, length=args.length, overlap=args.overlap, shuffle=True)
     
     # only use fraction of training samples.
-    if args.fraction:
+    if args.fraction < 1:
         X_train = X_train[:int(X_train.shape[0] * args.fraction)]
         y_train = y_train[:int(y_train.shape[0] * args.fraction)]
         print(f'=> Use {args.fraction}% of training data')
