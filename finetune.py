@@ -163,7 +163,7 @@ def main():
 
         # validation
         val_metrics_dict = evaluate(model, val_loader, metrics, device)
-        f1 = val_metrics_dict['f1'].item()
+        f1 = val_metrics_dict['f1']
         epoch_f1_list.append(f1)
         finetune_callback(model, epoch, f1, fraction=args.fraction, checkpoint=args.checkpoint)
         
@@ -173,8 +173,8 @@ def main():
                 print(val_metrics_dict)
         
     # save loss and f1score
-    np.save(os.path.join(logdir, 'loss.npy'), epoch_lost_list)
-    np.save(os.path.join(logdir, 'f1.npy'), epoch_f1_list)
+    np.save(os.path.join(logdir, f'loss_{args.fraction}.npy'), epoch_lost_list)
+    np.save(os.path.join(logdir, f'f1_{args.fraction}.npy'), epoch_f1_list)
 
   
 def evaluate(model, loader, metrics, device):
