@@ -48,7 +48,7 @@ logdir = os.path.join(args.logdir, f'mcp_{args.data}_{args.seed}')
 if not os.path.exists(logdir):
     os.makedirs(logdir)
 
-def main():
+def main(): 
     seed_everything(args.seed)
     print(f'=> Set seed to {args.seed}')
     
