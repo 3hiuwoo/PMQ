@@ -123,7 +123,7 @@ def id_contrastive_loss(q, k, queue, id, id_queue):
         eps = 1e-12
         triu_elements = sim_matrix_exp[rows1, cols1]  # row and column for upper triangle same patient combinations
         loss_triu = -torch.mean(torch.log((triu_elements + eps) / (triu_sum[rows1] + eps)))
-        loss += loss_triu  # technically need to add 1 more term for symmetry
+        loss += loss_triu  # technicalneed to add 1 more term for symmetry
         return loss
 
     else:

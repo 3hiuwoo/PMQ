@@ -107,7 +107,7 @@ class MCP:
         
 
     def fit(self, X, y, shuffle_function='trial', masks=None, factors=None, epochs=None, verbose=True):
-        """ Training the MCP model.
+        ''' Training the MCP model.
         
         Args:
             X (numpy.ndarray): The training data. It should have a shape of (n_samples, sample_timestamps, features).
@@ -120,7 +120,7 @@ class MCP:
             
         Returns:
             epoch_loss_list: a list containing the training losses on each epoch.
-        """
+        '''
         assert X.ndim == 3
         assert y.shape[1] == 3
         # Shuffle the training set for contrastive learning pretraining.
@@ -168,6 +168,7 @@ class MCP:
                 if factors[0] != 0:
                     # do augmentation and compute representation
                     patient_out1 = self.net_q(x, mask=masks[0])
+                    # patient_out2 = self.net_q(x, mask=masks[0])
                     patient_out2 = self._net_k(x, mask=masks[0])
 
                     # loss calculation
@@ -186,6 +187,7 @@ class MCP:
 
                 if factors[1] != 0:
                     trial_out1 = self.net_q(x, mask=masks[1])
+                    # trial_out2 = self.net_q(x, mask=masks[1])
                     trial_out2 = self._net_k(x, mask=masks[1])
 
                     trial_loss = contrastive_loss(
@@ -203,7 +205,8 @@ class MCP:
 
                 if factors[2] != 0:
                     sample_out1 = self.net_q(x, mask=masks[2])
-                    sample_out2 = self._net_k(x, mask=masks[2])
+                    sample_out2 = self.net_q(x, mask=masks[2])
+                    # sample_out2 = self._net_k(x, mask=masks[2])
 
                     sample_loss = contrastive_loss(
                         sample_out1,
@@ -218,7 +221,8 @@ class MCP:
 
                 if factors[3] != 0:
                     observation_out1 = self.net_q(x, mask=masks[3])
-                    observation_out2 = self._net_k(x, mask=masks[3])
+                    observation_out2 = self.net_q(x, mask=masks[3])
+                    # observation_out2 = self._net_k(x, mask=masks[3])
 
                     observation_loss = contrastive_loss(
                         observation_out1,
