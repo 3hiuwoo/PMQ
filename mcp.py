@@ -252,21 +252,6 @@ class MCP:
             if self.callback_func is not None:
                 self.callback_func(self, epoch)
                 
-            # ranodmly select an output representation from 4 levels to enqueue
-            # while True:
-            #     idx = torch.randint(0, 4, (1,))
-            #     if factors[idx] == 0:
-            #         continue
-            #     else:
-            #         if idx == 0:
-            #             self._dequeue_and_enqueue(patient_out2, pid, tid)
-            #         elif idx == 1:
-            #             self._dequeue_and_enqueue(trial_out2, pid, tid)
-            #         elif idx == 2:
-            #             self._dequeue_and_enqueue(sample_out2, pid, tid)
-            #         elif idx == 3:
-            #             self._dequeue_and_enqueue(observation_out2, pid, tid)
-            #         break
             self._dequeue_and_enqueue(trial_out2, pid, tid)
         
         end_time = datetime.now()

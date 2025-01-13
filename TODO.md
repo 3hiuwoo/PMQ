@@ -14,6 +14,6 @@
 
 - [ ] Try Time-Frequency augmentation to **CLOCS**.
 
-- [ ] Try drop momentum encoder in losses other than the patient loss.
+- [ ] Try remove momentum encoder in losses other than the patient and trial loss.
 
 - [ ] Implement more dataset: CINC2017, PTB, PTB-XL
