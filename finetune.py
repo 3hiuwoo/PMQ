@@ -51,7 +51,7 @@ if args.pretrain:
     else:
         task = 'fft'
 elif args.test:
-    dir = args.test.split(os.sep)[-1]
+    dir = args.test.split(os.sep)[-2]
     task = dir.split('_')[0]
 else:
     task = 'scr'
@@ -91,9 +91,10 @@ def main():
     assert X_train.ndim == 3
     device = torch.device(device)
     
+    input_dims = X_test.shape[-1]
     num_classes = np.unique(y_test[:, 0]).shape[0]
     model = FTClassifier(
-        input_dims=X_test.shape[-1],
+        input_dims=input_dims,
         output_dims=args.output_dim,
         hidden_dims=args.hidden_dim,
         p_hidden_dims=args.p_hidden_dim,
@@ -138,7 +139,16 @@ def main():
     if args.pretrain:
         if os.path.isfile(args.pretrain):
             print(f'=> Load pretrained model from {args.pretrain}')
-            model.net.load_state_dict(torch.load(args.pretrain))
+            weights = torch.load(args.pretrain)
+            
+            # to adapt to pretrained CLOCS-like model
+            for k in list(weights.keys()):
+                if 'input_fc' in k:
+                    if weights[k].shape[1] != input_dims:
+                        print(f'=> Skip loading {k}')
+                        del weights[k]
+                break
+            model.net.load_state_dict(weights, strict=False)
         else:
             print(f'=> Find nothing in {args.pretrain}')
     else:
