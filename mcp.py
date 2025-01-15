@@ -242,6 +242,8 @@ class MCP:
                 self.net.update_parameters(self.net_q)
 
                 cum_loss += loss.item()
+                
+                self._dequeue_and_enqueue(patient_out2, pid, tid)
            
             cum_loss /= len(train_loader)
             epoch_loss_list.append(cum_loss)
@@ -252,8 +254,6 @@ class MCP:
             if self.callback_func is not None:
                 self.callback_func(self, epoch)
                 
-            self._dequeue_and_enqueue(trial_out2, pid, tid)
-        
         end_time = datetime.now()
         print(f'Training finished in {end_time - start_time}')
             
