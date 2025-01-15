@@ -35,7 +35,7 @@ To perform linear evaluation on pre-trained model, run:
 ```
 python train.py --data [dataset's name]\
 --root [folder containing directories of datasets]\
---log [folder to save linear evaluation outcome]\
+--log [folder to save the linear evaluation outcome]\
 --eval [path of the pretrained weight]
 ```
 Note that this will disable most training arguments.
@@ -60,7 +60,7 @@ To test the finetuned model's performance, run:
 ```
 python finetune.py  --data [dataset's name]\
 --root [folder containing directories of datasets]\
---log [folder to save linear evaluation outcome]\
+--log [folder to save the testing outcome]\
 --test [path to the finetuned weight]
 ```
 Note that this will disable most of the training arguments.
