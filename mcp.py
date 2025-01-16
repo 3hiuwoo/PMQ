@@ -13,8 +13,7 @@ from torch.utils.data import TensorDataset, DataLoader
 from model.encoder import TSEncoder
 from model.cl_loss import contrastive_loss
 from model.cl_loss import sample_contrastive_loss, observation_contrastive_loss, patient_contrastive_loss, trial_contrastive_loss
-from utils import shuffle_feature_label
-from utils import MyBatchSampler
+from utils import shuffle_feature_label, MyBatchSampler
 
 
 class MCP:
@@ -31,7 +30,6 @@ class MCP:
         batch_size (int): The batch size of samples.
         momentum (float): The momentum used for the key encoder.
         queue_size (int): The size of the queue.
-        num_queue (int): The number of queues.
         multi_gpu (bool): A flag to indicate whether using multiple gpus
         callback_func (Union[Callable, NoneType]): A callback function that would be called after each epoch.
     '''
@@ -66,7 +64,6 @@ class MCP:
         self.momentum = momentum
         self.queue_size = queue_size
         # todo: multiple queues
-        self.num_queue = num_queue
         
         self.net_q = TSEncoder(input_dims=input_dims, output_dims=output_dims, hidden_dims=hidden_dims, depth=depth)
         self.net_k = TSEncoder(input_dims=input_dims, output_dims=output_dims, hidden_dims=hidden_dims, depth=depth)
@@ -302,12 +299,8 @@ class MCP:
         '''
         max pool the representation
         '''
-        out = self.net(x, mask)
         # representation shape: B x O x Co --->  B x Co
-        out = F.max_pool1d(
-            out.transpose(1, 2),
-            kernel_size=out.size(1),
-        ).squeeze(-1)
+        out = self.net(x, mask, pool=True)
         return out
     
     

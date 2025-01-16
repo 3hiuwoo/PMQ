@@ -1,11 +1,11 @@
 import os
 import numpy as np
 from tqdm import tqdm
-from utils import segment, split_data_label, process_batch_ts
+from utils import split_data_label, process_batch_ts
 from sklearn.utils import shuffle
 
 
-def load_data(root='data', name='chapman', length=None, overlap=0, norm=True, shuffle=True):
+def load_data(root='dataset', name='chapman', length=None, overlap=0, norm=True, shuffle=True):
     '''
     load correspondent training, validation, and test data and labels
     '''
@@ -16,7 +16,7 @@ def load_data(root='data', name='chapman', length=None, overlap=0, norm=True, sh
         raise ValueError(f'Unknown dataset name: {name}')
     
     
-def load_chapman(root='data/chapman', length=None, overlap=0, norm=True, shuff=True):
+def load_chapman(root='dataset/chapman', length=None, overlap=0, norm=True, shuff=True):
     data_path = os.path.join(root, 'feature')
     label_path = os.path.join(root, 'label', 'label.npy')
     

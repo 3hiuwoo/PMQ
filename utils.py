@@ -14,6 +14,7 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.utils import shuffle
 from scipy import interpolate
 from scipy.signal import butter, lfilter
+from scipy.fftpack import fftn
 from itertools import repeat
 from torch.utils.data import BatchSampler
 
@@ -190,7 +191,28 @@ def resample(data, freq1=500, freq2=250, kind='linear'):
     new_data = f(t_new)
     return new_data
 
- 
+
+def stretch1d(data, scale=2):
+    '''
+    stretch the data by scale
+    '''
+    t = np.arange(len(data))
+    f = interpolate.interp1d(t, data, kind='linear')
+    t_new = np.linspace(0, len(data)-1, int(len(data)*scale))
+    new_data = f(t_new)
+    return new_data
+
+
+def stretch(data, scale=2):
+    '''
+    stretch the data by scale
+    '''
+    new_data = []
+    for i in range(data.shape[1]):
+        new_data.append(stretch1d(data[:, i], scale))
+    return np.array(new_data).T
+    
+    
 def normalize(data):
     '''
     normalize the data by x=x-mean/std
@@ -385,6 +407,18 @@ def split_data(X_trial, sample_timestamps=256, overlapping=0.5):
     X_sample, trial_ids = np.array(sample_feature_list), np.array(trial_id_list)
 
     return X_sample, trial_ids, sample_num
+
+
+def myft(data):
+    '''
+    Fourier transform
+    '''
+    length = data.shape[0]
+    spec = fftn(data, axes=0)
+    spec = np.abs(spec)[:length//2]
+    spec = stretch(spec, 2)
+    spec = normalize(spec)
+    return spec
 
         
     
