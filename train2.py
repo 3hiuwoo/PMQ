@@ -31,7 +31,7 @@ parser.add_argument('--lr', type=float, default=1e-4, help='learning rate')
 parser.add_argument('--batch_size', type=int, default=256, help='batch size')
 parser.add_argument('--epochs', type=int, default=100, help='number of epochs')
 parser.add_argument('--shuffle', type=str, default='trial', help='way to shuffle the data')
-parser.add_argument('--logdir', type=str, default='log', help='directory to save logs')
+parser.add_argument('--logdir', type=str, default='log_mpf', help='directory to save logs')
 parser.add_argument('--checkpoint', type=int, default=1, help='save model after each checkpoint')
 parser.add_argument('--multi_gpu', action='store_true', help='use multiple GPUs')
 parser.add_argument('--verbose', type=int, default=1, help='print loss after each epoch')
@@ -42,7 +42,7 @@ parser.add_argument('--eval', type=str, default='', help='model weight file path
 
 args = parser.parse_args()
 
-logdir = os.path.join(args.logdir, f'mcp_{args.data}_{args.seed}')
+logdir = os.path.join(args.logdir, f'mpf_{args.data}_{args.seed}')
 if not os.path.exists(logdir):
     os.makedirs(logdir)
 
