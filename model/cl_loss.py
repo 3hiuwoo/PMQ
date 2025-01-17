@@ -95,8 +95,6 @@ def id_contrastive_loss(q, k, queue, id, id_queue):
 
     B = q.size(0)
     loss = 0
-    q = torch.nn.functional.normalize(q, dim=1)
-    k = torch.nn.functional.normalize(k, dim=1)
     # B x O x C -> B x C x O -> B x (C x O), don't disrupt each feature
     q = q.permute(0, 2, 1).reshape((B, -1))
     k = k.permute(0, 2, 1).reshape((B, -1))
@@ -152,8 +150,6 @@ def id_momentum_loss(q, k, queue, id, id_queue):
 
     temperature = 0.1
     eps = 1e-12
-    q = F.normalize(q, dim=1)
-    k = F.normalize(k, dim=1)
     batch_sim_matrix = torch.mm(q, k.t()) # B x B
     queue_sim_matrix = torch.mm(q, queue.t()) # B x K
     sim_matrix = torch.cat((batch_sim_matrix, queue_sim_matrix), dim=1) # B x (B+K)
@@ -168,24 +164,7 @@ def id_momentum_loss(q, k, queue, id, id_queue):
     
     loss = loss_diag + loss_triu
     loss /= 2
-    
-    # debug_dict = {'q': q, 
-    #               'k': k,
-    #               'queue': queue,
-    #               'id': id,
-    #               'id_queue': id_queue,
-    #               'batch_interest_matrix': batch_interest_matrix,
-    #               'queue_interest_matrix': queue_interest_matrix,
-    #               'interest_matrix': interest_matrix,
-    #               'rows1': rows1,
-    #               'cols1': cols1,
-    #               'sim_matrix': sim_matrix,
-    #               'sim_matrix_exp': sim_matrix_exp,
-    #               'diag_elements': diag_elements,
-    #               'triu_elements': triu_elements,
-    #               'loss_diag': loss_diag,
-    #               'loss_triu': loss_triu}
-    
-    return loss # , debug_dict
+
+    return loss
     
         

@@ -1,4 +1,5 @@
 import torch
+import torch.nn.functional as F
 from tqdm import tqdm
 from datetime import datetime
 from torch import nn
@@ -79,7 +80,7 @@ class MPF:
         # self.proj_head = ProjectionHead(input_dims=self.output_dims, output_dims=2, hidden_dims=128).to(self.device)
 
         self.queue = torch.randn(queue_size, output_dims, device=device, requires_grad=False)
-        self.queue = nn.functional.normalize(self.queue, dim=1)
+        self.queue = F.normalize(self.queue, dim=1)
         
         self.id_queue = torch.zeros(queue_size, dtype=torch.long, device=device, requires_grad=False)
         self.queue_ptr = torch.zeros(1, dtype=torch.long, device=device, requires_grad=False)
@@ -137,11 +138,13 @@ class MPF:
                     
                     # do augmentation and compute representation
                     q = self.net_q(x1, mask=masks, pool=True)
+                    q = F.normalize(q, dim=1)
                     
                     with torch.no_grad():
                         # shuffle BN
                         idx = torch.randperm(x2.size(0), device=x.device)
                         k = self.net_k(x2[idx], mask=masks, pool=True)
+                        k = F.normalize(k, dim=1)
                         k = k[torch.argsort(idx)]
 
                     # loss calculation

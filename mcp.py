@@ -165,8 +165,13 @@ class MCP:
                 if factors[0] != 0:
                     # do augmentation and compute representation
                     patient_out1 = self.net_q(x, mask=masks[0])
-                    # patient_out2 = self.net_q(x, mask=masks[0])
-                    patient_out2 = self._net_k(x, mask=masks[0])
+                    patient_out1 = F.normalize(patient_out1, dim=1)
+                    
+                    # shuffle BN
+                    idx = torch.randperm(x.size(0), device=x.device)
+                    patient_out2 = self.net_k(x[idx], mask=masks[0])
+                    patient_out2 = F.normalize(patient_out2, dim=1)
+                    patient_out2 = patient_out2[torch.argsort(idx)]
 
                     # loss calculation
                     patient_loss = contrastive_loss(
@@ -184,8 +189,13 @@ class MCP:
 
                 if factors[1] != 0:
                     trial_out1 = self.net_q(x, mask=masks[1])
-                    # trial_out2 = self.net_q(x, mask=masks[1])
-                    trial_out2 = self._net_k(x, mask=masks[1])
+                    trial_out1 = F.normalize(trial_out1, dim=1)
+                    
+                    # shuffle BN
+                    idx = torch.randperm(x.size(0), device=x.device)
+                    trial_out2 = self.net_k(x[idx], mask=masks[0])
+                    trial_out2 = F.normalize(trial_out2, dim=1)
+                    trial_out2 = trial_out2[torch.argsort(idx)]
 
                     trial_loss = contrastive_loss(
                         trial_out1,
@@ -281,19 +291,7 @@ class MCP:
         ptr = (ptr + batch_size) % self.queue_size  # move pointer
 
         self.queue_ptr[0] = ptr
-        
-        
-    def _net_k(self, x, mask=None):
-        '''
-        perform shuffle BN before momentum encoder forward propagation
-        '''
-        # shuffle BN
-        idx = torch.randperm(x.size(0), device=x.device)
-        k = self.net_k(x[idx], mask=mask)
-        k = k[torch.argsort(idx)]
-        
-        return k 
-    
+            
              
     def eval_with_pooling(self, x, mask=None):
         '''
