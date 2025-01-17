@@ -150,7 +150,6 @@ def id_momentum_loss(q, k, queue, id, id_queue):
     rows1, cols1 = np.where(np.triu(interest_matrix, 1))  # upper triangle same patient combs
     # rows2, cols2 = np.where(np.tril(interest_matrix, -1))  # down triangle same patient combs
 
-    loss = 0
     temperature = 0.1
     eps = 1e-12
     q = F.normalize(q, dim=1)
@@ -168,6 +167,25 @@ def id_momentum_loss(q, k, queue, id, id_queue):
     loss_triu = -torch.mean(torch.log((triu_elements+eps)/(torch.sum(sim_matrix_exp,1)[rows1]+eps)))
     
     loss = loss_diag + loss_triu
-    return loss
+    loss /= 2
+    
+    # debug_dict = {'q': q, 
+    #               'k': k,
+    #               'queue': queue,
+    #               'id': id,
+    #               'id_queue': id_queue,
+    #               'batch_interest_matrix': batch_interest_matrix,
+    #               'queue_interest_matrix': queue_interest_matrix,
+    #               'interest_matrix': interest_matrix,
+    #               'rows1': rows1,
+    #               'cols1': cols1,
+    #               'sim_matrix': sim_matrix,
+    #               'sim_matrix_exp': sim_matrix_exp,
+    #               'diag_elements': diag_elements,
+    #               'triu_elements': triu_elements,
+    #               'loss_diag': loss_diag,
+    #               'loss_triu': loss_triu}
+    
+    return loss # , debug_dict
     
         
