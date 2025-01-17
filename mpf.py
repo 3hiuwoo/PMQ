@@ -136,12 +136,12 @@ class MPF:
                     optimizer.zero_grad()
                     
                     # do augmentation and compute representation
-                    q = self.net_q(x1, mask=masks)
+                    q = self.net_q(x1, mask=masks, pool=True)
                     
                     with torch.no_grad():
                         # shuffle BN
                         idx = torch.randperm(x2.size(0), device=x.device)
-                        k = self.net_k(x2[idx], mask=masks)
+                        k = self.net_k(x2[idx], mask=masks, pool=True)
                         k = k[torch.argsort(idx)]
 
                     # loss calculation
