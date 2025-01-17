@@ -1,6 +1,6 @@
 ##### Todo List
 
-- [ ] Implement **CLOCS**, run experiments using the same processed dataset as **COMET** uses.
+- [x] Implement **CLOCS**, run experiments using the same processed dataset as **COMET** uses.
 
 - [ ] Run **COMET** for 5 seeds to complement experiments.
 
@@ -8,12 +8,12 @@
 
 - [ ] Run **MCP** with only patient loss.
 
-- [ ] Add **MCP** mechanism to **CLOCS**.
+- [x] Add **MCP** mechanism to **CLOCS**.
 
 - [ ] Implement **ISL**, run experiments using the same processed dataset as **COMET** uses.
 
-- [ ] Try Time-Frequency augmentation to **CLOCS**.
+- [x] Try Time-Frequency augmentation to **CLOCS**.
 
-- [ ] Try remove momentum encoder in losses other than the patient and trial loss.
+- [x] Try remove momentum encoder in losses other than the patient and trial loss.
 
 - [ ] Implement more dataset: CINC2017, PTB, PTB-XL
