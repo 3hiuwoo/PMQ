@@ -86,7 +86,7 @@ class MPF:
         
         
     def fit(self, X, y, shuffle_function='trial', masks='all_true', epochs=None, verbose=True):
-            ''' Training the MCPS model.
+            ''' Training the MPF model.
             
             Args:
                 X (numpy.ndarray): The training data. It should have a shape of (n_samples, sample_timestamps, features).

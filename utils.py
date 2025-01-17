@@ -10,11 +10,12 @@ import sys
 import numpy as np
 import pandas as pd
 import neurokit2 as nk
+import torch.nn.functional as F
 from sklearn.preprocessing import StandardScaler
 from sklearn.utils import shuffle
 from scipy import interpolate
 from scipy.signal import butter, lfilter
-from scipy.fftpack import fftn
+from torch.fft import fftn
 from itertools import repeat
 from torch.utils.data import BatchSampler
 
@@ -413,12 +414,21 @@ def myft(data):
     '''
     Fourier transform
     '''
-    length = data.shape[0]
-    spec = fftn(data, axes=0)
-    spec = np.abs(spec)[:length//2]
-    spec = stretch(spec, 2)
-    spec = normalize(spec)
-    return spec
+    length = data.shape[1]
+    spec = fftn(data, dim=1)
+    spec = torch.abs(spec)
+    spec = spec[:, :length//2, :]
+    spec = F.interpolate(spec.permute(0, 2, 1), scale_factor=2).permute(0, 2, 1)
+    return standarlize(spec)
+    
+    
+def standarlize(data):
+    '''
+    standarlize the data
+    '''
+    mean = data.mean(dim=1, keepdim=True)
+    std = data.std(dim=1, keepdim=True)
+    return (data - mean) / std
 
         
     

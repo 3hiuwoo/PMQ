@@ -84,13 +84,12 @@ def main():
         else:
             print(f'=> Find nothing in {args.eval}')
     else: # train the model
-        print(f'=> Train MCP')
+        print(f'=> Train MPF')
         loss_list = model.fit(
             X_train,
             y_train,
             shuffle_function=args.shuffle,
             masks=args.masks,
-            factors=args.factors,
             epochs=args.epochs,
             verbose=args.verbose
             )
