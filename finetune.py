@@ -142,12 +142,10 @@ def main():
             weights = torch.load(args.pretrain)
             
             # to adapt to pretrained CLOCS-like model
-            for k in list(weights.keys()):
-                if 'input_fc' in k:
-                    if weights[k].shape[1] != input_dims:
-                        print(f'=> Skip loading {k}')
-                        del weights[k]
-                break
+            if weights['module.input_fc.weight'].shape[1] != input_dims:
+                del weights['module.input_fc.weight']
+                del weights['module.input_fc.bias']
+            
             model.net.load_state_dict(weights, strict=False)
         else:
             print(f'=> Find nothing in {args.pretrain}')
