@@ -145,6 +145,7 @@ def main():
             if weights['module.input_fc.weight'].shape[1] != input_dims:
                 del weights['module.input_fc.weight']
                 del weights['module.input_fc.bias']
+                print(f'=> Skip loading input projector weights')
             
             model.net.load_state_dict(weights, strict=False)
         else:
