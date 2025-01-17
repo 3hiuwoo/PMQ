@@ -145,7 +145,7 @@ class MPF:
                         k = k[torch.argsort(idx)]
 
                     # loss calculation
-                    loss = id_momentum_loss(q, k, self.queue.copy().detach(), pid, self.id_queue.copy().detach())
+                    loss = id_momentum_loss(q, k, self.queue.clone().detach(), pid, self.id_queue.clone().detach())
 
                     loss.backward()
                     optimizer.step()
