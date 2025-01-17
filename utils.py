@@ -414,12 +414,23 @@ def myft(data):
     '''
     Fourier transform
     '''
+    if torch.isnan(data).any():
+        print('original data contains nan')
     length = data.shape[1]
     spec = fftn(data, dim=1)
+    if torch.isnan(spec).any():
+        print('spec after fft contains nan')
     spec = torch.abs(spec)
+    if torch.isnan(spec).any():
+        print('spec after abs contains nan')
     spec = spec[:, :length//2, :]
     spec = F.interpolate(spec.permute(0, 2, 1), scale_factor=2).permute(0, 2, 1)
-    return standarlize(spec)
+    if torch.isnan(spec).any():
+        print('spec after interpolate contains nan')
+    spec = standarlize(spec)
+    if torch.isnan(spec).any():
+        print('spec after standarlize contains nan')
+    return spec
     
     
 def standarlize(data):
