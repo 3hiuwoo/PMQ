@@ -1,9 +1,11 @@
-''' Run this script to perform partial/full finetuning or training from scratch
+'''
+Perform full fine-tuning or training from scratch or testing cross multiple seeds.
 '''
 import os
 import argparse
 import torch
 import numpy as np
+import pandas as pd
 from torch import nn
 from torch.utils.data import TensorDataset, DataLoader
 from tqdm import tqdm
@@ -15,7 +17,7 @@ from torchmetrics import Accuracy, F1Score, AUROC, Precision, Recall, AveragePre
 
 
 parser = argparse.ArgumentParser(description='Full/Partial Finetuning')
-parser.add_argument('--seed', type=int, default=42, help='random seed')
+parser.add_argument('--seeds', type=int, nargs='+', default=[41, 42, 43, 44, 45], help='list of random seeds')
 # for the data
 parser.add_argument('--root', type=str, default='dataset', help='root directory of datasets')
 parser.add_argument('--data', type=str, default='chapman', help='select pretraining dataset')
@@ -26,51 +28,75 @@ parser.add_argument('--depth', type=int, default=10, help='depth of the encoder'
 parser.add_argument('--hidden_dim', type=int, default=64, help='hidden dimension of the model')
 parser.add_argument('--output_dim', type=int, default=320, help='output dimension of the model')
 parser.add_argument('--p_hidden_dim', type=int, default=128, help='hidden dimension of the projection head')
-parser.add_argument('--partial', action='store_true', help='partial finetuning')
+# parser.add_argument('--partial', action='store_true', help='partial finetuning')
 parser.add_argument('--pretrain', type=str, default='', help='pretrained model weight file path')
 # for the training
 parser.add_argument('--lr', type=float, default=1e-4, help='learning rate')
 parser.add_argument('--batch_size', type=int, default=256, help='batch size')
 parser.add_argument('--epochs', type=int, default=50, help='number of epochs')
-parser.add_argument('--fraction', type=float, default=1.0, help='fraction of training data used')
+parser.add_argument('--fractions', type=float, nargs='+', default=[1.0, 0.1, 0.01], help='list of fractions of training data')
 parser.add_argument('--logdir', type=str, default='log', help='directory to save logs')
-parser.add_argument('--checkpoint', type=int, default=1, help='save model after each checkpoint')
+# parser.add_argument('--checkpoint', type=int, default=1, help='save model after each checkpoint')
 parser.add_argument('--multi_gpu', action='store_true', help='use multiple GPUs')
-parser.add_argument('--verbose', type=int, default=1, help='print loss after each epoch')
+parser.add_argument('--verbose', type=int, default=1, help='how much information to print')
 # test
-parser.add_argument('--test', type=str, default='', help='model weight file path to perform testing')
+# parser.add_argument('--test', type=str, default='', help='model weight file path to perform testing')
 # todo
 # parser.add_argument('--resume', type=str, default='', help='resume training from a checkpoint')
 
 args = parser.parse_args()
 
-# figure out the task
-if args.pretrain:
-    if args.partial:
-        task = 'pft'
-    else:
-        task = 'fft'
-elif args.test:
-    dir = args.test.split(os.sep)[-2]
-    task = dir.split('_')[0]
-else:
-    task = 'scr'
-        
-logdir = os.path.join(args.logdir, f'{task}_{args.data}_{args.seed}')
-if not os.path.exists(logdir):
-    os.makedirs(logdir)
-    
 def main():
-    seed_everything(args.seed)
-    print(f'=> Set seed to {args.seed}')
+    # figure out the task
+    if args.pretrain:
+        task = 'finetune'
+    else:
+        task = 'scratch'
+            
+    logdir = os.path.join(args.logdir, f'{task}_{args.data}')
+    if not os.path.exists(logdir):
+        os.makedirs(logdir)
     
-    X_train, X_val, X_test, y_train, y_val, y_test = load_data(args.root, args.data, length=args.length, overlap=args.overlap, shuffle=True)
+    print(f'=> Running cross {len(args.seeds)} seeds and {len(args.fractions)} fractions')
+    for seed in args.seeds:
+        for fraction in args.fractions:
+            run(logdir, seed, fraction)
+
+    print(f'==================== Calculating total metrics ====================')
+    start_logging('total', logdir)
+    for fraction in args.fractions:
+        print(f'=> Fraction: {fraction}, Seeds: {args.seeds}')
+        val_path = os.path.join(logdir, f'val_{fraction}.csv')
+        test_path = os.path.join(logdir, f'test_{fraction}.csv')
+        val_df = pd.read_csv(val_path, index_col=0)
+        test_df = pd.read_csv(test_path, index_col=0)
+        val_mean = val_df.mean().to_dict()
+        test_mean = test_df.mean().to_dict()
+        val_std = val_df.std().to_dict()
+        test_std = test_df.std().to_dict()
+        
+        val_out = (f'{k}: {m:.6f}±{s:.6f}' for k, m, s in zip(val_mean.keys(), val_mean.values(), val_std.values()))
+        test_out = (f'{k}: {m:.6f}±{s:.6f}' for k, m, s in zip(test_mean.keys(), test_mean.values(), test_std.values()))
+        print('=> Metrics for validation set\n', '\n'.join(val_out))
+        print('=> Metrics for test set\n', '\n'.join(test_out))
+    stop_logging()
+
+
+def run(logdir, seed, fraction):
+    seed_everything(seed)
+    print(f'=> Set seed to {seed}')
+    
+    X_train, X_val, X_test,\
+    y_train, y_val, y_test = load_data(args.root,
+                                       args.data,
+                                       length=args.length,
+                                       overlap=args.overlap)
     
     # only use fraction of training samples.
-    if args.fraction < 1:
-        X_train = X_train[:int(X_train.shape[0] * args.fraction)]
-        y_train = y_train[:int(y_train.shape[0] * args.fraction)]
-        print(f'=> Use {args.fraction}% of training data')
+    if fraction < 1:
+        X_train = X_train[:int(X_train.shape[0] * fraction)]
+        y_train = y_train[:int(y_train.shape[0] * fraction)]
+        print(f'=> Using {fraction}% of training data')
     
     train_dataset = TensorDataset(torch.from_numpy(X_train).to(torch.float),
                                   torch.from_numpy(y_train[:, 0]).to(torch.long))
@@ -87,8 +113,6 @@ def main():
     
     device = get_device()
     print(f'=> Running on {device}')
-    
-    assert X_train.ndim == 3
     device = torch.device(device)
     
     input_dims = X_test.shape[-1]
@@ -112,36 +136,13 @@ def main():
         'recall': Recall(task='multiclass', num_classes=num_classes, average='macro'),
         'auprc': AveragePrecision(task='multiclass', num_classes=num_classes) 
         }).to(device)
-
-    if args.test:
-        if os.path.isfile(args.test):
-            start_logging(args.seed, logdir) # simultaneously save the print out to file
-            print(f'=> Test on {args.test}')
-            model.load_state_dict(torch.load(args.test))
-            val_metrics_dict = evaluate(model, val_loader, metrics, device)
-            print('=> Metrics for validation set\n', val_metrics_dict)
-            
-            test_metrics_dict = evaluate(model, test_loader, metrics, device)
-            print('=> Metrics for test set\n', test_metrics_dict)
-            stop_logging()   
-        else:
-            print(f'=> Find nothing in {args.test}')
-        return
-            
-    # freeze the backbone encoder in PFT
-    if args.partial:
-        for name, params in model.named_parameters():
-            if not name.startswith('proj_head'):
-                params.requires_grad = False
-       
-    # todo: resume training
-               
+           
     if args.pretrain:
         if os.path.isfile(args.pretrain):
-            print(f'=> Load pretrained model from {args.pretrain}')
+            print(f'=> Loading pretrained model from {args.pretrain}')
             weights = torch.load(args.pretrain)
             
-            # to adapt to pretrained CLOCS-like model
+            # to align with different leads of pre-train dataset
             if weights['module.input_fc.weight'].shape[1] != input_dims:
                 del weights['module.input_fc.weight']
                 del weights['module.input_fc.bias']
@@ -151,52 +152,76 @@ def main():
         else:
             print(f'=> Find nothing in {args.pretrain}')
     else:
-        print(f'=> Train from scratch')
+        print(f'=> Training from scratch')
             
-    params = list(filter(lambda p: p.requires_grad, model.parameters()))
-    print(f'=> Number of trainable parameters groups: {len(params)}') # for debug
-    optimizer = torch.optim.AdamW(params, lr=args.lr)
+    # params = list(filter(lambda p: p.requires_grad, model.parameters()))
+    # optimizer = torch.optim.AdamW(params, lr=args.lr)
+    optimizer = torch.optim.AdamW(model.parameters(), lr=args.lr)
 
     criterion = nn.CrossEntropyLoss()
 
     epoch_lost_list, epoch_f1_list = [], []
-    
     start_time = datetime.now()
     model.train()
+    
     for epoch in range(args.epochs):
         # training loop
-        cum_loss = 0
-        for x, y in tqdm(train_loader, desc=f'=> Epoch {epoch+1}', leave=False):
-            x, y = x.to(device), y.to(device)
-            optimizer.zero_grad()
-
-            y_pred = model(x)
-            loss = criterion(y_pred, y)
-            loss.backward()
-            optimizer.step()
-            cum_loss += loss.item()
-
-        cum_loss /= len(train_loader)
-        epoch_lost_list.append(cum_loss)
-
+        loss = train(model, train_loader, optimizer, criterion, epoch, device)
+        epoch_lost_list.append(loss)
+        
         # validation
         val_metrics_dict = evaluate(model, val_loader, metrics, device)
         f1 = val_metrics_dict['f1']
         epoch_f1_list.append(f1)
-        finetune_callback(model, epoch, f1, fraction=args.fraction, checkpoint=args.checkpoint)
+        
+        finetune_callback(logdir, model, epoch, f1, fraction, seed)
         
         if args.verbose:
-            print(f"=> Epoch {epoch+1} loss: {cum_loss}")
-            if args.verbose > 1:
+            print(f"=> Epoch {epoch+1} loss: {loss}")
+            if args.verbose > 2:
                 print(val_metrics_dict)
-    
+                
     end_time = datetime.now()
     print(f'=> Training finished in {end_time - start_time}')
+    
     # save loss and f1score
-    np.save(os.path.join(logdir, f'loss_{args.fraction}.npy'), epoch_lost_list)
-    np.save(os.path.join(logdir, f'f1_{args.fraction}.npy'), epoch_f1_list)
+    np.save(os.path.join(logdir, f'loss_{fraction}_{seed}.npy'), epoch_lost_list)
+    np.save(os.path.join(logdir, f'f1_{fraction}_{seed}.npy'), epoch_f1_list)
+    
+    # testing
+    test_path = os.path.join(logdir, f'bestf1_{fraction}_{seed}.pth')
+    start_logging(seed, logdir) # simultaneously save the print out to file
+    print(f'=> Testing on {test_path}')
+    model.load_state_dict(torch.load(test_path))
+    val_metrics_dict = evaluate(model, val_loader, metrics, device)
+    if args.verbose > 1:
+        print('=> Metrics for validation set\n', val_metrics_dict)
+    
+    test_metrics_dict = evaluate(model, test_loader, metrics, device)
+    if args.verbose > 1:
+        print('=> Metrics for test set\n', test_metrics_dict)
+    stop_logging(logdir, seed, fraction, val_metrics_dict, test_metrics_dict)
 
-  
+
+def train(model, loader, optimizer, criterion, epoch, device):
+    '''
+    one epoch training
+    '''
+    cum_loss = 0
+    for x, y in tqdm(loader, desc=f'=> Epoch {epoch+1}', leave=False):
+        x, y = x.to(device), y.to(device)
+        optimizer.zero_grad()
+
+        y_pred = model(x)
+        loss = criterion(y_pred, y)
+        loss.backward()
+        optimizer.step()
+        cum_loss += loss.item()
+
+    cum_loss /= len(loader)
+    return cum_loss
+    
+    
 def evaluate(model, loader, metrics, device):
     '''
     do validation or test
@@ -214,16 +239,14 @@ def evaluate(model, loader, metrics, device):
     return metrics_dict
 
 
-def finetune_callback(model, epoch, f1, fraction=1.0, checkpoint=1):
+def finetune_callback(logdir, model, epoch, f1, fraction, seed):
     if (epoch+1) == 1:
         model.finetune_f1 = f1
-        torch.save(model.state_dict(), os.path.join(logdir, f'bestf1_{fraction}.pth'))
+        torch.save(model.state_dict(), os.path.join(logdir, f'bestf1_{fraction}_{seed}.pth'))
     # control the saving frequency
-    if (epoch+1) % checkpoint == 0:
-        if f1 > model.finetune_f1:
-            model.finetune_f1 = f1
-            torch.save(model.state_dict(), os.path.join(logdir, f'bestf1_{fraction}.pth'))
-
+    if f1 > model.finetune_f1:
+        model.finetune_f1 = f1
+        torch.save(model.state_dict(), os.path.join(logdir, f'bestf1_{fraction}_{seed}.pth'))
 
 if __name__ == '__main__':
     main()

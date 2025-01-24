@@ -1,4 +1,5 @@
 import torch
+import os
 import torch.nn.functional as F
 from tqdm import tqdm
 from datetime import datetime
@@ -9,7 +10,7 @@ from model.cl_loss import id_momentum_loss
 from utils import shuffle_feature_label, myft, MyBatchSampler
 
 
-class MPF:
+class MPTF:
     '''A momentum contrastive learning model cross time, frequency, patient.
     
     Args:
@@ -37,7 +38,6 @@ class MPF:
         momentum=0.999,
         queue_size=16384,
         multi_gpu=True,
-        callback_func=None
     ):
         super().__init__()
         self.device = device
@@ -48,8 +48,6 @@ class MPF:
         self.hidden_dims = hidden_dims
         
         self.multi_gpu = multi_gpu
-        # gpu_idx_list = [0, 1]
-        self.callback_func = callback_func
         
         self.momentum = momentum
         self.queue_size = queue_size
@@ -86,7 +84,7 @@ class MPF:
         self.queue_ptr = torch.zeros(1, dtype=torch.long, device=device, requires_grad=False)
         
         
-    def fit(self, X, y, shuffle_function='trial', masks='all_true', epochs=None, verbose=True):
+    def fit(self, X, y, shuffle_function='trial', masks='all_true', epochs=None, logdir='', checkpoint=1, verbose=True):
             ''' Training the MPF model.
             
             Args:
@@ -164,11 +162,11 @@ class MPF:
                 if verbose:
                     print(f"=> Epoch {epoch+1}: loss: {cum_loss}")
                     
-                if self.callback_func is not None:
-                    self.callback_func(self, epoch)
+                if (epoch+1) % checkpoint == 0:
+                    self.save(os.path.join(logdir, f'pretrain_{epoch+1}.pth'))
                     
             end_time = datetime.now()
-            print(f'Training finished in {end_time - start_time}')
+            print(f'=> Training finished in {end_time - start_time}')
                 
             return epoch_loss_list
         

@@ -1,4 +1,4 @@
-''' Train MCP
+''' Train MPTF
 '''
 import os
 import argparse
@@ -6,13 +6,12 @@ import torch
 import sklearn
 import numpy as np
 import torch.nn.functional as F
-from mcp import MCP
+from mptf import MPTF
 from data import load_data
 from utils import seed_everything, get_device, start_logging, stop_logging
 from eval_protocols import fit_lr
 
-
-parser = argparse.ArgumentParser(description='MCP training')
+parser = argparse.ArgumentParser(description='MPTF training')
 parser.add_argument('--seed', type=int, default=42, help='random seed')
 # for the data
 parser.add_argument('--root', type=str, default='dataset', help='root directory of datasets')
@@ -24,16 +23,14 @@ parser.add_argument('--depth', type=int, default=10, help='depth of the encoder'
 parser.add_argument('--hidden_dim', type=int, default=64, help='hidden dimension of the model')
 parser.add_argument('--output_dim', type=int, default=320, help='output dimension of the model')
 parser.add_argument('--momentum', type=float, default=0.999, help='momentum for the model')
-parser.add_argument('--queue_size', type=int, default=4096, help='queue size for the model')
-parser.add_argument('--num_queues', type=int, default=1, help='number of queues for the model')
-parser.add_argument('--masks', type=str, default=['all_true', 'all_true', 'continuous', 'continuous'], nargs='*', help='masks for the model')
-parser.add_argument('--factors', type=float, default=[0.25, 0.25, 0.25, 0.25], nargs='*', help='factors for each level')
+parser.add_argument('--queue_size', type=int, default=16384, help='queue size for the model')
+parser.add_argument('--masks', type=str, default='all_true', help='mask for the model')
 # for the training
 parser.add_argument('--lr', type=float, default=1e-4, help='learning rate')
 parser.add_argument('--batch_size', type=int, default=256, help='batch size')
 parser.add_argument('--epochs', type=int, default=100, help='number of epochs')
 parser.add_argument('--shuffle', type=str, default='trial', help='way to shuffle the data')
-parser.add_argument('--logdir', type=str, default='log_mcp', help='directory to save logs')
+parser.add_argument('--logdir', type=str, default='log_mpf', help='directory to save logs')
 parser.add_argument('--checkpoint', type=int, default=1, help='save model after each checkpoint')
 parser.add_argument('--multi_gpu', action='store_true', help='use multiple GPUs')
 parser.add_argument('--verbose', type=int, default=1, help='print loss after each epoch')
@@ -42,41 +39,43 @@ parser.add_argument('--eval', type=str, default='', help='model weight file path
 # todo
 # parser.add_argument('--resume', type=str, default='', help='resume training from a checkpoint')
 
-args = parser.parse_args()
-
-logdir = os.path.join(args.logdir, f'mcp_{args.data}_{args.seed}')
-if not os.path.exists(logdir):
-    os.makedirs(logdir)
-
 def main(): 
+    args = parser.parse_args()
+
+    logdir = os.path.join(args.logdir, f'mpf_{args.data}_{args.seed}')
+    if not os.path.exists(logdir):
+        os.makedirs(logdir)
+        
     seed_everything(args.seed)
     print(f'=> Set seed to {args.seed}')
     
-    X_train, X_val, X_test, y_train, y_val, y_test = load_data(args.root, args.data, length=args.length, overlap=args.overlap, shuffle=True)
+    X_train, X_val, X_test,\
+    y_train, y_val, y_test = load_data(args.root,
+                                       args.data,
+                                       length=args.length,
+                                       overlap=args.overlap,
+                                       shuffle=True)
     
     device = get_device()
     print(f'=> Running on {device}')
     
-    model = MCP(
+    model = MPTF(
         input_dims=X_test.shape[-1],
         output_dims=args.output_dim,
         hidden_dims=args.hidden_dim,
-        length=args.length,
         depth=args.depth,
         device=device,
         lr=args.lr,
         batch_size=args.batch_size,
         momentum=args.momentum,
         queue_size=args.queue_size,
-        num_queue=args.num_queues,
-        multi_gpu=args.multi_gpu,
-        callback_func=pretrain_callback
+        multi_gpu=args.multi_gpu
     )
     
     if args.eval: # linear evaluation
         if os.path.isfile(args.eval):
             start_logging(args.seed, logdir) # simultaneously save the print out to file
-            print(f'=> Perform linear evaluation on {args.eval}')
+            print(f'=> Performing linear evaluation on {args.eval}')
             model.load(args.eval)
             
             val_metrics_dict = eval_classification(model, X_train, y_train[:, 0], X_val, y_val[:, 0])
@@ -88,24 +87,20 @@ def main():
         else:
             print(f'=> Find nothing in {args.eval}')
     else: # train the model
-        print(f'=> Train MCP')
+        print(f'=> Train MPF')
         loss_list = model.fit(
             X_train,
             y_train,
             shuffle_function=args.shuffle,
             masks=args.masks,
-            factors=args.factors,
             epochs=args.epochs,
+            logdir=logdir,
+            checkpoint=args.checkpoint,
             verbose=args.verbose
             )
         # save training loss
         np.save(os.path.join(logdir, 'loss.npy'), loss_list)
-    
-    
-def pretrain_callback(model, epoch, checkpoint=args.checkpoint):
-    if (epoch+1) % checkpoint == 0:
-        model.save(os.path.join(logdir, f'pretrain_{epoch+1}.pth'))
-        
+
 
 def eval_classification(model, train_data, train_labels, test_data, test_labels, fraction=None):
     '''

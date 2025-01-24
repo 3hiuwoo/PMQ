@@ -63,16 +63,34 @@ class Logger(object):
         self.log.flush()
 
 
-def start_logging(random_seed, saving_directory):
-    log_filename = f"log_{random_seed}.txt"
-    log_filepath = os.path.join(saving_directory, log_filename)
+def start_logging(seed, logdir):
+    log_filename = f"log_{seed}.txt"
+    log_filepath = os.path.join(logdir, log_filename)
     sys.stdout = Logger(log_filepath)
 
 
-def stop_logging():
+def stop_logging(logdir=None, seed=None, fraction=None, val_metrics=None, test_metrics=None):
     print()
     sys.stdout = sys.__stdout__
     
+    if val_metrics:
+        val_path = os.path.join(logdir, f'val_{fraction}.csv')
+        write_csv(val_path, seed, val_metrics)
+        
+    if test_metrics:
+        test_path = os.path.join(logdir, f'test_{fraction}.csv')
+        write_csv(test_path, seed, test_metrics)
+        
+
+def write_csv(path, seed, metrics):
+    metrics = pd.DataFrame(metrics, index=[seed])
+    if os.path.isfile(path):
+        df = pd.read_csv(path, index_col=0)
+        df = pd.concat([df, metrics])
+        df.to_csv(path)
+    else:
+        metrics.to_csv(path)
+        
     
 class MyBatchSampler(BatchSampler):
     ''' 
