@@ -6,7 +6,7 @@ import torch
 import sklearn
 import numpy as np
 import torch.nn.functional as F
-from mptf import MPTF
+from tfp import TFP
 from data import load_data
 from utils import seed_everything, get_device, start_logging, stop_logging
 from eval_protocols import fit_lr
@@ -59,7 +59,7 @@ def main():
     device = get_device()
     print(f'=> Running on {device}')
     
-    model = MPTF(
+    model = TFP(
         input_dims=X_test.shape[-1],
         output_dims=args.output_dim,
         hidden_dims=args.hidden_dim,

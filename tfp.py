@@ -10,7 +10,7 @@ from model.cl_loss import id_momentum_loss
 from utils import shuffle_feature_label, myft, MyBatchSampler
 
 
-class MPTF:
+class TFP:
     '''A momentum contrastive learning model cross time, frequency, patient.
     
     Args:
