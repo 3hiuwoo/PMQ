@@ -54,7 +54,7 @@ def main():
                                        args.data,
                                        length=args.length,
                                        overlap=args.overlap,
-                                       shuffle=True)
+                                       )
     
     device = get_device()
     print(f'=> Running on {device}')
