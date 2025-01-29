@@ -99,9 +99,9 @@ def load_label_split(root='dataset', name='chapman'):
         pids_cd = list(labels[np.where(labels[:, 0]==3)][:, 1])
         pids_hyp = list(labels[np.where(labels[:, 0]==3)][:, 1])
         
-        train_ids = pids_norm[:-1200] + pids_mi[:-400] + pids_sttc[:-400] + pids_cd[:-200] + pids_hyp[:-200]
-        val_ids = pids_norm[-1200:-600] + pids_mi[-400:-200] + pids_sttc[-400:-200] + pids_cd[-200:-100] + pids_hyp[-200:-100]
-        test_ids = pids_norm[-600:] + pids_mi[-200:] + pids_sttc[-200:] + pids_cd[-100:] + pids_hyp[-100:]
+        train_ids = pids_norm[:-1200] + pids_mi[:-600] + pids_sttc[:-600] + pids_cd[:-400] + pids_hyp[:-200]
+        val_ids = pids_norm[-1200:-600] + pids_mi[-600:-300] + pids_sttc[-600:-300] + pids_cd[-400:-200] + pids_hyp[-200:-100]
+        test_ids = pids_norm[-600:] + pids_mi[-300:] + pids_sttc[-300:] + pids_cd[-200:] + pids_hyp[-100:]
         
     else:
         raise ValueError(f'Unknown dataset: {name}')

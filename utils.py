@@ -211,27 +211,6 @@ def resample(data, freq1=500, freq2=250, kind='linear'):
     return new_data
 
 
-def stretch1d(data, scale=2):
-    '''
-    stretch the data by scale
-    '''
-    t = np.arange(len(data))
-    f = interpolate.interp1d(t, data, kind='linear')
-    t_new = np.linspace(0, len(data)-1, int(len(data)*scale))
-    new_data = f(t_new)
-    return new_data
-
-
-def stretch(data, scale=2):
-    '''
-    stretch the data by scale
-    '''
-    new_data = []
-    for i in range(data.shape[1]):
-        new_data.append(stretch1d(data[:, i], scale))
-    return np.array(new_data).T
-    
-    
 def normalize(data):
     '''
     normalize the data by x=x-mean/std
@@ -296,21 +275,6 @@ def sample2trial(samples, size=10):
         trials.append(beat)
         idx += size
     return trials
-
-
-def segment(X, y, sample):
-    '''
-    segment the trial to non-overlapping samples
-    '''
-    length = X.shape[1]
-    assert length % sample == 0
-    nsample = length / sample
-    
-    samples = X.reshape(-1, sample, X.shape[-1])
-    tids = np.repeat(np.arange(y.shape[0])+1, nsample)
-    labels = np.repeat(y, nsample, axis=0)
-    labels = np.hstack([labels, tids.reshape(labels.shape[0], -1)])
-    return samples, labels
 
 
 def butter_bandpass(lowcut, highcut, fs, order=5):
@@ -427,27 +391,6 @@ def split_data(X_trial, sample_timestamps=256, overlapping=0.5):
 
     return X_sample, trial_ids, sample_num
 
-
-def myft(data):
-    '''
-    Fourier transform
-    '''
-    length = data.shape[1]
-    spec = fftn(data, dim=1)
-    spec = torch.abs(spec)
-    spec = spec[:, :length//2, :]
-    spec = F.interpolate(spec.permute(0, 2, 1), scale_factor=2).permute(0, 2, 1)
-    spec = standarlize(spec)
-    return spec
-    
-    
-def standarlize(data):
-    '''
-    standarlize the data
-    '''
-    mean = data.mean(dim=1, keepdim=True)
-    std = data.std(dim=1, keepdim=True)
-    return (data - mean) / std
 
         
     
