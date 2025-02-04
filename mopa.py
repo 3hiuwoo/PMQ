@@ -84,7 +84,7 @@ class MOPA:
         self.queue_ptr = torch.zeros(1, dtype=torch.long, device=device, requires_grad=False)
         
         
-    def fit(self, X, y, shuffle_function='random', masks='o+fb', epochs=None, logdir='', checkpoint=1, verbose=True):
+    def fit(self, X, y, shuffle_function='random', masks='t+fb', epochs=None, logdir='', checkpoint=1, verbose=True):
             ''' Training the MoPa model.
             
             Args:

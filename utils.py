@@ -9,6 +9,7 @@ import os
 import sys
 import numpy as np
 import pandas as pd
+import torch.nn.functional as F
 from torch import fft
 from sklearn.utils import shuffle
 from torch.utils.data import BatchSampler
@@ -193,27 +194,27 @@ def batch_shuffle_feature_label(X, y, batch_size=256):
     return X_shuffled, y_shuffled
 
 
-def transform(x, opt='o'):
-    if opt == 'o':
-        return x, 'all_true'
-    elif opt == 'b':
-        return x, 'binomial'
-    elif opt == 'c':
-        return x, 'continuous'
-    elif opt == 'cb':
-        return x, 'channel_binomial'
-    elif opt == 'cc':
-        return x, 'channel_continuous'
-    elif opt == 'f':
-        return freq_perturb(x), 'all_true'
-    elif opt == 'fb':
-        return freq_perturb(x), 'binomial'
-    elif opt == 'fc':
-        return freq_perturb(x), 'continuous'
-    elif opt == 'fcb':
-        return freq_perturb(x), 'channel_binomial'
-    elif opt == 'fcc':
-        return freq_perturb(x), 'channel_continuous'
+def transform(x, opt='t'):
+    if opt[0] == 't':
+        re = x
+    elif opt[0] == 'f':
+        re = freq_perturb(x, ratio=0.1)
+    elif opt[0] == 's':
+        re = fft_interp(x, target_len=256)
+    
+    if len(opt) == 1:
+        mask = 'all_true'
+    elif opt[1:] == 'b':
+        mask = 'binomial'
+    elif opt[1:] == 'c':
+        mask = 'continuous'
+    elif opt[1:] == 'cb':
+        mask = 'channel_binomial'
+    elif opt[1:] == 'cc':
+        mask = 'channel_continuous'
+    
+    return re, mask
+    
         
 
 def freq_perturb(x, ratio=0.1):
@@ -240,7 +241,17 @@ def add_frequency(x, ratio=0.0):
     max_amplitude = x.max()
     random_am = torch.rand(mask.shape) * (max_amplitude * 0.1)
     pertub_matrix = mask * random_am
-    return x + pertub_matrix   
+    return x + pertub_matrix 
+
+
+def fft_interp(x, target_len):
+    '''
+    Interpolate the time-series data to the target length.
+    '''
+    xf = fft.rfft(x, dim=1).abs()
+    xf = xf.permute(0, 2, 1)
+    xf = F.interpolate(xf, size=target_len, mode='linear')
+    return xf  
   
 
 

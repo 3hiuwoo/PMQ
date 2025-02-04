@@ -22,7 +22,7 @@ parser.add_argument('--hidden_dim', type=int, default=64, help='hidden dimension
 parser.add_argument('--output_dim', type=int, default=320, help='output dimension of the model')
 parser.add_argument('--momentum', type=float, default=0.999, help='momentum for the model')
 parser.add_argument('--queue_size', type=int, default=65536, help='queue size for the model')
-parser.add_argument('--masks', type=str, default='o+fb', help='opt+opt opt: o/f/b/c/cb/cc/fb/fc/fcb/fcc')
+parser.add_argument('--masks', type=str, default='t+fb', help='opt+opt opt: [t/f/s](b/c/cb/cc)')
 # training
 parser.add_argument('--lr', type=float, default=1e-4, help='learning rate')
 parser.add_argument('--batch_size', type=int, default=256, help='batch size')
