@@ -1,10 +1,11 @@
 import os
 import numpy as np
 from tqdm import tqdm
-from utils import split_data_label, process_batch_ts
-from sklearn.utils import shuffle
+from sklearn.preprocessing import StandardScaler
+from scipy.signal import butter, lfilter
+from itertools import repeat
     
-def load_data(root='dataset', name='chapman', length=None, overlap=0, norm=True, shuff=True):
+def load_data(root='dataset', name='chapman', length=None, overlap=0, norm=True):
     '''
     load and preprocess data
     '''
@@ -44,10 +45,10 @@ def load_data(root='dataset', name='chapman', length=None, overlap=0, norm=True,
     y_val = np.array(valid_labels)
     y_test = np.array(test_labels)
     
-    if shuff:
-        X_train, y_train = shuffle(X_train, y_train)
-        X_val, y_val = shuffle(X_val, y_val)
-        X_test, y_test = shuffle(X_test, y_test)
+    # if shuff:
+    #     X_train, y_train = shuffle(X_train, y_train)
+    #     X_val, y_val = shuffle(X_val, y_val)
+    #     X_test, y_test = shuffle(X_test, y_test)
     
     if norm:
         X_train = process_batch_ts(X_train, normalized=True, bandpass_filter=False)
@@ -107,4 +108,119 @@ def load_label_split(root='dataset', name='chapman'):
         raise ValueError(f'Unknown dataset: {name}')
         
     return labels, train_ids, val_ids, test_ids
+
+
+def butter_bandpass(lowcut, highcut, fs, order=5):
+    nyq = 0.5 * fs
+    low = lowcut / nyq
+    high = highcut / nyq
+    b, a = butter(order, [low, high], btype='band')
+    return b, a
+
+
+def butter_bandpass_filter(data, lowcut, highcut, fs, order=5):
+    ''' see https://stackoverflow.com/questions/12093594/how-to-implement-band-pass-butterworth-filter-with-scipy-signal-butter
+
+    '''
+    b, a = butter_bandpass(lowcut, highcut, fs, order=order)
+    y = lfilter(b, a, data, axis=0)
+    return y
+
+
+def process_ts(ts, fs, normalized=True, bandpass_filter=False):
+    ''' preprocess a time-series data
+
+    Args:
+        ts (numpy.ndarray): The input time-series in shape (timestamps, feature).
+        fs (float): The sampling frequency for bandpass filtering.
+        normalized (bool): Whether to normalize the time-series data.
+        bandpass_filter (bool): Whether to filter the time-series data.
+
+    Returns:
+        ts (numpy.ndarray): The processed time-series.
+    '''
+
+    if bandpass_filter:
+        ts = butter_bandpass_filter(ts, 0.5, 50, fs, 5)
+    if normalized:
+        scaler = StandardScaler()
+        scaler.fit(ts)
+        ts = scaler.transform(ts)
+    return ts
+
+
+def process_batch_ts(batch, fs=256, normalized=True, bandpass_filter=False):
+    ''' preprocess a batch of time-series data
+
+    Args:
+        batch (numpy.ndarray): A batch of input time-series in shape (n_samples, timestamps, feature).
+
+    Returns:
+        A batch of processed time-series.
+    '''
+
+    bool_iterator_1 = repeat(fs, len(batch))
+    bool_iterator_2 = repeat(normalized, len(batch))
+    bool_iterator_3 = repeat(bandpass_filter, len(batch))
+    return np.array(list(map(process_ts, batch, bool_iterator_1, bool_iterator_2, bool_iterator_3)))
+
+
+def split_data_label(X_trial, y_trial, sample_timestamps, overlapping):
+    ''' split a batch of time-series trials into samples and adding trial ids to the label array y
+
+    Args:
+        X_trial (numpy.ndarray): It should have a shape of (n_trials, trial_timestamps, features) B_trial x T_trial x C.
+        y_trial (numpy.ndarray): It should have a shape of (n_trials, 2). The first column is the label and the second column is patient id.
+        sample_timestamps (int): The length for sample-level data (T_sample).
+        overlapping (float): How many overlapping for each sample-level data in a trial.
+
+    Returns:
+        X_sample (numpy.ndarray): It should have a shape of (n_samples, sample_timestamps, features) B_sample x T_sample x C. The B_sample = B x sample_num.
+        y_sample (numpy.ndarray): It should have a shape of (n_samples, 3). The three columns are the label, patient id, and trial id.
+    '''
+    X_sample, trial_ids, sample_num = split_data(X_trial, sample_timestamps, overlapping)
+    # all samples from same trial should have same label and patient id
+    y_sample = np.repeat(y_trial, repeats=sample_num, axis=0)
+    # append trial ids. Segments split from same trial should have same trial ids
+    label_num = y_sample.shape[0]
+    y_sample = np.hstack((y_sample.reshape((label_num, -1)), trial_ids.reshape((label_num, -1))))
+    # X_sample, y_sample = shuffle(X_sample, y_sample)
+    return X_sample, y_sample
+
+
+def split_data(X_trial, sample_timestamps=256, overlapping=0.5):
+    ''' split a batch of trials into samples and mark their trial ids
+
+    Args:
+        See split_data_label() function
+
+    Returns:
+        X_sample (numpy.ndarray): (n_samples, sample_timestamps, feature).
+        trial_ids (numpy.ndarray): (n_samples,)
+        sample_num (int): one trial splits into sample_num of samples
+    '''
+    length = X_trial.shape[1]
+    # check if sub_length and overlapping compatible
+    if overlapping:
+        assert (length - (1-overlapping)*sample_timestamps) % (sample_timestamps*overlapping) == 0
+        sample_num = (length - (1 - overlapping) * sample_timestamps) / (sample_timestamps * overlapping)
+    else:
+        assert length % sample_timestamps == 0
+        sample_num = length / sample_timestamps
+    sample_feature_list = []
+    trial_id_list = []
+    trial_id = 1
+    for trial in X_trial:
+        counter = 0
+        # ex. split one trial(5s, 1280 timestamps) into 9 half-overlapping samples (1s, 256 timestamps)
+        while counter*sample_timestamps*(1-overlapping)+sample_timestamps <= trial.shape[0]:
+            sample_feature = trial[int(counter*sample_timestamps*(1-overlapping)):int(counter*sample_timestamps*(1-overlapping)+sample_timestamps)]
+            # print(f"{int(counter*length*(1-overlapping))}:{int(counter*length*(1-overlapping)+length)}")
+            sample_feature_list.append(sample_feature)
+            trial_id_list.append(trial_id)
+            counter += 1
+        trial_id += 1
+    X_sample, trial_ids = np.array(sample_feature_list), np.array(trial_id_list)
+
+    return X_sample, trial_ids, sample_num
         

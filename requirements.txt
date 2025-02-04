@@ -6,5 +6,4 @@ pandas
 scipy
 wfdb
 neurokit2
-statsmodels
 matplotlib

@@ -119,7 +119,7 @@ class TSEncoder(nn.Module):
         self.repr_dropout = nn.Dropout(p=0.1)
         
         
-    def forward(self, x, mask=None, pool=False):  # input dimension : B x O x Ci
+    def forward(self, x, mask=None, pool=True):  # input dimension : B x O x Ci
         x = self.input_fc(x)  # B x O x Ch (hidden_dims)
         
         # generate & apply mask, default is binomial

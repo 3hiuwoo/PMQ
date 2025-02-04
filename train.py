@@ -1,41 +1,37 @@
-''' Train MPTF
+''' Train MoPa
 '''
 import os
 import argparse
-import torch
-import sklearn
+import warnings
 import numpy as np
-import torch.nn.functional as F
-from tfp import TFP
+from mopa import MOPA
 from data import load_data
-from utils import seed_everything, get_device, start_logging, stop_logging
-from eval_protocols import fit_lr
+from utils import seed_everything, get_device
+warnings.filterwarnings('ignore')
 
-parser = argparse.ArgumentParser(description='MPTF training')
+parser = argparse.ArgumentParser(description='MoPa training')
 parser.add_argument('--seed', type=int, default=42, help='random seed')
-# for the data
+# data
 parser.add_argument('--root', type=str, default='dataset', help='root directory of datasets')
-parser.add_argument('--data', type=str, default='chapman', help='select pretraining dataset')
+parser.add_argument('--data', type=str, default='chapman', help='[chapman, ptb, ptbxl]')
 parser.add_argument('--length', type=int, default=300, help='length of each sample')
 parser.add_argument('--overlap', type=float, default=0., help='overlap of each sample')
-# for the model
+# model
 parser.add_argument('--depth', type=int, default=10, help='depth of the encoder')
 parser.add_argument('--hidden_dim', type=int, default=64, help='hidden dimension of the model')
 parser.add_argument('--output_dim', type=int, default=320, help='output dimension of the model')
 parser.add_argument('--momentum', type=float, default=0.999, help='momentum for the model')
-parser.add_argument('--queue_size', type=int, default=16384, help='queue size for the model')
-parser.add_argument('--masks', type=str, default='all_true', help='mask for the model')
-# for the training
+parser.add_argument('--queue_size', type=int, default=65536, help='queue size for the model')
+parser.add_argument('--masks', type=str, default='o+fb', help='opt+opt opt: o/f/b/c/cb/cc/fb/fc/fcb/fcc')
+# training
 parser.add_argument('--lr', type=float, default=1e-4, help='learning rate')
 parser.add_argument('--batch_size', type=int, default=256, help='batch size')
 parser.add_argument('--epochs', type=int, default=100, help='number of epochs')
-parser.add_argument('--shuffle', type=str, default='trial', help='way to shuffle the data')
-parser.add_argument('--logdir', type=str, default='log_mpf', help='directory to save logs')
+parser.add_argument('--shuffle', type=str, default='random', help='way to shuffle the data')
+parser.add_argument('--logdir', type=str, default='log_mopa', help='directory to save logs')
 parser.add_argument('--checkpoint', type=int, default=1, help='save model after each checkpoint')
 parser.add_argument('--multi_gpu', action='store_true', help='use multiple GPUs')
 parser.add_argument('--verbose', type=int, default=1, help='print loss after each epoch')
-# linear evaluation
-parser.add_argument('--eval', type=str, default='', help='model weight file path to perform linear evaluation. (no pretraining)')
 # todo
 # parser.add_argument('--resume', type=str, default='', help='resume training from a checkpoint')
 
@@ -59,7 +55,7 @@ def main():
     device = get_device()
     print(f'=> Running on {device}')
     
-    model = TFP(
+    model = MOPA(
         input_dims=X_test.shape[-1],
         output_dims=args.output_dim,
         hidden_dims=args.hidden_dim,
@@ -72,75 +68,19 @@ def main():
         multi_gpu=args.multi_gpu
     )
     
-    if args.eval: # linear evaluation
-        if os.path.isfile(args.eval):
-            start_logging(args.seed, logdir) # simultaneously save the print out to file
-            print(f'=> Performing linear evaluation on {args.eval}')
-            model.load(args.eval)
-            
-            val_metrics_dict = eval_classification(model, X_train, y_train[:, 0], X_val, y_val[:, 0])
-            print('=> Linear evaluation for validation set\n', val_metrics_dict)
-            
-            test_metrics_dict = eval_classification(model, X_train, y_train[:, 0], X_test, y_test[:, 0])
-            print('=> Linear evaluation for test set\n', test_metrics_dict)
-            stop_logging()
-        else:
-            print(f'=> Find nothing in {args.eval}')
-    else: # train the model
-        print(f'=> Train MPF')
-        loss_list = model.fit(
-            X_train,
-            y_train,
-            shuffle_function=args.shuffle,
-            masks=args.masks,
-            epochs=args.epochs,
-            logdir=logdir,
-            checkpoint=args.checkpoint,
-            verbose=args.verbose
-            )
-        # save training loss
-        np.save(os.path.join(logdir, 'loss.npy'), loss_list)
-
-
-def eval_classification(model, train_data, train_labels, test_data, test_labels, fraction=None):
-    '''
-    Args:
-      fraction (Union[float, NoneType]): The fraction of training data. It used to do semi-supervised learning.
-    '''
-
-    assert train_labels.ndim == 1 or train_labels.ndim == 2
-
-    if fraction:
-        # use first fraction number of training data
-        print(f'=> Use {fraction} of training data for evaluation')
-        train_data = train_data[:int(train_data.shape[0]*fraction)]
-        train_labels = train_labels[:int(train_labels.shape[0]*fraction)]
-        # print(f"Fraction of train data used for semi_supervised learning:{fraction}\n")
-
-    train_repr = model.encode(train_data)
-    test_repr = model.encode(test_data)
-
-    clf = fit_lr(train_repr, train_labels)
-
-    pred_prob = clf.predict_proba(test_repr)
-    # print(pred_prob.shape)
-    target_prob = (F.one_hot(torch.tensor(test_labels).long(), num_classes=int(train_labels.max()+1))).numpy()
-    # print(target_prob.shape)
-    pred = pred_prob.argmax(axis=1)
-    target = test_labels
-
-    metrics_dict = {}
-    metrics_dict['Accuracy'] = sklearn.metrics.accuracy_score(target, pred)
-    metrics_dict['Precision'] = sklearn.metrics.precision_score(target, pred, average='macro')
-    metrics_dict['Recall'] = sklearn.metrics.recall_score(target, pred, average='macro')
-    metrics_dict['F1'] = sklearn.metrics.f1_score(target, pred, average='macro')
-    metrics_dict['AUROC'] = sklearn.metrics.roc_auc_score(target_prob, pred_prob, average='macro', multi_class='ovr')
-    metrics_dict['AUPRC'] = sklearn.metrics.average_precision_score(target_prob, pred_prob, average='macro')
-    
-    metrics_dict = {k: float(v) for k, v in metrics_dict.items()}
-
-    return metrics_dict
-        
+    print(f'=> Train MoPa')
+    loss_list = model.fit(
+        X_train,
+        y_train,
+        shuffle_function=args.shuffle,
+        masks=args.masks,
+        epochs=args.epochs,
+        logdir=logdir,
+        checkpoint=args.checkpoint,
+        verbose=args.verbose
+        )
+    # save training loss
+    np.save(os.path.join(logdir, 'loss.npy'), loss_list)
 
 if __name__ == '__main__':
     main()

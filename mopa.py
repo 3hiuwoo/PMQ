@@ -6,11 +6,11 @@ from datetime import datetime
 from torch import nn
 from torch.utils.data import TensorDataset, DataLoader
 from model.encoder import TSEncoder
-from model.cl_loss import id_momentum_loss
-from utils import shuffle_feature_label, myft, MyBatchSampler
+from model.loss import id_momentum_loss
+from utils import shuffle_feature_label, MyBatchSampler, transform
 
 
-class TFP:
+class MOPA:
     '''A momentum contrastive learning model cross time, frequency, patient.
     
     Args:
@@ -36,7 +36,7 @@ class TFP:
         lr=1e-4,
         batch_size=256,
         momentum=0.999,
-        queue_size=16384,
+        queue_size=65536,
         multi_gpu=True,
     ):
         super().__init__()
@@ -84,8 +84,8 @@ class TFP:
         self.queue_ptr = torch.zeros(1, dtype=torch.long, device=device, requires_grad=False)
         
         
-    def fit(self, X, y, shuffle_function='trial', masks='all_true', epochs=None, logdir='', checkpoint=1, verbose=True):
-            ''' Training the MPF model.
+    def fit(self, X, y, shuffle_function='random', masks='o+fb', epochs=None, logdir='', checkpoint=1, verbose=True):
+            ''' Training the MoPa model.
             
             Args:
                 X (numpy.ndarray): The training data. It should have a shape of (n_samples, sample_timestamps, features).
@@ -120,13 +120,14 @@ class TFP:
             
             epoch_loss_list = []
             
-            start_time = datetime.now()           
+            start_time = datetime.now() 
+            masks = masks.split('+')          
             for epoch in range(epochs):
                 cum_loss = 0
                 for x, y in tqdm(train_loader, desc=f'=> Epoch {epoch+1}', leave=False):
-                    # count by iterations
-                    x1 = x.to(self.device)
-                    x2 = myft(x).to(self.device)
+                    x = x.to(self.device)
+                    x1, mask1 = transform(x, opt=masks[0])
+                    x2, mask2 = transform(x, opt=masks[1])
                     pid = y[:, 1]  # patient id
                     
                     with torch.no_grad():
@@ -135,13 +136,13 @@ class TFP:
                     optimizer.zero_grad()
                     
                     # do augmentation and compute representation
-                    q = self.net_q(x1, mask=masks, pool=True)
+                    q = self.net_q(x1, mask=mask1, pool=True)
                     q = F.normalize(q, dim=1)
                     
                     with torch.no_grad():
                         # shuffle BN
                         idx = torch.randperm(x2.size(0), device=x.device)
-                        k = self.net_k(x2[idx], mask=masks, pool=True)
+                        k = self.net_k(x2[idx], mask=mask2, pool=True)
                         k = F.normalize(k, dim=1)
                         k = k[torch.argsort(idx)]
 
@@ -195,55 +196,7 @@ class TFP:
 
         self.queue_ptr[0] = ptr
         
-    
-    def eval_with_pooling(self, x, mask=None):
-        '''
-        max pool the representation
-        '''
-        # representation shape: B x O x Co --->  B x Co
-        out = self.net(x, mask, pool=True)
-        return out
-    
-    
-    def encode(self, X, mask=None, batch_size=None):
-        ''' Compute representations using the model.
-        
-        Args:
-            X (numpy.ndarray): The input data. This should have a shape of (n_samples, sample_timestamps, features).
-            mask (str): The mask used by encoder can be specified with this parameter. Check masking functions in encoder.py.
-            batch_size (Union[int, NoneType]): The batch size used for inference. If not specified, this would be the same batch size as training.
-            
-        Returns:
-            repr: The representations for data.
-        '''
-        assert self.net is not None, 'please train or load a net first'
-        assert X.ndim == 3
-        if batch_size is None:
-            batch_size = self.batch_size
-        # n_samples, ts_l, _ = data.shape
-
-        org_training = self.net.training
-        self.net.eval()
-        
-        dataset = TensorDataset(torch.from_numpy(X).to(torch.float))
-        loader = DataLoader(dataset, batch_size=batch_size)
-        
-        with torch.no_grad():
-            output = []
-            for batch in loader:
-                x = batch[0].to(self.device)
-                # print(next(self.net.parameters()).device)
-                # print(x.device)
-                out = self.eval_with_pooling(x, mask)
-                output.append(out)
-                
-            output = torch.cat(output, dim=0)
-            
-        self.net.train(org_training)
-        # return output.numpy()
-        return output.cpu().numpy()
-    
-       
+   
     def save(self, fn):
         '''Save the model to a file.
         

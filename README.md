@@ -29,17 +29,6 @@ To change other default settings, run the following for details:
 python train.py -h
 ```
 
-## Linear Evaluation
-
-To perform linear evaluation on pre-trained model, run:
-```
-python train.py --data [dataset's name]\
---root [folder containing directories of datasets]\
---logdir [folder to save the linear evaluation outcome]\
---eval [path of the pre-trained weight]
-```
-Note that this will disable most of training arguments.
-
 ## Fine-tuning
 
 To fine-tune with pretrained model, run:
