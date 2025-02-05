@@ -56,8 +56,8 @@ class MOPA:
         self.net_q = TSEncoder(input_dims=input_dims, output_dims=output_dims, hidden_dims=hidden_dims, depth=depth)
         self.net_k = TSEncoder(input_dims=input_dims, output_dims=output_dims, hidden_dims=hidden_dims, depth=depth)
         
-        self.proj_q = ProjectionHead(input_dims=output_dims, output_dims=proj_dims, hidden_dims=proj_dims) if proj_dims else None
-        self.proj_k = ProjectionHead(input_dims=output_dims, output_dims=proj_dims, hidden_dims=proj_dims) if proj_dims else None
+        self.proj_q = ProjectionHead(input_dims=output_dims, output_dims=output_dims, hidden_dims=proj_dims) if proj_dims else None
+        self.proj_k = ProjectionHead(input_dims=output_dims, output_dims=output_dims, hidden_dims=proj_dims) if proj_dims else None
 
         for param_q, param_k in zip(
             self.net_q.parameters(), self.net_k.parameters()
@@ -99,8 +99,9 @@ class MOPA:
         self.id_queue = torch.zeros(queue_size, dtype=torch.long, device=device, requires_grad=False)
         self.queue_ptr = torch.zeros(1, dtype=torch.long, device=device, requires_grad=False)
         
-        
-    def fit(self, X, y, shuffle_function='random', mask_type='t+fb', epochs=None, logdir='', checkpoint=1, verbose=1):
+    
+    # TODO: add learning rate scheduler
+    def fit(self, X, y, shuffle_function='random', mask_type='t+fb', epochs=None, schdule=[30, 80], logdir='', checkpoint=1, verbose=1):
             ''' Training the MoPa model.
             
             Args:
@@ -116,6 +117,8 @@ class MOPA:
             '''
             assert X.ndim == 3 # X.shape = (total_size, length, channels)
             assert y.shape[1] == 3
+            assert self.queue_size % self.batch_size == 0
+            
             if X.shape.index(min(X.shape)) == 1:
                 X = X.transpose(0, 2, 1)
 
@@ -134,8 +137,10 @@ class MOPA:
                 my_sampler = MyBatchSampler(range(len(train_dataset)), batch_size=self.batch_size, drop_last=True)
                 train_loader = DataLoader(train_dataset, batch_sampler=my_sampler)
             
-            optimizer = torch.optim.AdamW([self.net_q.parameters(),
-                                           self.proj_q.parameters()], lr=self.lr)
+            params = [self.net_q.parameters(), self.proj_q.parameters()] if self.proj_q else self.net_q.parameters()
+            optimizer = torch.optim.AdamW(params, lr=self.lr)
+            if schdule:
+                scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=schdule, gamma=0.1)
             
             epoch_loss_list = []
             start_time = datetime.now() 
@@ -178,6 +183,8 @@ class MOPA:
                     cum_loss += loss.item()
                     
                     self._dequeue_and_enqueue(k, pid)
+                
+                scheduler.step()
             
                 cum_loss /= len(train_loader)
                 epoch_loss_list.append(cum_loss)

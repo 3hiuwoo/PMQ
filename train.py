@@ -26,6 +26,7 @@ parser.add_argument('--queue_size', type=int, default=65536, help='queue size')
 parser.add_argument('--mask_type', type=str, default='t+fb', help='opt+opt opt: [t/f/s](b/c/cb/cc)')
 # training
 parser.add_argument('--lr', type=float, default=1e-4, help='learning rate')
+parser.add_argument('--schedule', type=int, nargs='+', default=None, help='multiply the learning rate by 0.1 at each given epoch')
 parser.add_argument('--batch_size', type=int, default=256, help='batch size')
 parser.add_argument('--epochs', type=int, default=100, help='number of epochs')
 parser.add_argument('--shuffle', type=str, default='random', help='way to shuffle the data')
@@ -84,6 +85,7 @@ def main():
         shuffle_function=args.shuffle,
         mask_type=args.mask_type,
         epochs=args.epochs,
+        schdule=args.schedule,
         logdir=logdir,
         checkpoint=args.checkpoint,
         verbose=args.verbose

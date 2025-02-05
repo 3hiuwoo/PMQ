@@ -44,11 +44,6 @@ def load_data(root='dataset', name='chapman', length=None, overlap=0, norm=True)
     y_val = np.array(valid_labels)
     y_test = np.array(test_labels)
     
-    # if shuff:
-    #     X_train, y_train = shuffle(X_train, y_train)
-    #     X_val, y_val = shuffle(X_val, y_val)
-    #     X_test, y_test = shuffle(X_test, y_test)
-    
     if norm:
         X_train = process_batch_ts(X_train, normalized=True, bandpass_filter=False)
         X_val = process_batch_ts(X_val, normalized=True, bandpass_filter=False)
@@ -102,7 +97,8 @@ def load_label_split(root='dataset', name='chapman'):
         train_ids = pids_norm[:-1200] + pids_mi[:-600] + pids_sttc[:-600] + pids_cd[:-400] + pids_hyp[:-200]
         val_ids = pids_norm[-1200:-600] + pids_mi[-600:-300] + pids_sttc[-600:-300] + pids_cd[-400:-200] + pids_hyp[-200:-100]
         test_ids = pids_norm[-600:] + pids_mi[-300:] + pids_sttc[-300:] + pids_cd[-200:] + pids_hyp[-100:]
-        
+    
+    # TODO: CPSC2018, etc.
     else:
         raise ValueError(f'Unknown dataset: {name}')
         

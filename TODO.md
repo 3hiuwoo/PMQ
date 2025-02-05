@@ -5,6 +5,8 @@
     - [ ] time mask vs freq mask
     - [ ] random time freq mask
     - [ ] time vs freq vs laplace
+    - [ ] queue size
+    - [ ] learning rate
 
 - [ ] Datasets:
     - [x] Chapman 10k
