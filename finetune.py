@@ -1,8 +1,8 @@
-'''
-Perform full fine-tuning or training from scratch or testing cross multiple seeds.
+''' Perform full fine-tuning or training from scratch and testing cross multiple seeds and fractions of training data.
 '''
 import os
 import argparse
+import warnings
 import torch
 import numpy as np
 import pandas as pd
@@ -14,35 +14,29 @@ from model.encoder import FTClassifier
 from data import load_data
 from utils import seed_everything, get_device, start_logging, stop_logging
 from torchmetrics import Accuracy, F1Score, AUROC, Precision, Recall, AveragePrecision, MetricCollection
+warnings.filterwarnings('ignore')
 
-
-parser = argparse.ArgumentParser(description='Full/Partial Finetuning')
+parser = argparse.ArgumentParser(description='Fine-tuning/Training from scratch')
 parser.add_argument('--seeds', type=int, nargs='+', default=[41, 42, 43, 44, 45], help='list of random seeds')
-# for the data
+# data
 parser.add_argument('--root', type=str, default='dataset', help='root directory of datasets')
-parser.add_argument('--data', type=str, default='chapman', help='select pretraining dataset')
+parser.add_argument('--data', type=str, default='chapman', help='select pre-training dataset')
 parser.add_argument('--length', type=int, default=300, help='length of each sample')
 parser.add_argument('--overlap', type=float, default=0., help='overlap of each sample')
-# for the model
-parser.add_argument('--depth', type=int, default=10, help='depth of the encoder')
-parser.add_argument('--hidden_dim', type=int, default=64, help='hidden dimension of the model')
-parser.add_argument('--output_dim', type=int, default=320, help='output dimension of the model')
+# model
+parser.add_argument('--depth', type=int, default=10, help='number of dilated convolutional blocks')
+parser.add_argument('--hidden_dim', type=int, default=64, help='hidden dimension of the encoder')
+parser.add_argument('--output_dim', type=int, default=320, help='output dimension of the encoder')
 parser.add_argument('--p_hidden_dim', type=int, default=128, help='hidden dimension of the projection head')
-# parser.add_argument('--partial', action='store_true', help='partial finetuning')
-parser.add_argument('--pretrain', type=str, default='', help='pretrained model weight file path')
-# for the training
+parser.add_argument('--pretrain', type=str, default='', help='encoder weight file path')
+# training
 parser.add_argument('--lr', type=float, default=1e-4, help='learning rate')
 parser.add_argument('--batch_size', type=int, default=256, help='batch size')
 parser.add_argument('--epochs', type=int, default=50, help='number of epochs')
 parser.add_argument('--fractions', type=float, nargs='+', default=[1.0, 0.1, 0.01], help='list of fractions of training data')
 parser.add_argument('--logdir', type=str, default='log', help='directory to save logs')
-# parser.add_argument('--checkpoint', type=int, default=1, help='save model after each checkpoint')
-parser.add_argument('--multi_gpu', action='store_true', help='use multiple GPUs')
-parser.add_argument('--verbose', type=int, default=1, help='how much information to print')
-# test
-# parser.add_argument('--test', type=str, default='', help='model weight file path to perform testing')
-# todo
-# parser.add_argument('--resume', type=str, default='', help='resume training from a checkpoint')
+parser.add_argument('--multi_gpu', action='store_true', help='whether to use multiple GPUs')
+parser.add_argument('--verbose', type=int, default=1, help='control how much information to print out')
 
 args = parser.parse_args()
 
@@ -52,10 +46,18 @@ def main():
         task = 'finetune'
     else:
         task = 'scratch'
+        
+    print('=> Arguments:', vars(args))
             
     logdir = os.path.join(args.logdir, f'{task}_{args.data}')
     if not os.path.exists(logdir):
         os.makedirs(logdir)
+    
+    print(f'=> Weights and logs will be saved in {logdir}')
+
+    with open(os.path.join(logdir, 'args.txt'), 'w') as f:
+        for key, value in vars(args).items():
+            f.write(f'{key}: {value}\n')
     
     print(f'=> Running cross {len(args.seeds)} seeds and {len(args.fractions)} fractions')
     for seed in args.seeds:
@@ -63,7 +65,7 @@ def main():
             run(logdir, seed, fraction)
 
     print(f'==================== Calculating total metrics ====================')
-    start_logging('total', logdir)
+    start_logging('total', logdir) # simultaneously save the print out to file
     for fraction in args.fractions:
         print(f'=> Fraction: {fraction}, Seeds: {args.seeds}')
         val_path = os.path.join(logdir, f'val_{fraction}.csv')
@@ -100,10 +102,8 @@ def run(logdir, seed, fraction):
     
     train_dataset = TensorDataset(torch.from_numpy(X_train).to(torch.float),
                                   torch.from_numpy(y_train[:, 0]).to(torch.long))
-    
     val_dataset = TensorDataset(torch.from_numpy(X_val).to(torch.float),
                                 torch.from_numpy(y_val[:, 0]).to(torch.long))
-    
     test_dataset = TensorDataset(torch.from_numpy(X_test).to(torch.float),
                                  torch.from_numpy(y_test[:, 0]).to(torch.long))
     
@@ -174,6 +174,7 @@ def run(logdir, seed, fraction):
         f1 = val_metrics_dict['f1']
         epoch_f1_list.append(f1)
         
+        # save the model
         finetune_callback(logdir, model, epoch, f1, fraction, seed)
         
         if args.verbose:
@@ -184,15 +185,16 @@ def run(logdir, seed, fraction):
     end_time = datetime.now()
     print(f'=> Training finished in {end_time - start_time}')
     
-    # save loss and f1score
     np.save(os.path.join(logdir, f'loss_{fraction}_{seed}.npy'), epoch_lost_list)
     np.save(os.path.join(logdir, f'f1_{fraction}_{seed}.npy'), epoch_f1_list)
     
     # testing
     test_path = os.path.join(logdir, f'bestf1_{fraction}_{seed}.pth')
+    
     start_logging(seed, logdir) # simultaneously save the print out to file
     print(f'=> Testing on {test_path}')
     model.load_state_dict(torch.load(test_path))
+    
     val_metrics_dict = evaluate(model, val_loader, metrics, device)
     if args.verbose > 1:
         print('=> Metrics for validation set\n', val_metrics_dict)

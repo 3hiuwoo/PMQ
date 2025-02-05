@@ -6,8 +6,7 @@ from scipy.signal import butter, lfilter
 from itertools import repeat
     
 def load_data(root='dataset', name='chapman', length=None, overlap=0, norm=True):
-    '''
-    load and preprocess data
+    ''' load and preprocess data
     '''
     data_path = os.path.join(root, name, 'feature')
     labels, train_ids, valid_ids, test_ids = load_label_split(root, name)

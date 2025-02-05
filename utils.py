@@ -1,6 +1,5 @@
 ''' Utilize COMET code from from:
     https://github.com/DL4mHealth/COMET/blob/main/utils.py
-    https://github.com/DL4mHealth/COMET/blob/main/data_preprocessing/PTB/PTB_preprocessing.ipynb
 '''
 import itertools
 import torch
@@ -215,7 +214,6 @@ def transform(x, opt='t'):
     
     return re, mask
     
-        
 
 def freq_perturb(x, ratio=0.1):
     xf = fft.rfft(x, dim=1)
