@@ -20,10 +20,10 @@
     - [ ] **TS2Vec** *AAAI22*
     - [ ] **TFC** *NeurIPS22*
     - [ ] SimCLR
-    - [ ] **MoCo**
+    - [ ] MoCo
     - [ ] SimMTM *NeurIPS23*
     - [ ] **TimeSiam** *ICML24*
-    - [ ] FEI *AAAI25*
+    - [ ] **FEI** *AAAI25*
     - [ ] CMC
     - [ ] TimesURL *AAAI24*
     - [ ] BTSF *ICML22*

@@ -68,7 +68,7 @@ def main():
         multi_gpu=args.multi_gpu
     )
     
-    print(f'=> Train MoPa')
+    print(f'=> Training MoPa')
     loss_list = model.fit(
         X_train,
         y_train,

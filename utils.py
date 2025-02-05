@@ -200,7 +200,7 @@ def transform(x, opt='t'):
     elif opt[0] == 'f':
         re = freq_perturb(x, ratio=0.1)
     elif opt[0] == 's':
-        re = fft_interp(x, target_len=256)
+        re = fft_interp(x, target_len=300)
     
     if len(opt) == 1:
         mask = 'all_true'
@@ -218,7 +218,7 @@ def transform(x, opt='t'):
         
 
 def freq_perturb(x, ratio=0.1):
-    xf = fft.rfft(x, dim=1).abs()
+    xf = fft.rfft(x, dim=1)
     aug_1 = remove_frequency(xf, ratio=ratio)
     xf = fft.irfft(aug_1, dim=1)
     # aug_2 = add_frequency(x, ratio=ratio)
