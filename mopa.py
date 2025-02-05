@@ -137,7 +137,7 @@ class MOPA:
                 my_sampler = MyBatchSampler(range(len(train_dataset)), batch_size=self.batch_size, drop_last=True)
                 train_loader = DataLoader(train_dataset, batch_sampler=my_sampler)
             
-            params = [self.net_q.parameters(), self.proj_q.parameters()] if self.proj_q else self.net_q.parameters()
+            params = (list(self.net_q.parameters()) + list(self.proj_q.parameters())) if self.proj_q else self.net_q.parameters()
             optimizer = torch.optim.AdamW(params, lr=self.lr)
             if schdule:
                 scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=schdule, gamma=0.1)
