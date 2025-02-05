@@ -100,8 +100,7 @@ class MOPA:
         self.queue_ptr = torch.zeros(1, dtype=torch.long, device=device, requires_grad=False)
         
     
-    # TODO: add learning rate scheduler
-    def fit(self, X, y, shuffle_function='random', mask_type='t+fb', epochs=None, schdule=[30, 80], logdir='', checkpoint=1, verbose=1):
+    def fit(self, X, y, shuffle_function='random', mask_type='t+fb', epochs=None, schedule=[30, 80], logdir='', checkpoint=1, verbose=1):
             ''' Training the MoPa model.
             
             Args:
@@ -137,11 +136,17 @@ class MOPA:
                 my_sampler = MyBatchSampler(range(len(train_dataset)), batch_size=self.batch_size, drop_last=True)
                 train_loader = DataLoader(train_dataset, batch_sampler=my_sampler)
             
-            params = (list(self.net_q.parameters()) + list(self.proj_q.parameters())) if self.proj_q else self.net_q.parameters()
+            if self.proj_q:
+                params = list(self.net_q.parameters()) + list(self.proj_q.parameters())
+                print(f'=> Append projection head to encoder with dimension: {self.proj_dims}')
+            else:
+                params = self.net_q.parameters()
+                
             optimizer = torch.optim.AdamW(params, lr=self.lr)
-            if schdule:
-                scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=schdule, gamma=0.1)
-            
+            scheduler = self.get_scheduler(schedule, epochs)
+            if scheduler:
+                print(f'=> Using scheduler: {schedule}')
+                
             epoch_loss_list = []
             start_time = datetime.now() 
             masks = mask_type.split('+') # e.g. 't+fb' -> ['t', 'fb']
@@ -183,11 +188,14 @@ class MOPA:
                     cum_loss += loss.item()
                     
                     self._dequeue_and_enqueue(k, pid)
-                
-                scheduler.step()
-            
+
                 cum_loss /= len(train_loader)
                 epoch_loss_list.append(cum_loss)
+                
+                if schedule == 'plateau':
+                    scheduler.step(cum_loss)
+                elif scheduler:
+                    scheduler.step()
                 
                 if verbose:
                     print(f"=> Epoch {epoch+1}: loss: {cum_loss}")
@@ -233,6 +241,21 @@ class MOPA:
         ptr = (ptr + batch_size) % self.queue_size  # move pointer
 
         self.queue_ptr[0] = ptr
+        
+        
+    def get_scheduler(self, schedule, epochs):
+        if schedule == 'step':
+            scheduler = torch.optim.lr_scheduler.MultiStepLR(self.optimizer, milestones=schedule, gamma=0.1)
+        elif schedule == 'plateau':
+            scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(self.optimizer)
+        elif schedule == 'cosine':
+            scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(self.optimizer, T_max=epochs)
+        elif schedule == 'cosine_warm':
+            scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(self.optimizer, T_0=epochs//10, T_mult=2)
+        else:
+            scheduler = None
+            
+        return scheduler
         
    
     def save(self, fn):
