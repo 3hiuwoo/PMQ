@@ -246,9 +246,10 @@ def fft_interp(x, target_len):
     '''
     Interpolate the time-series data to the target length.
     '''
-    xf = fft.rfft(x, dim=1).abs()
+    xf = fft.rfft(x, dim=1, norm='ortho').abs()
     xf = xf.permute(0, 2, 1)
     xf = F.interpolate(xf, size=target_len, mode='linear')
+    xf = xf.permute(0, 2, 1)
     return xf  
   
 

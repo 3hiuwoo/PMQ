@@ -7,5 +7,4 @@ log*/
 dataset/
 ECG*/
 training*/
-*.sh
 ptb*/

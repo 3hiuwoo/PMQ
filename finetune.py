@@ -245,7 +245,6 @@ def finetune_callback(logdir, model, epoch, f1, fraction, seed):
     if (epoch+1) == 1:
         model.finetune_f1 = f1
         torch.save(model.state_dict(), os.path.join(logdir, f'bestf1_{fraction}_{seed}.pth'))
-    # control the saving frequency
     if f1 > model.finetune_f1:
         model.finetune_f1 = f1
         torch.save(model.state_dict(), os.path.join(logdir, f'bestf1_{fraction}_{seed}.pth'))
