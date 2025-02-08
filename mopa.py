@@ -143,7 +143,7 @@ class MOPA:
                 params = self.net_q.parameters()
                 
             optimizer = torch.optim.AdamW(params, lr=self.lr)
-            scheduler = self.get_scheduler(schedule, epochs)
+            scheduler = self.get_scheduler(schedule, optimizer, epochs)
             if scheduler:
                 print(f'=> Using scheduler: {schedule}')
                 
@@ -243,15 +243,15 @@ class MOPA:
         self.queue_ptr[0] = ptr
         
         
-    def get_scheduler(self, schedule, epochs):
+    def get_scheduler(self, schedule, optimizer, epochs):
         if schedule == 'step':
-            scheduler = torch.optim.lr_scheduler.MultiStepLR(self.optimizer, milestones=[30, 80], gamma=0.1)
+            scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=[30, 80], gamma=0.1)
         elif schedule == 'plateau':
-            scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(self.optimizer)
+            scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer)
         elif schedule == 'cosine':
-            scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(self.optimizer, T_max=epochs)
+            scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=epochs)
         elif schedule == 'cosine_warm':
-            scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(self.optimizer, T_0=epochs//10, T_mult=2)
+            scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(optimizer, T_0=epochs//10, T_mult=2)
         else:
             scheduler = None
             
