@@ -10,7 +10,7 @@ from torch import nn
 from torch.utils.data import TensorDataset, DataLoader
 from tqdm import tqdm
 from datetime import datetime
-from model.encoder import FTClassifier
+from model.encoder import FTClassifier2
 from data import load_data
 from utils import seed_everything, get_device, start_logging, stop_logging
 from torchmetrics import Accuracy, F1Score, AUROC, Precision, Recall, AveragePrecision, MetricCollection
@@ -34,7 +34,7 @@ parser.add_argument('--lr', type=float, default=1e-4, help='learning rate')
 parser.add_argument('--batch_size', type=int, default=256, help='batch size')
 parser.add_argument('--epochs', type=int, default=50, help='number of epochs')
 parser.add_argument('--fractions', type=float, nargs='+', default=[1.0, 0.1, 0.01], help='list of fractions of training data')
-parser.add_argument('--logdir', type=str, default='log_mopa', help='directory to save logs')
+parser.add_argument('--logdir', type=str, default='log_mopas', help='directory to save logs')
 parser.add_argument('--multi_gpu', action='store_true', help='whether to use multiple GPUs')
 parser.add_argument('--verbose', type=int, default=1, help='control how much information to print out')
 
@@ -117,7 +117,7 @@ def run(logdir, seed, fraction):
     
     input_dims = X_test.shape[-1]
     num_classes = np.unique(y_test[:, 0]).shape[0]
-    model = FTClassifier(
+    model = FTClassifier2(
         input_dims=input_dims,
         output_dims=args.output_dim,
         hidden_dims=args.hidden_dim,
@@ -136,17 +136,18 @@ def run(logdir, seed, fraction):
         'recall': Recall(task='multiclass', num_classes=num_classes, average='macro'),
         'auprc': AveragePrecision(task='multiclass', num_classes=num_classes) 
         }).to(device)
-           
+    
+    # todo: allow only to load time/frequency input fc weights
     if args.pretrain:
         if os.path.isfile(args.pretrain):
             print(f'=> Loading pretrained model from {args.pretrain}')
             weights = torch.load(args.pretrain)
             
-            # to align with different leads of pre-train dataset
-            if weights['module.input_fc.weight'].shape[1] != input_dims:
-                del weights['module.input_fc.weight']
-                del weights['module.input_fc.bias']
-                print(f'=> Skip loading input projector weights')
+            # # to align with different leads of pre-train dataset
+            # if weights['module.input_fc.weight'].shape[1] != input_dims:
+            #     del weights['module.input_fc.weight']
+            #     del weights['module.input_fc.bias']
+            #     print(f'=> Skip loading input projector weights')
             
             model.net.load_state_dict(weights, strict=False)
         else:
@@ -190,7 +191,6 @@ def run(logdir, seed, fraction):
     
     # testing
     test_path = os.path.join(logdir, f'bestf1_{fraction}_{seed}.pth')
-    
     start_logging(seed, logdir) # simultaneously save the print out to file
     print(f'=> Testing on {test_path}')
     model.load_state_dict(torch.load(test_path))
@@ -205,6 +205,7 @@ def run(logdir, seed, fraction):
     stop_logging(logdir, seed, fraction, val_metrics_dict, test_metrics_dict)
 
 
+# todo: allow only to receive only time domain or frequency domain input
 def train(model, loader, optimizer, criterion, epoch, device):
     '''
     one epoch training
@@ -212,9 +213,10 @@ def train(model, loader, optimizer, criterion, epoch, device):
     cum_loss = 0
     for x, y in tqdm(loader, desc=f'=> Epoch {epoch+1}', leave=False):
         x, y = x.to(device), y.to(device)
+        xf = torch.fft.rfft(x, dim=1, n=2*args.length-1).abs()
         optimizer.zero_grad()
 
-        y_pred = model(x)
+        y_pred = model(x, xf)
         loss = criterion(y_pred, y)
         loss.backward()
         optimizer.step()
@@ -223,7 +225,8 @@ def train(model, loader, optimizer, criterion, epoch, device):
     cum_loss /= len(loader)
     return cum_loss
     
-    
+
+# todo: allow only to receive only time domain or frequency domain input
 def evaluate(model, loader, metrics, device):
     '''
     do validation or test
@@ -232,7 +235,8 @@ def evaluate(model, loader, metrics, device):
     with torch.no_grad():
         for x, y in tqdm(loader, desc=f'=> Evaluating', leave=False):
             x, y = x.to(device), y.to(device)
-            y_pred = model(x)
+            xf = torch.fft.rfft(x, dim=1, n=2*args.length-1).abs()
+            y_pred = model(x, xf)
             metrics.update(y_pred, y)
     metrics_dict = metrics.compute()
     metrics.reset()

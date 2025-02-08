@@ -199,7 +199,7 @@ def transform(x, opt='t'):
     elif opt[0] == 'f':
         re = freq_perturb(x, ratio=0.1)
     elif opt[0] == 's':
-        re = fft_interp(x, target_len=300)
+        re = fft.rfft(x, dim=1, norm='ortho', n=2*x.shape[1]-1).abs()
     
     if len(opt) == 1:
         mask = 'all_true'
@@ -241,16 +241,6 @@ def add_frequency(x, ratio=0.0):
     pertub_matrix = mask * random_am
     return x + pertub_matrix 
 
-
-def fft_interp(x, target_len):
-    '''
-    Interpolate the time-series data to the target length.
-    '''
-    xf = fft.rfft(x, dim=1, norm='ortho').abs()
-    xf = xf.permute(0, 2, 1)
-    xf = F.interpolate(xf, size=target_len, mode='linear')
-    xf = xf.permute(0, 2, 1)
-    return xf  
   
 
 
