@@ -1,6 +1,4 @@
 import torch
-from torch import nn
-import torch.nn.functional as F
 import numpy as np
 
 def id_momentum_loss(q, k, queue, id, id_queue):
@@ -41,6 +39,46 @@ def id_momentum_loss(q, k, queue, id, id_queue):
     loss /= 2
 
     return loss
+
+
+def id_momentum_loss2(q, k, queue, id, id_queue):
+    ''' Calculate NCE Loss For Latent Embeddings in Batch 
+    Args:
+        q (torch.Tensor): query embeddings from model for different perturbations of same instance (NxBxH)
+        k (torch.Tensor): key embeddings from model for different perturbations of same instance (NxBxH)
+        queue (torch.Tensor): queue embeddings from model for different perturbations of same instance (NxBxH)
+        id (list): ids of instances in batch
+        id_queue (torch.Tensor): queue ids
+    Outputs:
+        loss (torch.Tensor): scalar NCE loss 
+    '''
+    id = id.cpu().detach().numpy()
+    id_queue = id_queue.cpu().detach().numpy()
+    batch_interest_matrix = np.equal.outer(id, id).astype(int) # B x B
+    queue_interest_matrix = np.equal.outer(id, id_queue).astype(int) # B x K
+    interest_matrix = np.concatenate((batch_interest_matrix, queue_interest_matrix), axis=1) # B x (B+K)
+    # only consider upper diagnoal where the queue is taken into account
+    rows1, cols1 = np.where(np.triu(interest_matrix, 1))  # upper triangle same patient combs
+    # rows2, cols2 = np.where(np.tril(interest_matrix, -1))  # down triangle same patient combs
+
+    temperature = 0.1
+    eps = 1e-12
+    batch_sim_matrix = torch.mm(q, k.t()) # B x B
+    queue_sim_matrix = torch.mm(q, queue.t()) # B x K
+    sim_matrix = torch.cat((batch_sim_matrix, queue_sim_matrix), dim=1) # B x (B+K)
+    argument = sim_matrix / temperature
+    sim_matrix_exp = torch.exp(argument)
+    
+    # diag_elements = torch.diag(sim_matrix_exp)
+    triu_elements = sim_matrix_exp[rows1,cols1]
+    
+    # loss_diag = -torch.mean(torch.log((diag_elements+eps)/(torch.sum(sim_matrix_exp,1)+eps)))
+    loss_triu = -torch.mean(torch.log((triu_elements+eps)/(torch.sum(sim_matrix_exp,1)[rows1]+eps)))
+    
+    # loss = loss_diag + loss_triu
+    # loss /= 2
+
+    return loss_triu # loss
 
 # def contrastive_loss(q, k, queue, loss_func, id=None, id_queue=None,
 #                      hierarchical=False, factor=1.0):

@@ -6,7 +6,7 @@ from datetime import datetime
 from torch import nn
 from torch.utils.data import TensorDataset, DataLoader
 from model.encoder import TSEncoder, TFEncoder, ProjectionHead
-from model.loss import id_momentum_loss
+from model.loss import id_momentum_loss, id_momentum_loss2
 from utils import shuffle_feature_label, MyBatchSampler, transform
 
 class MOPA:
@@ -247,7 +247,7 @@ class MOPA:
         if schedule == 'step':
             scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=[30, 80], gamma=0.1)
         elif schedule == 'plateau':
-            scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer)
+            scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, patience=5)
         elif schedule == 'cosine':
             scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=epochs)
         elif schedule == 'cosine_warm':
@@ -449,7 +449,10 @@ class MOPA2:
                         k = F.normalize(k, dim=1)
                         k = k[torch.argsort(idx)]
 
-                    loss = id_momentum_loss(q, k, self.queue.clone().detach(), pid, self.id_queue.clone().detach())
+                    if masks[0] == 't' and masks[1] == 's':
+                        loss = id_momentum_loss2(q, k, self.queue.clone().detach(), pid, self.id_queue.clone().detach())
+                    else:
+                        loss = id_momentum_loss(q, k, self.queue.clone().detach(), pid, self.id_queue.clone().detach())
 
                     loss.backward()
                     optimizer.step()
@@ -517,7 +520,7 @@ class MOPA2:
         if schedule == 'step':
             scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=[30, 80], gamma=0.1)
         elif schedule == 'plateau':
-            scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer)
+            scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, patience=5)
         elif schedule == 'cosine':
             scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=epochs)
         elif schedule == 'cosine_warm':
