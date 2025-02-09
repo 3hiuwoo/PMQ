@@ -194,13 +194,14 @@ def batch_shuffle_feature_label(X, y, batch_size=256):
 
 
 def transform(x, opt='t'):
-    if opt[0] == 't':
+    if opt[0] == 't': # original temporal signal
         re = x
-    elif opt[0] == 'f':
+    elif opt[0] == 'f': # frequency distortion
         re = freq_perturb(x, ratio=0.1)
-    elif opt[0] == 's':
+    elif opt[0] == 's': # spectrum
         re = fft.rfft(x, dim=1, norm='ortho', n=2*x.shape[1]-1).abs()
     
+    # mask argument passed to the encoder
     if len(opt) == 1:
         mask = 'all_true'
     elif opt[1:] == 'b':

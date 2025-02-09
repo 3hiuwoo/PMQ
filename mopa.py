@@ -148,9 +148,14 @@ class MOPA:
                 print(f'=> Using scheduler: {schedule}')
                 
             epoch_loss_list = []
-            start_time = datetime.now() 
             masks = mask_type.split('+') # e.g. 't+fb' -> ['t', 'fb']
+            if masks[0] == masks[1] and len(masks[0]) == 1: # e.g. 't+t'
+                loss_func = id_momentum_loss2
+                print('=> Diagonal loss does not count')
+            else:
+                loss_func = id_momentum_loss
                 
+            start_time = datetime.now()  
             for epoch in range(epochs):
                 cum_loss = 0
                 for x, y in tqdm(train_loader, desc=f'=> Epoch {epoch+1}', leave=False):
@@ -178,8 +183,8 @@ class MOPA:
                             k = self.proj_k(k)
                         k = F.normalize(k, dim=1)
                         k = k[torch.argsort(idx)]
-
-                    loss = id_momentum_loss(q, k, self.queue.clone().detach(), pid, self.id_queue.clone().detach())
+                    
+                        loss = loss_func(q, k, self.queue.clone().detach(), pid, self.id_queue.clone().detach())
 
                     loss.backward()
                     optimizer.step()
@@ -418,9 +423,14 @@ class MOPA2:
                 print(f'=> Using scheduler: {schedule}')
                 
             epoch_loss_list = []
-            start_time = datetime.now() 
             masks = mask_type.split('+') # e.g. 't+fb' -> ['t', 'fb']
+            if len(masks[0]) == 1 and len(masks[1]) == 1: # e.g. 't+s'
+                loss_func = id_momentum_loss2
+                print('=> Diagonal loss does not count')
+            else:
+                loss_func = id_momentum_loss
                 
+            start_time = datetime.now()  
             for epoch in range(epochs):
                 cum_loss = 0
                 for x, y in tqdm(train_loader, desc=f'=> Epoch {epoch+1}', leave=False):
@@ -449,10 +459,7 @@ class MOPA2:
                         k = F.normalize(k, dim=1)
                         k = k[torch.argsort(idx)]
 
-                    if masks[0] == 't' and masks[1] == 's':
-                        loss = id_momentum_loss2(q, k, self.queue.clone().detach(), pid, self.id_queue.clone().detach())
-                    else:
-                        loss = id_momentum_loss(q, k, self.queue.clone().detach(), pid, self.id_queue.clone().detach())
+                        loss = loss_func(q, k, self.queue.clone().detach(), pid, self.id_queue.clone().detach())
 
                     loss.backward()
                     optimizer.step()
