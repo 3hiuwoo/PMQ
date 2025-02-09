@@ -184,7 +184,7 @@ class MOPA:
                         k = F.normalize(k, dim=1)
                         k = k[torch.argsort(idx)]
                     
-                        loss = loss_func(q, k, self.queue.clone().detach(), pid, self.id_queue.clone().detach())
+                    loss = loss_func(q, k, self.queue.clone().detach(), pid, self.id_queue.clone().detach())
 
                     loss.backward()
                     optimizer.step()
@@ -459,7 +459,7 @@ class MOPA2:
                         k = F.normalize(k, dim=1)
                         k = k[torch.argsort(idx)]
 
-                        loss = loss_func(q, k, self.queue.clone().detach(), pid, self.id_queue.clone().detach())
+                    loss = loss_func(q, k, self.queue.clone().detach(), pid, self.id_queue.clone().detach())
 
                     loss.backward()
                     optimizer.step()
