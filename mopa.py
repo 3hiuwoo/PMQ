@@ -250,7 +250,7 @@ class MOPA:
         
     def get_scheduler(self, schedule, optimizer, epochs):
         if schedule == 'step':
-            scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=[30, 80], gamma=0.1)
+            scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=70)
         elif schedule == 'plateau':
             scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, patience=5)
         elif schedule == 'cosine':
@@ -525,7 +525,7 @@ class MOPA2:
         
     def get_scheduler(self, schedule, optimizer, epochs):
         if schedule == 'step':
-            scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=[30, 80], gamma=0.1)
+            scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=70)
         elif schedule == 'plateau':
             scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, patience=5)
         elif schedule == 'cosine':

@@ -149,7 +149,7 @@ def run(logdir, seed, fraction):
                 del weights['module.input_fc_t.bias']
                 del weights['module.input_fc_f.weight']
                 del weights['module.input_fc_f.bias']
-                print(f'=> Use only temporal projector')
+                print(f'=> Using only temporal projector')
                 
             if weights['module.input_fc.weight'].shape[1] != input_dims:
                 del weights['module.input_fc.weight']
