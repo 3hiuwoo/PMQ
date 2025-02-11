@@ -142,7 +142,15 @@ def run(logdir, seed, fraction):
             print(f'=> Loading pretrained model from {args.pretrain}')
             weights = torch.load(args.pretrain)
             
-            # to align with different leads of pre-train dataset
+            if 'module.input_fc_t.weight' in weights.keys():
+                weights['module.input_fc.weight'] = weights['module.input_fc_t.weight']
+                weights['module.input_fc.bias'] = weights['module.input_fc_t.bias']
+                del weights['module.input_fc_t.weight']
+                del weights['module.input_fc_t.bias']
+                del weights['module.input_fc_f.weight']
+                del weights['module.input_fc_f.bias']
+                print(f'=> Use only temporal projector')
+                
             if weights['module.input_fc.weight'].shape[1] != input_dims:
                 del weights['module.input_fc.weight']
                 del weights['module.input_fc.bias']
