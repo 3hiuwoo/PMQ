@@ -814,18 +814,18 @@ class CMC:
         Args:
             fn (str): filename.
         '''
-        torch.save(self.net.state_dict(), fn)
+        torch.save(self.net_t.state_dict(), fn)
     
     
-    def load(self, fn):
-        '''Load the model from a file.
+    # def load(self, fn):
+    #     '''Load the model from a file.
         
-        Args:
-            fn (str): filename.
-        '''
-        # state_dict = torch.load(fn, map_location=self.device)
-        state_dict = torch.load(fn)
-        self.net.load_state_dict(state_dict)
+    #     Args:
+    #         fn (str): filename.
+    #     '''
+    #     # state_dict = torch.load(fn, map_location=self.device)
+    #     state_dict = torch.load(fn)
+    #     self.net_t.load_state_dict(state_dict)
     
     
     
