@@ -1,12 +1,6 @@
 ##### Todo List
 
-- [ ] Elaborate on time-frequency patient momentum contrast
-    - [ ] time vs freq
-    - [ ] time mask vs freq mask
-    - [ ] random time freq mask
-    - [ ] time vs freq vs laplace
-    - [ ] queue size
-    - [ ] learning rate
+Bold: Currently needed to implement. Other: May be needed in future
 
 - [ ] Datasets:
     - [x] Chapman 10k
@@ -16,19 +10,20 @@
     - [ ] CINC2017
 
 - [ ] Baselines:
-    - [ ] **COMET** *NeurIPS23*
-    - [ ] **CLOCS** *ICML21*
-    - [ ] ISL *AAAI22*
-    - [ ] **TS2Vec** *AAAI22*
-    - [ ] **TFC** *NeurIPS22*
+
+    CV:
     - [ ] SimCLR
     - [ ] MoCo
-    - [ ] SimMTM *NeurIPS23*
-    - [ ] **TimeSiam** *ICML24*
-    - [ ] **FEI** *AAAI25*
     - [ ] CMC
-    - [ ] TimesURL *AAAI24*
-    - [ ] BTSF *ICML22*
-    - [ ] CoST *ICLR22*
+
+    Time Series
+    - [ ] **COMET** *NeurIPS23*
+    - [ ] **CLOCS** *ICML21*
+    - [ ] **TS2Vec** *AAAI22*
+    - [ ] **TFC** *NeurIPS22*
+    - [ ] **TimeSiam** *ICML24*
+    - [ ] FEI *AAAI25* https://arxiv.org/abs/2412.20790
+    - [ ] TimesURL *AAAI24* https://arxiv.org/abs/2312.15709
+
 
 

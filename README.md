@@ -28,10 +28,11 @@ To change other default settings, run the following for details:
 ```
 python train.py -h
 ```
+**Delete in final version**: train2.py train3.py, etc. are for experimental test, which share the same arguments with train.py, see EXP.md for more details.
 
 ## Fine-tuning
 
-To fine-tune with pretrained model, run:
+To fine-tune and test with pretrained model, run:
 ```
 python finetune.py  --data [dataset's name]\
 --root [folder containing directories of datasets]\
@@ -42,6 +43,7 @@ To change other default setting, run the following for details:
 ```
 python finetune.py -h
 ```
+**Delete in final version**: finetune2.py is for fine-tuning the backbone modified in train2.py.
 
 ## Testing
 
@@ -56,9 +58,12 @@ Note that this will disable most of the training arguments.
 
 ## Baselines
 
-For better alignment, we have implemented some baselines in ECG representation learning domain other than directly running their codes(some of them do not have), including [CLOCS](https://arxiv.org/abs/2005.13249), [ISL](https://arxiv.org/abs/2109.08908), see [MedDL](https://github.com/3hiuwoo/MedDL).
+We implement [CLOCS](https://arxiv.org/abs/2005.13249) for alignment, see [MedDL](https://github.com/3hiuwoo/MedDL).
 
-For [COMET](https://arxiv.org/abs/2310.14017), we pre-trained with their code, and fine-tuned with ours.
+For , we pre-trained with their code, and fine-tuned with ours.
+
+For other baselines, we utilize their code repositories to pre-train the model, then fine-tuned with ours. Those baslines including: [COMET](https://arxiv.org/abs/2310.14017), [TimeSiam](https://arxiv.org/abs/2402.02475), [TFC](https://arxiv.org/abs/2206.08496), [TS2Vec](https://arxiv.org/abs/2106.10466).
+
 
 ## Reference
 
