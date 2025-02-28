@@ -37,24 +37,13 @@ To fine-tune and test with pretrained model, run:
 python finetune.py  --data [dataset's name]\
 --root [folder containing directories of datasets]\
 --logdir [folder to save fine-tuned weights with best F1-score on validation set and loss]\
---pretrain [path of the pre-trained weight]
+--pretrain [path of the pre-trained weight file]
 ```
 To change other default setting, run the following for details:
 ```
 python finetune.py -h
 ```
 **Delete in final version**: finetune2.py is for fine-tuning the backbone modified in train2.py.
-
-## Testing
-
-To test the fine-tuned model's performance, run:
-```
-python finetune.py  --data [dataset's name]\
---root [folder containing directories of datasets]\
---logdir [folder to save the testing outcome]\
---test [path to the fine-tuned weight]
-```
-Note that this will disable most of the training arguments.
 
 ## Baselines
 
