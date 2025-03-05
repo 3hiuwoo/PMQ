@@ -146,13 +146,13 @@ Experiments conducted so far:
 
 ### Summary
 
-At first, we trained the model with directly feeding time and frequency spectrum to each branch respectively, but the result (2025/1/25) cannot validate the model because it showed catastrophical performance deprecation under data scarcity situation, which is controversy to the expectation of a well pre-trained model.
+At first, we trained the model with directly feeding time and frequency spectrum to each branch respectively, but the result (**2025/1/25**) cannot validate the model because it showed catastrophical performance deprecation under data scarcity situation, which is controversy to the expectation of a well pre-trained model.
 
-With the assumption that it can confuse the model feeding both temporal and spectral data to it with different contextual meaning, we expand the single projector in front of the CNN to two, receiving data in two space respectively (train2.py), in a sense that this will project two set of data in different space into a same new space, and we add the two projected features together to feed the CNN. now each branch receive two set of input while pre-training, temporal and spectral.
+With the assumption that it can confuse the model feeding both temporal and spectral data to it with different contextual meaning, we expand the single projector in front of the CNN to two, receiving data in two space respectively (**train2.py**), in a sense that this will project two set of data in different space into a same new space, and we add the two projected features together to feed the CNN. now each branch receive two set of input while pre-training, temporal and spectral.
 
-When fine-tuning, we can generate the spectral of the input batch and utilizing two input layers (finetune2.py), or we can drop the input layer for spectral data and fine-tune like before (finetune.py), these method corresponds to 'ours' and 'ours t' in the above table. 
+When fine-tuning, we can generate the spectral of the input batch and utilizing two input layers (**finetune2.py**), or we can drop the input layer for spectral data and fine-tune like before (**finetune.py**), these method corresponds to 'ours' and 'ours t' in the above table. 
 
-And we also tried using two independent encoder for pre-training(train3.py), dropping the momentum encoder, also avoid the problem that the same encoder receives both temporal and spectral data.
+And we also tried using two independent encoder for pre-training(**train3.py**), dropping the momentum encoder, also avoid the problem that the same encoder receives both temporal and spectral data.
 
 Unfortunately, this round of trying finally fell into almost complete failure. Although the two input projector model shows slightly better performance than baselines under full data scenario, but its performance consistently drops significantly as the data fraction decreases. Even worse, the model trained from scratch under supervised learning shows similar performance to our method, proving that this design cannot learn a robust enough representation that tunes the model to a more favorable feature space.
 

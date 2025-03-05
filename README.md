@@ -70,7 +70,7 @@ python finetune.py -h
 
 We implement [CLOCS](https://arxiv.org/abs/2005.13249) for alignment, see [MedDL](https://github.com/3hiuwoo/MedDL).
 
-For other baselines, we utilize their code repositories to pre-train the model, then fine-tuned with ours. Those baslines including: [COMET](https://arxiv.org/abs/2310.14017), [TimeSiam](https://arxiv.org/abs/2402.02475), [TFC](https://arxiv.org/abs/2206.08496), [TS2Vec](https://arxiv.org/abs/2106.10466).
+For other baselines, we utilize their code repositories to pre-train the model, then fine-tuned with ours. Those baselines include: [COMET](https://arxiv.org/abs/2310.14017), [TimeSiam](https://arxiv.org/abs/2402.02475), [TFC](https://arxiv.org/abs/2206.08496), [TS2Vec](https://arxiv.org/abs/2106.10466).
 
 
 ## Reference

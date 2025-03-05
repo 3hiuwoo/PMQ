@@ -1,8 +1,8 @@
-import torch
 import os
+from datetime import datetime
+import torch
 import torch.nn.functional as F
 from tqdm import tqdm
-from datetime import datetime
 from torch import nn
 from torch.utils.data import TensorDataset, DataLoader
 from model.encoder import TSEncoder, TFEncoder, ProjectionHead
@@ -525,7 +525,7 @@ class MOPA2:
         
     def get_scheduler(self, schedule, optimizer, epochs):
         if schedule == 'step':
-            scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=[70, 80], gamma=0.1)
+            scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=[30], gamma=0.1)
         elif schedule == 'plateau':
             scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, patience=5)
         elif schedule == 'cosine':

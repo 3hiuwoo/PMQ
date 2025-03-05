@@ -201,8 +201,8 @@ class TFEncoder(nn.Module):
         self.output_dims = output_dims  # Co
         self.hidden_dims = hidden_dims  # Ch
         self.mask_mode = mask_mode
-        self.input_fc_t = nn.Linear(input_dims, hidden_dims)
-        self.input_fc_f = nn.Linear(input_dims, hidden_dims)
+        self.input_fc_t = nn.Linear(input_dims, hidden_dims/2)
+        self.input_fc_f = nn.Linear(input_dims, hidden_dims/2)
         self.feature_extractor = DilatedConvEncoder(
             hidden_dims,
             [hidden_dims] * depth + [output_dims],  # a list here
@@ -214,7 +214,8 @@ class TFEncoder(nn.Module):
     def forward(self, xt, xf, mask=None, pool=True):  # input dimension : B x O x Ci
         xt = self.input_fc_t(xt) # B x O x Ch (hidden_dims)
         xf = self.input_fc_f(xf) # B x O x Ch (hidden_dims)
-        x = xt + xf
+        # x = xt + xf
+        x = torch.cat((xt, xf), dim=-1) # B x O x 2Ch
         
         # generate & apply mask, default is binomial
         if mask is None:

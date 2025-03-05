@@ -7,3 +7,4 @@ scipy
 wfdb
 neurokit2
 matplotlib
+tqdm

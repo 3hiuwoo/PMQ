@@ -33,7 +33,7 @@ parser.add_argument('--shuffle', type=str, default='random', help='way to shuffl
 parser.add_argument('--logdir', type=str, default='log_mopas', help='directory to save weights and logs')
 parser.add_argument('--checkpoint', type=int, default=1, help='frequency to save checkpoint')
 parser.add_argument('--multi_gpu', action='store_true', help='whether to use multiple GPUs')
-parser.add_argument('--verbose', type=int, default=1, help='if large than 0: print loss after each epoch')
+parser.add_argument('--verbose', type=int, default=1, help='if larger than 0: print loss after each epoch')
 
 def main(): 
     args = parser.parse_args()
