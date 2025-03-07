@@ -199,8 +199,8 @@ class TFEncoder(nn.Module):
         self.output_dims = output_dims  # Co
         self.hidden_dims = hidden_dims  # Ch
         self.mask_mode = mask_mode
-        self.input_fc_t = nn.Linear(input_dims, hidden_dims/2)
-        self.input_fc_f = nn.Linear(input_dims, hidden_dims/2)
+        self.input_fc_t = nn.Linear(input_dims, int(hidden_dims/2))
+        self.input_fc_f = nn.Linear(input_dims, int(hidden_dims/2))
         self.feature_extractor = DilatedConvEncoder(
             hidden_dims,
             [hidden_dims] * depth + [output_dims],  # a list here
