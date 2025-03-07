@@ -1,4 +1,4 @@
-##### Todo List
+##### Todo
 
 Bold: Currently needed to implement. Other: May be needed in future
 
@@ -24,6 +24,7 @@ Bold: Currently needed to implement. Other: May be needed in future
     - [ ] **TimeSiam** *ICML24*
     - [ ] FEI *AAAI25* https://arxiv.org/abs/2412.20790
     - [ ] TimesURL *AAAI24* https://arxiv.org/abs/2312.15709
+    - [ ] **MFF-FTNet** http://arxiv.org/abs/2411.17382 
 
 
 

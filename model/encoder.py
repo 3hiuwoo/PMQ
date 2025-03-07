@@ -97,7 +97,6 @@ class FTClassifier(nn.Module):
             return x
         
 
-# todo: allow only to receive only time domain or frequency domain input
 class FTClassifier2(nn.Module):
     def __init__(self, input_dims, output_dims, depth, p_output_dims, hidden_dims=64, p_hidden_dims=128,
                  device='cuda', multi_gpu=True):
@@ -148,7 +147,7 @@ class TSEncoder(nn.Module):
         self.repr_dropout = nn.Dropout(p=0.1)
         
         
-    def forward(self, x, mask=None, pool=True):  # input dimension : B x O x Ci
+    def forward(self, x, mask=None, pool=False):  # input dimension : B x O x Ci
         x = self.input_fc(x)  # B x O x Ch (hidden_dims)
         
         # generate & apply mask, default is binomial
@@ -192,8 +191,7 @@ class TSEncoder(nn.Module):
         
         return x
     
-
-# todo: allow only to receive only time domain or frequency domain input  
+      
 class TFEncoder(nn.Module):
     def __init__(self, input_dims, output_dims, hidden_dims=64, depth=10, mask_mode='binomial'):
         super().__init__()

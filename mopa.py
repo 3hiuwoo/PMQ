@@ -43,16 +43,16 @@ class MOPA:
         self.device = device
         self.lr = lr
         self.batch_size = batch_size
-        
+
         self.output_dims = output_dims
         self.hidden_dims = hidden_dims
         self.proj_dims = proj_dims
-        
+
         self.multi_gpu = multi_gpu
-        
+
         self.momentum = momentum
         self.queue_size = queue_size
-        
+
         self.net_q = TSEncoder(input_dims=input_dims, output_dims=output_dims, hidden_dims=hidden_dims, depth=depth)
         self.net_k = TSEncoder(input_dims=input_dims, output_dims=output_dims, hidden_dims=hidden_dims, depth=depth)
         
@@ -99,119 +99,119 @@ class MOPA:
         self.id_queue = torch.zeros(queue_size, dtype=torch.long, device=device, requires_grad=False)
         self.queue_ptr = torch.zeros(1, dtype=torch.long, device=device, requires_grad=False)
         
-    
+        
     def fit(self, X, y, shuffle_function='random', mask_type='t+fb', epochs=None, schedule=[30, 80], logdir='', checkpoint=1, verbose=1):
-            ''' Training the MoPa model.
+        ''' Training the MoPa model.
+        
+        Args:
+            X (numpy.ndarray): The training data. It should have a shape of (n_samples, sample_timestamps, features).
+            y (numpy.ndarray): The training labels. It should have a shape of (n_samples, 3). The three columns are the label, patient id, and trial id.
+            shuffle_function (str): specify the shuffle function.
+            mask_type (str): A list of masking functions applied (str).
+            epochs (Union[int, NoneType]): The number of epochs. When this reaches, the training stops.
+            verbose (int): Whether to print the training loss after each epoch.
             
-            Args:
-                X (numpy.ndarray): The training data. It should have a shape of (n_samples, sample_timestamps, features).
-                y (numpy.ndarray): The training labels. It should have a shape of (n_samples, 3). The three columns are the label, patient id, and trial id.
-                shuffle_function (str): specify the shuffle function.
-                mask_type (str): A list of masking functions applied (str).
-                epochs (Union[int, NoneType]): The number of epochs. When this reaches, the training stops.
-                verbose (int): Whether to print the training loss after each epoch.
-                
-            Returns:
-                epoch_loss_list: a list containing the training losses on each epoch.
-            '''
-            assert X.ndim == 3 # X.shape = (total_size, length, channels)
-            assert y.shape[1] == 3
-            assert self.queue_size % self.batch_size == 0
+        Returns:
+            epoch_loss_list: a list containing the training losses on each epoch.
+        '''
+        assert X.ndim == 3 # X.shape = (total_size, length, channels)
+        assert y.shape[1] == 3
+        assert self.queue_size % self.batch_size == 0
+
+        if X.shape.index(min(X.shape)) == 1:
+            X = X.transpose(0, 2, 1)
+
+        if shuffle_function == 'trial':
+            X, y = shuffle_feature_label(X, y, shuffle_function=shuffle_function, batch_size=self.batch_size)
+
+        # we need patient id for patient-level contrasting and trial id for trial-level contrasting
+        train_dataset = TensorDataset(
+            torch.from_numpy(X).to(torch.float),
+            torch.from_numpy(y).to(torch.long)
+            )
+        
+        if shuffle_function == 'random':
+            train_loader = DataLoader(train_dataset, batch_size=self.batch_size, shuffle=True, drop_last=True)
+        else:
+            my_sampler = MyBatchSampler(range(len(train_dataset)), batch_size=self.batch_size, drop_last=True)
+            train_loader = DataLoader(train_dataset, batch_sampler=my_sampler)
+        
+        if self.proj_q:
+            params = list(self.net_q.parameters()) + list(self.proj_q.parameters())
+            print(f'=> Append projection head to encoder with dimension: {self.proj_dims}')
+        else:
+            params = self.net_q.parameters()
             
-            if X.shape.index(min(X.shape)) == 1:
-                X = X.transpose(0, 2, 1)
-
-            if shuffle_function == 'trial':
-                X, y = shuffle_feature_label(X, y, shuffle_function=shuffle_function, batch_size=self.batch_size)
-
-            # we need patient id for patient-level contrasting and trial id for trial-level contrasting
-            train_dataset = TensorDataset(
-                torch.from_numpy(X).to(torch.float),
-                torch.from_numpy(y).to(torch.long)
-                )
+        optimizer = torch.optim.AdamW(params, lr=self.lr)
+        scheduler = self.get_scheduler(schedule, optimizer, epochs)
+        if scheduler:
+            print(f'=> Using scheduler: {schedule}')
             
-            if shuffle_function == 'random':
-                train_loader = DataLoader(train_dataset, batch_size=self.batch_size, shuffle=True, drop_last=True)
-            else:
-                my_sampler = MyBatchSampler(range(len(train_dataset)), batch_size=self.batch_size, drop_last=True)
-                train_loader = DataLoader(train_dataset, batch_sampler=my_sampler)
+        epoch_loss_list = []
+        masks = mask_type.split('+') # e.g. 't+fb' -> ['t', 'fb']
+        if masks[0] == masks[1] and len(masks[0]) == 1: # e.g. 't+t'
+            loss_func = id_momentum_loss2
+            print('=> Diagonal loss does not count')
+        else:
+            loss_func = id_momentum_loss
             
-            if self.proj_q:
-                params = list(self.net_q.parameters()) + list(self.proj_q.parameters())
-                print(f'=> Append projection head to encoder with dimension: {self.proj_dims}')
-            else:
-                params = self.net_q.parameters()
+        start_time = datetime.now()  
+        for epoch in range(epochs):
+            cum_loss = 0
+            for x, y in tqdm(train_loader, desc=f'=> Epoch {epoch+1}', leave=False):
+                x = x.to(self.device)
+                # get encoder mask mode and transformed data
+                x1, mask1 = transform(x, opt=masks[0])
+                x2, mask2 = transform(x, opt=masks[1])
+                pid = y[:, 1]  # patient id
                 
-            optimizer = torch.optim.AdamW(params, lr=self.lr)
-            scheduler = self.get_scheduler(schedule, optimizer, epochs)
-            if scheduler:
-                print(f'=> Using scheduler: {schedule}')
+                with torch.no_grad():
+                    self._momentum_update_key_encoder()
+                    
+                optimizer.zero_grad()
                 
-            epoch_loss_list = []
-            masks = mask_type.split('+') # e.g. 't+fb' -> ['t', 'fb']
-            if masks[0] == masks[1] and len(masks[0]) == 1: # e.g. 't+t'
-                loss_func = id_momentum_loss2
-                print('=> Diagonal loss does not count')
-            else:
-                loss_func = id_momentum_loss
+                q = self.net_q(x1, mask=mask1, pool=True)
+                if self.proj_q:
+                    q = self.proj_q(q)
+                q = F.normalize(q, dim=1)
+                   
+                with torch.no_grad():
+                    # shuffle BN
+                    idx = torch.randperm(x2.size(0), device=x.device)
+                    k = self.net_k(x2[idx], mask=mask2, pool=True)
+                    if self.proj_k:
+                        k = self.proj_k(k)
+                    k = F.normalize(k, dim=1)
+                    k = k[torch.argsort(idx)]
                 
-            start_time = datetime.now()  
-            for epoch in range(epochs):
-                cum_loss = 0
-                for x, y in tqdm(train_loader, desc=f'=> Epoch {epoch+1}', leave=False):
-                    x = x.to(self.device)
-                    # get encoder mask mode and transformed data
-                    x1, mask1 = transform(x, opt=masks[0])
-                    x2, mask2 = transform(x, opt=masks[1])
-                    pid = y[:, 1]  # patient id
-                    
-                    with torch.no_grad():
-                        self._momentum_update_key_encoder()
-                        
-                    optimizer.zero_grad()
-                    
-                    q = self.net_q(x1, mask=mask1, pool=True)
-                    if self.proj_q:
-                        q = self.proj_q(q)
-                    q = F.normalize(q, dim=1)
-                    
-                    with torch.no_grad():
-                        # shuffle BN
-                        idx = torch.randperm(x2.size(0), device=x.device)
-                        k = self.net_k(x2[idx], mask=mask2, pool=True)
-                        if self.proj_k:
-                            k = self.proj_k(k)
-                        k = F.normalize(k, dim=1)
-                        k = k[torch.argsort(idx)]
-                    
-                    loss = loss_func(q, k, self.queue.clone().detach(), pid, self.id_queue.clone().detach())
+                loss = loss_func(q, k, self.queue.clone().detach(), pid, self.id_queue.clone().detach())
 
-                    loss.backward()
-                    optimizer.step()
-                    self.net.update_parameters(self.net_q)
+                loss.backward()
+                optimizer.step()
+                self.net.update_parameters(self.net_q)
 
-                    cum_loss += loss.item()
-                    
-                    self._dequeue_and_enqueue(k, pid)
+                cum_loss += loss.item()
+                
+                self._dequeue_and_enqueue(k, pid)
 
-                cum_loss /= len(train_loader)
-                epoch_loss_list.append(cum_loss)
+            cum_loss /= len(train_loader)
+            epoch_loss_list.append(cum_loss)
+            
+            if schedule == 'plateau':
+                scheduler.step(cum_loss)
+            elif scheduler:
+                scheduler.step()
+            
+            if verbose:
+                print(f"=> Epoch {epoch+1}: loss: {cum_loss}")
                 
-                if schedule == 'plateau':
-                    scheduler.step(cum_loss)
-                elif scheduler:
-                    scheduler.step()
+            if (epoch+1) % checkpoint == 0:
+                self.save(os.path.join(logdir, f'pretrain_{epoch+1}.pth'))
                 
-                if verbose:
-                    print(f"=> Epoch {epoch+1}: loss: {cum_loss}")
-                    
-                if (epoch+1) % checkpoint == 0:
-                    self.save(os.path.join(logdir, f'pretrain_{epoch+1}.pth'))
-                    
-            end_time = datetime.now()
-            print(f'=> Training finished in {end_time - start_time}')
-                
-            return epoch_loss_list
+        end_time = datetime.now()
+        print(f'=> Training finished in {end_time - start_time}')
+            
+        return epoch_loss_list
         
         
     def _momentum_update_key_encoder(self):
@@ -246,8 +246,8 @@ class MOPA:
         ptr = (ptr + batch_size) % self.queue_size  # move pointer
 
         self.queue_ptr[0] = ptr
-        
-        
+
+
     def get_scheduler(self, schedule, optimizer, epochs):
         if schedule == 'step':
             scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=[70, 80], gamma=0.1)
@@ -259,7 +259,7 @@ class MOPA:
             scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(optimizer, T_0=epochs//10, T_mult=2)
         else:
             scheduler = None
-            
+
         return scheduler
         
    
@@ -270,8 +270,8 @@ class MOPA:
             fn (str): filename.
         '''
         torch.save(self.net.state_dict(), fn)
-    
-    
+
+
     def load(self, fn):
         '''Load the model from a file.
         
@@ -281,8 +281,8 @@ class MOPA:
         # state_dict = torch.load(fn, map_location=self.device)
         state_dict = torch.load(fn)
         self.net.load_state_dict(state_dict)
-        
-        
+
+
 class MOPA2:
     ''' A momentum contrastive learning model cross time, frequency, patient.
     
@@ -375,118 +375,118 @@ class MOPA2:
         
     
     def fit(self, X, y, shuffle_function='random', mask_type='t+s', epochs=None, schedule=[30, 80], logdir='', checkpoint=1, verbose=1):
-            ''' Training the MoPa model.
+        ''' Training the MoPa model.
+        
+        Args:
+            X (numpy.ndarray): The training data. It should have a shape of (n_samples, sample_timestamps, features).
+            y (numpy.ndarray): The training labels. It should have a shape of (n_samples, 3). The three columns are the label, patient id, and trial id.
+            shuffle_function (str): specify the shuffle function.
+            mask_type (str): A list of masking functions applied (str).
+            epochs (Union[int, NoneType]): The number of epochs. When this reaches, the training stops.
+            verbose (int): Whether to print the training loss after each epoch.
             
-            Args:
-                X (numpy.ndarray): The training data. It should have a shape of (n_samples, sample_timestamps, features).
-                y (numpy.ndarray): The training labels. It should have a shape of (n_samples, 3). The three columns are the label, patient id, and trial id.
-                shuffle_function (str): specify the shuffle function.
-                mask_type (str): A list of masking functions applied (str).
-                epochs (Union[int, NoneType]): The number of epochs. When this reaches, the training stops.
-                verbose (int): Whether to print the training loss after each epoch.
-                
-            Returns:
-                epoch_loss_list: a list containing the training losses on each epoch.
-            '''
-            assert X.ndim == 3 # X.shape = (total_size, length, channels)
-            assert y.shape[1] == 3
-            assert self.queue_size % self.batch_size == 0
+        Returns:
+            epoch_loss_list: a list containing the training losses on each epoch.
+        '''
+        assert X.ndim == 3 # X.shape = (total_size, length, channels)
+        assert y.shape[1] == 3
+        assert self.queue_size % self.batch_size == 0
+        
+        if X.shape.index(min(X.shape)) == 1:
+            X = X.transpose(0, 2, 1)
+
+        if shuffle_function == 'trial':
+            X, y = shuffle_feature_label(X, y, shuffle_function=shuffle_function, batch_size=self.batch_size)
+
+        # we need patient id for patient-level contrasting and trial id for trial-level contrasting
+        train_dataset = TensorDataset(
+            torch.from_numpy(X).to(torch.float),
+            torch.from_numpy(y).to(torch.long)
+            )
+        
+        if shuffle_function == 'random':
+            train_loader = DataLoader(train_dataset, batch_size=self.batch_size, shuffle=True, drop_last=True)
+        else:
+            print('=> Shuffle data by trial')
+            my_sampler = MyBatchSampler(range(len(train_dataset)), batch_size=self.batch_size, drop_last=True)
+            train_loader = DataLoader(train_dataset, batch_sampler=my_sampler)
+        
+        if self.proj_q:
+            params = list(self.net_q.parameters()) + list(self.proj_q.parameters())
+            print(f'=> Append projection head to encoder with dimension: {self.proj_dims}')
+        else:
+            params = self.net_q.parameters()
             
-            if X.shape.index(min(X.shape)) == 1:
-                X = X.transpose(0, 2, 1)
-
-            if shuffle_function == 'trial':
-                X, y = shuffle_feature_label(X, y, shuffle_function=shuffle_function, batch_size=self.batch_size)
-
-            # we need patient id for patient-level contrasting and trial id for trial-level contrasting
-            train_dataset = TensorDataset(
-                torch.from_numpy(X).to(torch.float),
-                torch.from_numpy(y).to(torch.long)
-                )
+        optimizer = torch.optim.AdamW(params, lr=self.lr)
+        scheduler = self.get_scheduler(schedule, optimizer, epochs)
+        if scheduler:
+            print(f'=> Using scheduler: {schedule}')
             
-            if shuffle_function == 'random':
-                train_loader = DataLoader(train_dataset, batch_size=self.batch_size, shuffle=True, drop_last=True)
-            else:
-                print('=> Shuffle data by trial')
-                my_sampler = MyBatchSampler(range(len(train_dataset)), batch_size=self.batch_size, drop_last=True)
-                train_loader = DataLoader(train_dataset, batch_sampler=my_sampler)
+        epoch_loss_list = []
+        masks = mask_type.split('+') # e.g. 't+fb' -> ['t', 'fb']
+        if len(masks[0]) == 1 and len(masks[1]) == 1: # e.g. 't+s'
+            loss_func = id_momentum_loss2
+            print('=> Diagonal loss does not count')
+        else:
+            loss_func = id_momentum_loss
             
-            if self.proj_q:
-                params = list(self.net_q.parameters()) + list(self.proj_q.parameters())
-                print(f'=> Append projection head to encoder with dimension: {self.proj_dims}')
-            else:
-                params = self.net_q.parameters()
+        start_time = datetime.now()  
+        for epoch in range(epochs):
+            cum_loss = 0
+            for x, y in tqdm(train_loader, desc=f'=> Epoch {epoch+1}', leave=False):
+                x = x.to(self.device)
+                # get encoder mask mode and transformed data
+                x1, mask1 = transform(x, opt=masks[0])
+                x2, mask2 = transform(x, opt=masks[1])
+                pid = y[:, 1]  # patient id
                 
-            optimizer = torch.optim.AdamW(params, lr=self.lr)
-            scheduler = self.get_scheduler(schedule, optimizer, epochs)
-            if scheduler:
-                print(f'=> Using scheduler: {schedule}')
+                with torch.no_grad():
+                    self._momentum_update_key_encoder()
+                    
+                optimizer.zero_grad()
                 
-            epoch_loss_list = []
-            masks = mask_type.split('+') # e.g. 't+fb' -> ['t', 'fb']
-            if len(masks[0]) == 1 and len(masks[1]) == 1: # e.g. 't+s'
-                loss_func = id_momentum_loss2
-                print('=> Diagonal loss does not count')
-            else:
-                loss_func = id_momentum_loss
+                q = self.net_q(x1, x2, mask=mask1, pool=True)
+                if self.proj_q:
+                    q = self.proj_q(q)
+                q = F.normalize(q, dim=1)
                 
-            start_time = datetime.now()  
-            for epoch in range(epochs):
-                cum_loss = 0
-                for x, y in tqdm(train_loader, desc=f'=> Epoch {epoch+1}', leave=False):
-                    x = x.to(self.device)
-                    # get encoder mask mode and transformed data
-                    x1, mask1 = transform(x, opt=masks[0])
-                    x2, mask2 = transform(x, opt=masks[1])
-                    pid = y[:, 1]  # patient id
-                    
-                    with torch.no_grad():
-                        self._momentum_update_key_encoder()
-                        
-                    optimizer.zero_grad()
-                    
-                    q = self.net_q(x1, x2, mask=mask1, pool=True)
-                    if self.proj_q:
-                        q = self.proj_q(q)
-                    q = F.normalize(q, dim=1)
-                    
-                    with torch.no_grad():
-                        # shuffle BN
-                        idx = torch.randperm(x2.size(0), device=x.device)
-                        k = self.net_k(x1[idx], x2[idx], mask=mask2, pool=True)
-                        if self.proj_k:
-                            k = self.proj_k(k)
-                        k = F.normalize(k, dim=1)
-                        k = k[torch.argsort(idx)]
+                with torch.no_grad():
+                    # shuffle BN
+                    idx = torch.randperm(x2.size(0), device=x.device)
+                    k = self.net_k(x1[idx], x2[idx], mask=mask2, pool=True)
+                    if self.proj_k:
+                        k = self.proj_k(k)
+                    k = F.normalize(k, dim=1)
+                    k = k[torch.argsort(idx)]
 
-                    loss = loss_func(q, k, self.queue.clone().detach(), pid, self.id_queue.clone().detach())
+                loss = loss_func(q, k, self.queue.clone().detach(), pid, self.id_queue.clone().detach())
 
-                    loss.backward()
-                    optimizer.step()
-                    self.net.update_parameters(self.net_q)
+                loss.backward()
+                optimizer.step()
+                self.net.update_parameters(self.net_q)
 
-                    cum_loss += loss.item()
-                    
-                    self._dequeue_and_enqueue(k, pid)
+                cum_loss += loss.item()
+                
+                self._dequeue_and_enqueue(k, pid)
 
-                cum_loss /= len(train_loader)
-                epoch_loss_list.append(cum_loss)
+            cum_loss /= len(train_loader)
+            epoch_loss_list.append(cum_loss)
+            
+            if schedule == 'plateau':
+                scheduler.step(cum_loss)
+            elif scheduler:
+                scheduler.step()
+            
+            if verbose:
+                print(f"=> Epoch {epoch+1}: loss: {cum_loss}")
                 
-                if schedule == 'plateau':
-                    scheduler.step(cum_loss)
-                elif scheduler:
-                    scheduler.step()
+            if (epoch+1) % checkpoint == 0:
+                self.save(os.path.join(logdir, f'pretrain_{epoch+1}.pth'))
                 
-                if verbose:
-                    print(f"=> Epoch {epoch+1}: loss: {cum_loss}")
-                    
-                if (epoch+1) % checkpoint == 0:
-                    self.save(os.path.join(logdir, f'pretrain_{epoch+1}.pth'))
-                    
-            end_time = datetime.now()
-            print(f'=> Training finished in {end_time - start_time}')
-                
-            return epoch_loss_list
+        end_time = datetime.now()
+        print(f'=> Training finished in {end_time - start_time}')
+            
+        return epoch_loss_list
         
         
     def _momentum_update_key_encoder(self):
