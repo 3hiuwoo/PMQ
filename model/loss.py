@@ -2,21 +2,25 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 
-def hierarchical_contrastive_loss(z1, z2, alpha=0.5, temporal_unit=0):
+def hierarchical_contrastive_loss(z1, z2, id=None, alpha=0.5):
     loss = torch.tensor(0., device=z1.device)
     d = 0
     while z1.size(1) > 1:
-        if alpha != 0:
-            loss += alpha * instance_contrastive_loss(z1, z2)
-        if d >= temporal_unit:
-            if 1 - alpha != 0:
+        if id is None:
+            if alpha != 0:
+                loss += alpha * instance_contrastive_loss(z1, z2)
                 loss += (1 - alpha) * temporal_contrastive_loss(z1, z2)
+        else:
+            loss += id_contrastive_loss(z1, z2, id) 
         d += 1
         z1 = F.max_pool1d(z1.transpose(1, 2), kernel_size=2).transpose(1, 2)
         z2 = F.max_pool1d(z2.transpose(1, 2), kernel_size=2).transpose(1, 2)
     if z1.size(1) == 1:
-        if alpha != 0:
-            loss += alpha * instance_contrastive_loss(z1, z2)
+        if id is None:
+            if alpha != 0:
+                loss += alpha * instance_contrastive_loss(z1, z2)
+        else:
+            loss += id_contrastive_loss(z1, z2, id)
         d += 1
     return loss / d
 
@@ -69,6 +73,12 @@ def id_contrastive_loss(q, k, id):
     loss = 0
     temperature = 0.1
     eps = 1e-12
+    
+    B = q.size(0)
+    q = q.permute(0, 2, 1).reshape(B, -1)
+    k = k.permute(0, 2, 1).reshape(B, -1)
+    q = F.normalize(q, dim=1)
+    k = F.normalize(k, dim=1)
     sim_matrix = torch.mm(q, k.transpose(0,1)) # B x B
     
     argument = sim_matrix / temperature
