@@ -151,8 +151,8 @@ class TFP:
                 # spec2 = take_topk_component(out2)
                 # spec1 = self.proj_f(spec1)
                 # spec2 = self.proj_f(spec2)
-                spec1 = torch.fft.rfft(out1, dim=1, norm='ortho')
-                spec2 = torch.fft.rfft(out2, dim=1, norm='ortho')
+                spec1 = torch.fft.rfft(crop1, dim=1, norm='ortho')
+                spec2 = torch.fft.rfft(crop2, dim=1, norm='ortho')
                 
                 loss_amp = hierarchical_contrastive_loss(spec1.abs(), spec2.abs())
                 loss_phase = hierarchical_contrastive_loss(spec1.angle(), spec2.angle())
