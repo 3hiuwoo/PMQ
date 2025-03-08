@@ -165,7 +165,7 @@ class TFP:
                 
                 loss.backward()
                 optimizer.step()
-                self.net.update_parameters(self.net_q)
+                self.net.update_parameters(self._net)
 
                 cum_loss += loss.item()
 
