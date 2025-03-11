@@ -92,6 +92,7 @@ class TFP:
         else:
             self.queue = torch.randn(queue_size, output_dims, device=device, requires_grad=False)
             self.queue = F.normalize(self.queue, dim=1)
+        print('=> Queue shape:', self.queue.shape)
         
         self.id_queue = torch.zeros(queue_size, dtype=torch.long, device=device, requires_grad=False)
         self.queue_ptr = torch.zeros(1, dtype=torch.long, device=device, requires_grad=False)
