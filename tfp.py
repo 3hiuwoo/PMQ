@@ -185,17 +185,17 @@ class TFP:
                 zm = self.momentum_proj(hm)
                 
                 if self.pool is None:
-                    q = nn.functional.normalize(z, dim=-1)
-                    k = nn.functional.normalize(zm, dim=-1)
+                    q = F.normalize(z, dim=-1)
+                    k = F.normalize(zm, dim=-1)
                     q = q.permute(0, 2, 1).reshape((q.size(0), -1))
                     k = k.permute(0, 2, 1).reshape((k.size(0), -1))
-                    q = nn.functional.normalize(q, dim=1)
-                    k = nn.functional.normalize(k, dim=1)
+                    q = F.normalize(q, dim=1)
+                    k = F.normalize(k, dim=1)
                 else:
-                    q = nn.functional.normalize(z, dim=-1)
-                    k = nn.functional.normalize(zm, dim=-1)
+                    q = F.normalize(z, dim=-1)
+                    k = F.normalize(zm, dim=-1)
                     
-                loss = loss_func(q, k, self.queue.clone().detach, pid, self.id_queue.clone().detach(), diag=diag)
+                loss = loss_func(q, k, self.queue.clone().detach(), pid, self.id_queue.clone().detach(), diag=diag)
                 
                 loss.backward()
                 optimizer.step()
