@@ -194,7 +194,7 @@ class TFP:
                     q = nn.functional.normalize(z, dim=-1)
                     k = nn.functional.normalize(zm, dim=-1)
                     
-                loss = loss_func(z, zm, self.queue.clone().detach, pid, self.id_queue.clone().detach(), diag=diag)
+                loss = loss_func(q, k, self.queue.clone().detach, pid, self.id_queue.clone().detach(), diag=diag)
                 
                 loss.backward()
                 optimizer.step()
