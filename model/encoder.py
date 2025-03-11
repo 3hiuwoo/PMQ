@@ -38,7 +38,7 @@ def generate_binomial_mask(B, T, C=None, p=0.5):
 
 
 class ProjectionHead(nn.Module):
-    def __init__(self, input_dims, output_dims, hidden_dims=128, dropout=0.1):
+    def __init__(self, input_dims, output_dims, hidden_dims=128):
         super().__init__()
         self.input_dims = input_dims
         self.output_dims = output_dims
@@ -52,7 +52,7 @@ class ProjectionHead(nn.Module):
             nn.Linear(hidden_dims, output_dims)
         )
 
-        self.repr_dropout = nn.Dropout(p=dropout)
+        self.repr_dropout = nn.Dropout(p=0.1)
 
 
     def forward(self, x):
@@ -96,7 +96,7 @@ class FTClassifier(nn.Module):
 
 
     def forward(self, x):
-        out = self.net(x, pool=True)  # B x Co
+        out = self.net(x, pool='max')  # B x Co
         x = self.proj_head(out)  # B x Cp
         if self.p_output_dims == 2:  # binary or multi-class
             return torch.sigmoid(x)
