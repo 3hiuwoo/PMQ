@@ -158,7 +158,7 @@ class TFPClassifier(nn.Module):
         out_t = self.net_t(xt)
         out_f = self.net_f(xf)
         out = self.proj(torch.cat((out_t, out_f), dim=-1))
-        x = self.proj(out)
+        x = self.proj_head(out)
         if self.pool == 'max':
             x = F.max_pool1d(x.transpose(1, 2), kernel_size=x.size(-1)).squeeze(-1)
         elif self.pool == 'avg':
@@ -203,8 +203,7 @@ class TFPClassifier2(nn.Module):
         out_t = self.net_t(xt, pool=self.pool)
         out_f = self.net_f(xf, pool=self.pool)
         out = self.proj(torch.cat((out_t, out_f), dim=-1))
-        x = self.proj(out)
-        x = self.proj_head(x)
+        x = self.proj_head(out)
 
         if self.p_output_dims == 2:  # binary or multi-class
             return torch.sigmoid(x)
