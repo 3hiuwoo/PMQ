@@ -79,20 +79,15 @@ class FTClassifier(nn.Module):
         self.hidden_dims = hidden_dims  # Ch
         self.p_hidden_dims = p_hidden_dims  # Cph
         self.p_output_dims = p_output_dims  # Cp
-        self._net = TSEncoder(input_dims=input_dims, output_dims=output_dims, hidden_dims=hidden_dims, depth=depth)
+        self.net = TSEncoder(input_dims=input_dims, output_dims=output_dims, hidden_dims=hidden_dims, depth=depth)
         # projection head for finetune
         self.proj_head = ProjectionHead(output_dims, p_output_dims, p_hidden_dims)
         device = torch.device(device)
         if device == torch.device('cuda') and multi_gpu:
             self._net = nn.DataParallel(self._net)
             self.proj_head = nn.DataParallel(self.proj_head)
-        self._net.to(device)
+        self.net.to(device)
         self.proj_head.to(device)
-
-        # stochastic weight averaging, see link:
-        # https://pytorch.org/blog/pytorch-1.6-now-includes-stochastic-weight-averaging/
-        self.net = torch.optim.swa_utils.AveragedModel(self._net)
-        self.net.update_parameters(self._net)
 
 
     def forward(self, x):
@@ -113,20 +108,15 @@ class FTClassifier2(nn.Module):
         self.hidden_dims = hidden_dims  # Ch
         self.p_hidden_dims = p_hidden_dims  # Cph
         self.p_output_dims = p_output_dims  # Cp
-        self._net = TFEncoder(input_dims=input_dims, output_dims=output_dims, hidden_dims=hidden_dims, depth=depth)
+        self.net = TFEncoder(input_dims=input_dims, output_dims=output_dims, hidden_dims=hidden_dims, depth=depth)
         # projection head for finetune
         self.proj_head = ProjectionHead(output_dims, p_output_dims, p_hidden_dims)
         device = torch.device(device)
         if device == torch.device('cuda') and multi_gpu:
-            self._net = nn.DataParallel(self._net)
+            self.net = nn.DataParallel(self._net)
             self.proj_head = nn.DataParallel(self.proj_head)
-        self._net.to(device)
+        self.net.to(device)
         self.proj_head.to(device)
-
-        # stochastic weight averaging, see link:
-        # https://pytorch.org/blog/pytorch-1.6-now-includes-stochastic-weight-averaging/
-        self.net = torch.optim.swa_utils.AveragedModel(self._net)
-        self.net.update_parameters(self._net)
 
 
     def forward(self, xt, xf):
@@ -138,8 +128,91 @@ class FTClassifier2(nn.Module):
             return x
 
 
+class TFPClassifier(nn.Module):
+    def __init__(self, input_dims, output_dims, depth, p_output_dims, hidden_dims=64, p_hidden_dims=128,
+                 device='cuda', multi_gpu=True, pool='max'):
+        super().__init__()
+        self.input_dims = input_dims  # Ci
+        self.output_dims = output_dims  # Co
+        self.hidden_dims = hidden_dims  # Ch
+        self.p_hidden_dims = p_hidden_dims  # Cph
+        self.p_output_dims = p_output_dims  # Cp
+        self.net_t = TSEncoder(input_dims=input_dims, output_dims=output_dims, hidden_dims=hidden_dims, depth=depth)
+        self.net_f = TSEncoder(input_dims=input_dims, output_dims=output_dims, hidden_dims=hidden_dims, depth=depth)
+        self.proj = MLP(input_dims=output_dims*2, output_dims=output_dims, hidden_dims=(output_dims + output_dims//2))
+        self.proj_head = ProjectionHead(output_dims, p_output_dims, p_hidden_dims)
+        self.pool = pool
+        device = torch.device(device)
+        if device == torch.device('cuda') and multi_gpu:
+            self.net_t = nn.DataParallel(self.net_t)
+            self.net_f = nn.DataParallel(self.net_f)
+            self.proj = nn.DataParallel(self.proj)
+            self.proj_head = nn.DataParallel(self.proj_head)
+        self.net_t.to(device)
+        self.net_f.to(device)
+        self.proj.to(device)
+        self.proj_head.to(device)
+
+
+    def forward(self, xt, xf):
+        out_t = self.net_t(xt)
+        out_f = self.net_f(xf)
+        out = self.proj(torch.cat((out_t, out_f), dim=-1))
+        x = self.proj(out)
+        if self.pool == 'max':
+            x = F.max_pool1d(x.transpose(1, 2), kernel_size=x.size(-1)).squeeze(-1)
+        elif self.pool == 'avg':
+            x = F.avg_pool1d(x.transpose(1, 2), kernel_size=x.size(-1)).squeeze(-1)
+        else:
+            raise ValueError(f'\'{self.pool}\' is a wrong argument for pool function!')
+        x = self.proj_head(x)
+
+        if self.p_output_dims == 2:  # binary or multi-class
+            return torch.sigmoid(x)
+        else:
+            return x
+        
+        
+class TFPClassifier2(nn.Module):
+    def __init__(self, input_dims, output_dims, depth, p_output_dims, hidden_dims=64, p_hidden_dims=128,
+                 device='cuda', multi_gpu=True, pool='max'):
+        super().__init__()
+        self.input_dims = input_dims  # Ci
+        self.output_dims = output_dims  # Co
+        self.hidden_dims = hidden_dims  # Ch
+        self.p_hidden_dims = p_hidden_dims  # Cph
+        self.p_output_dims = p_output_dims  # Cp
+        self.net_t = TSEncoder(input_dims=input_dims, output_dims=output_dims, hidden_dims=hidden_dims, depth=depth)
+        self.net_f = TSEncoder(input_dims=input_dims, output_dims=output_dims, hidden_dims=hidden_dims, depth=depth)
+        self.proj = MLP(input_dims=output_dims*2, output_dims=output_dims, hidden_dims=(output_dims + output_dims//2))
+        self.proj_head = ProjectionHead(output_dims, p_output_dims, p_hidden_dims)
+        self.pool = pool
+        device = torch.device(device)
+        if device == torch.device('cuda') and multi_gpu:
+            self.net_t = nn.DataParallel(self.net_t)
+            self.net_f = nn.DataParallel(self.net_f)
+            self.proj = nn.DataParallel(self.proj)
+            self.proj_head = nn.DataParallel(self.proj_head)
+        self.net_t.to(device)
+        self.net_f.to(device)
+        self.proj.to(device)
+        self.proj_head.to(device)
+
+
+    def forward(self, xt, xf):
+        out_t = self.net_t(xt, pool=self.pool)
+        out_f = self.net_f(xf, pool=self.pool)
+        out = self.proj(torch.cat((out_t, out_f), dim=-1))
+        x = self.proj(out)
+        x = self.proj_head(x)
+
+        if self.p_output_dims == 2:  # binary or multi-class
+            return torch.sigmoid(x)
+        else:
+            return x
+
 class TSEncoder(nn.Module):
-    def __init__(self, input_dims, output_dims, hidden_dims=64, depth=10, mask_mode='binomial'):
+    def __init__(self, input_dims, output_dims, hidden_dims=64, depth=10, mask_mode='all_true'):
         super().__init__()
         self.input_dims = input_dims  # Ci
         self.output_dims = output_dims  # Co

@@ -279,6 +279,8 @@ class TFP:
             scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=epochs)
         elif schedule == 'cosine_warm':
             scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(optimizer, T_0=epochs//10, T_mult=2)
+        elif schedule == 'exp':
+            scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=0.98)
         else:
             scheduler = None
             

@@ -142,6 +142,10 @@ def run(logdir, seed, fraction):
             print(f'=> Loading pretrained model from {args.pretrain}')
             weights = torch.load(args.pretrain)
             
+            if 'net_t' in weights.keys():
+                weights = weights['net_t']
+                print(f'=> Using only temporal encoder')
+                
             if 'module.input_fc_t.weight' in weights.keys():
                 weights['module.input_fc.weight'] = weights['module.input_fc_t.weight']
                 weights['module.input_fc.bias'] = weights['module.input_fc_t.bias']
