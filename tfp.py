@@ -106,7 +106,7 @@ class TFP:
             param_k.data.copy_(param_q.data)
             param_k.requires_grad = False
             
-        for param_q, param_k in zip(self.proj.parameters(), self.momentum_proj.parameters()):
+        for param_q, param_k in zip(self._proj.parameters(), self.momentum_proj.parameters()):
             param_k.data.copy_(param_q.data)
             param_k.requires_grad = False
             
