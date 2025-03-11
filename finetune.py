@@ -160,7 +160,8 @@ def run(logdir, seed, fraction):
                 del weights['module.input_fc.bias']
                 print(f'=> Skip loading input projector weights')
             
-            model.net.load_state_dict(weights, strict=False)
+            msg = model.net.load_state_dict(weights, strict=False)
+            print('=>', msg)
         else:
             print(f'=> Find nothing in {args.pretrain}')
     else:
