@@ -21,14 +21,14 @@ parser.add_argument('--output_dim', type=int, default=320, help='output dimensio
 parser.add_argument('--proj_dim', type=int, default=320, help='projection head dimension, None for no projection head')
 parser.add_argument('--momentum', type=float, default=0.999, help='momentum for the momentum encoder')
 parser.add_argument('--queue_size', type=int, default=16384, help='queue size')
-parser.add_argument('--mask', type=str, default='binomial', help='[binomial, continuous, channel_binomial, channel_continuous, all_true]')
+parser.add_argument('--mask', type=str, default='all_true', help='[binomial, continuous, channel_binomial, channel_continuous, all_true]')
 parser.add_argument('--pool', type=str, default=None, help='[avg, max]')
 # training
 parser.add_argument('--lr', type=float, default=1e-4, help='learning rate')
 parser.add_argument('--schedule', type=str, default=None, help='[plateau, step, cosine, cosine_warm, None]')
 parser.add_argument('--batch_size', type=int, default=256, help='batch size')
 parser.add_argument('--epochs', type=int, default=100, help='number of epochs')
-parser.add_argument('--shuffle', type=str, default='trial', help='way to shuffle the data')
+parser.add_argument('--shuffle', type=str, default='random', help='way to shuffle the data')
 parser.add_argument('--logdir', type=str, default='log_tfp', help='directory to save weights and logs')
 parser.add_argument('--checkpoint', type=int, default=1, help='frequency to save checkpoint')
 parser.add_argument('--multi_gpu', action='store_true', help='whether to use multiple GPUs')
@@ -81,7 +81,6 @@ def main():
         y_train,
         shuffle_function=args.shuffle,
         mask=args.mask,
-        weights=args.weights,
         epochs=args.epochs,
         schedule=args.schedule,
         logdir=logdir,

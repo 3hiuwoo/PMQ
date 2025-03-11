@@ -60,7 +60,7 @@ class TFP:
         self.momentum_net_f = TSEncoder(input_dims=input_dims//2+1, output_dims=output_dims, hidden_dims=hidden_dims, depth=depth)
         self.momentum_proj = ProjectionHead(input_dims=output_dims*2, output_dims=output_dims, hidden_dims=(output_dims + output_dims//2), dropout=0)
         
-        self.momentum_init() # initialize all momentum parts
+        self._momentum_init() # initialize all momentum parts
                 
         device = torch.device(device)
         if device == torch.device('cuda') and self.multi_gpu:
