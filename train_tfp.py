@@ -11,7 +11,7 @@ parser = argparse.ArgumentParser(description='TFP training')
 parser.add_argument('--seed', type=int, default=42, help='random seed')
 # data
 parser.add_argument('--root', type=str, default='dataset', help='root directory of datasets')
-parser.add_argument('--data', type=str, default='chapman', help='[chapman, ptb, ptbxl]')
+parser.add_argument('--data', type=str, default='ptbxl', help='[chapman, ptb, ptbxl]')
 parser.add_argument('--length', type=int, default=300, help='length of each sample')
 parser.add_argument('--overlap', type=float, default=0., help='overlap of each sample')
 # model
@@ -22,8 +22,7 @@ parser.add_argument('--proj_dim', type=int, default=320, help='projection head d
 parser.add_argument('--momentum', type=float, default=0.999, help='momentum for the momentum encoder')
 parser.add_argument('--queue_size', type=int, default=16384, help='queue size')
 parser.add_argument('--mask', type=str, default='binomial', help='[binomial, continuous, channel_binomial, channel_continuous, all_true]')
-parser.add_argument('--lamda', type=float, default=0.5, help='balance parameter between amplitude loss and phase loss')
-parser.add_argument('--weights', type=int, nargs='+', default=[0.4, 0.3, 0.3], help='weights for the loss function')
+parser.add_argument('--pool', type=str, default=None, help='[avg, max]', help='pooling method for output representation of the encoder, default is no pooling')
 # training
 parser.add_argument('--lr', type=float, default=1e-4, help='learning rate')
 parser.add_argument('--schedule', type=str, default=None, help='[plateau, step, cosine, cosine_warm, None]')
@@ -66,8 +65,8 @@ def main():
         input_dims=X_train.shape[-1],
         output_dims=args.output_dim,
         hidden_dims=args.hidden_dim,
-        proj_dims=args.proj_dim,
         depth=args.depth,
+        pool=args.pool,
         device=device,
         lr=args.lr,
         batch_size=args.batch_size,

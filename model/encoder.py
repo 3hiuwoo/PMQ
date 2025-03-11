@@ -38,7 +38,7 @@ def generate_binomial_mask(B, T, C=None, p=0.5):
 
 
 class ProjectionHead(nn.Module):
-    def __init__(self, input_dims, output_dims, hidden_dims=128):
+    def __init__(self, input_dims, output_dims, hidden_dims=128, dropout=0.1):
         super().__init__()
         self.input_dims = input_dims
         self.output_dims = output_dims
@@ -52,7 +52,7 @@ class ProjectionHead(nn.Module):
             nn.Linear(hidden_dims, output_dims)
         )
 
-        self.repr_dropout = nn.Dropout(p=0.1)
+        self.repr_dropout = nn.Dropout(p=dropout) if dropout else nn.Identity()
 
 
     def forward(self, x):
@@ -147,7 +147,7 @@ class TSEncoder(nn.Module):
         self.repr_dropout = nn.Dropout(p=0.1)
         
         
-    def forward(self, x, mask=None, pool=False):  # input dimension : B x O x Ci
+    def forward(self, x, mask=None, pool=None):  # input dimension : B x O x Ci
         x = self.input_fc(x)  # B x O x Ch (hidden_dims)
         
         # generate & apply mask, default is binomial
@@ -184,8 +184,10 @@ class TSEncoder(nn.Module):
         x = x.transpose(1, 2)  # B x Ch x O
         x = self.repr_dropout(self.feature_extractor(x))  # B x Co x O
         
-        if pool:
+        if pool == 'max':
             x = F.max_pool1d(x, kernel_size=x.size(-1)).squeeze(-1)
+        elif pool == 'avg':
+            x = F.avg_pool1d(x, kernel_size=x.size(-1)).squeeze(-1)
         else:
             x = x.transpose(1, 2)  # B x O x Co
         
