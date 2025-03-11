@@ -158,11 +158,10 @@ class TFPClassifier(nn.Module):
         out_t = self.net_t(xt)
         out_f = self.net_f(xf)
         out = self.proj(torch.cat((out_t, out_f), dim=-1))
-        x = self.proj_head(out)
         if self.pool == 'max':
-            x = F.max_pool1d(x.transpose(1, 2), kernel_size=x.size(-1)).squeeze(-1)
+            x = F.max_pool1d(out.transpose(1, 2), kernel_size=x.size(-1)).squeeze(-1)
         elif self.pool == 'avg':
-            x = F.avg_pool1d(x.transpose(1, 2), kernel_size=x.size(-1)).squeeze(-1)
+            x = F.avg_pool1d(out.transpose(1, 2), kernel_size=x.size(-1)).squeeze(-1)
         else:
             raise ValueError(f'\'{self.pool}\' is a wrong argument for pool function!')
         x = self.proj_head(x)
