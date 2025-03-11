@@ -97,7 +97,7 @@ class TFP:
         self.queue_ptr = torch.zeros(1, dtype=torch.long, device=device, requires_grad=False)
         
     
-    def _momemtum_init(self):
+    def _momentum_init(self):
         for param_q, param_k in zip(self._net_t.parameters(), self.momentum_net_t.parameters()):
             param_k.data.copy_(param_q.data)
             param_k.requires_grad = False
