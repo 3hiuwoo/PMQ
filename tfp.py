@@ -151,7 +151,7 @@ class TFP:
         
         params = list(self._net_t.parameters()) + list(self._net_f.parameters()) + list(self._proj.parameters())
         optimizer = torch.optim.AdamW(params, lr=self.lr)
-        scheduler = self.get_scheduler(schedule, optimizer, epochs)
+        scheduler = self._get_scheduler(schedule, optimizer, epochs)
         if scheduler:
             print(f'=> Using scheduler: {schedule}')
         
@@ -270,7 +270,7 @@ class TFP:
         self.queue_ptr[0] = ptr
         
         
-    def get_scheduler(self, schedule, optimizer, epochs):
+    def _get_scheduler(self, schedule, optimizer, epochs):
         if schedule == 'step':
             scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=[30], gamma=0.1)
         elif schedule == 'plateau':
@@ -280,7 +280,7 @@ class TFP:
         elif schedule == 'cosine_warm':
             scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(optimizer, T_0=epochs//10, T_mult=2)
         elif schedule == 'exp':
-            scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=0.98)
+            scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=0.95)
         else:
             scheduler = None
             
