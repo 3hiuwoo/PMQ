@@ -5,7 +5,7 @@ import torch.nn.functional as F
 from tqdm import tqdm
 from torch import nn
 from torch.utils.data import TensorDataset, DataLoader
-from model.encoder import TSEncoder, ProjectionHead
+from model.encoder import TSEncoder, MLP
 from model.loss import id_momentum_contrastive_loss as loss_func
 from utils import shuffle_feature_label, MyBatchSampler
 
@@ -54,11 +54,11 @@ class TFP:
         
         self._net_t = TSEncoder(input_dims=input_dims, output_dims=output_dims, hidden_dims=hidden_dims, depth=depth)
         self._net_f = TSEncoder(input_dims=input_dims, output_dims=output_dims, hidden_dims=hidden_dims, depth=depth)
-        self._proj = ProjectionHead(input_dims=output_dims*2, output_dims=output_dims, hidden_dims=(output_dims + output_dims//2), dropout=0)
+        self._proj = MLP(input_dims=output_dims*2, output_dims=output_dims, hidden_dims=(output_dims + output_dims//2), dropout=0)
         
         self.momentum_net_t = TSEncoder(input_dims=input_dims, output_dims=output_dims, hidden_dims=hidden_dims, depth=depth)
         self.momentum_net_f = TSEncoder(input_dims=input_dims, output_dims=output_dims, hidden_dims=hidden_dims, depth=depth)
-        self.momentum_proj = ProjectionHead(input_dims=output_dims*2, output_dims=output_dims, hidden_dims=(output_dims + output_dims//2), dropout=0)
+        self.momentum_proj = MLP(input_dims=output_dims*2, output_dims=output_dims, hidden_dims=(output_dims + output_dims//2), dropout=0)
         
         self._momentum_init() # initialize all momentum parts
                 

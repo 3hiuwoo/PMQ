@@ -52,7 +52,7 @@ class ProjectionHead(nn.Module):
             nn.Linear(hidden_dims, output_dims)
         )
 
-        self.repr_dropout = nn.Dropout(p=dropout) if dropout else nn.Identity()
+        self.repr_dropout = nn.Dropout(p=dropout)
 
 
     def forward(self, x):
@@ -62,6 +62,13 @@ class ProjectionHead(nn.Module):
         else:
             return x
 
+def MLP(input_dims, output_dims, hidden_dims=128):
+    return nn.Sequential(
+        nn.Linear(input_dims, hidden_dims),
+        nn.GELU(),
+        nn.Linear(hidden_dims, output_dims)
+    )
+    
 
 class FTClassifier(nn.Module):
     def __init__(self, input_dims, output_dims, depth, p_output_dims, hidden_dims=64, p_hidden_dims=128,
