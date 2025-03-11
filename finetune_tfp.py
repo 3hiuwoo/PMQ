@@ -164,7 +164,7 @@ def run(logdir, seed, fraction):
             
             model.net_t.load_state_dict(weights['net_t'], strict=False)
             model.net_f.load_state_dict(weights['net_f'], strict=False)
-            model.fc_t.load_state_dict(weights['proj'], strict=False)
+            model.proj.load_state_dict(weights['proj'], strict=False)
         else:
             print(f'=> Find nothing in {args.pretrain}')
     else:
