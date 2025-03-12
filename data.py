@@ -53,7 +53,6 @@ def load_data(root='dataset', name='chapman', length=None, overlap=0, norm=True)
         # X_train, y_train = segment(X_train, y_train, split)
         # X_val, y_val = segment(X_val, y_val, split)
         # X_test, y_test = segment(X_test, y_test, split)
-        
         X_train, y_train = split_data_label(X_train, y_train, sample_timestamps=length, overlapping=overlap)
         X_val, y_val = split_data_label(X_val, y_val, sample_timestamps=length, overlapping=overlap)
         X_test, y_test = split_data_label(X_test, y_test, sample_timestamps=length, overlapping=overlap)
@@ -122,7 +121,7 @@ def load_split_ids(root='dataset', name='chapman'):
         
         # val 50 50 50 test 300 300 300
         train_ids = pids_n[:-350] + pids_a[:-350] + pids_o[:-350]
-        val_ids = pids_n[-50:-300] + pids_a[-50:-300] + pids_o[-50:-300]
+        val_ids = pids_n[-350:-300] + pids_a[-350:-300] + pids_o[-350:-300]
         test_ids = pids_n[-300:] + pids_a[-300:] + pids_o[-300:]
         
     else:
