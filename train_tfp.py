@@ -24,7 +24,7 @@ parser.add_argument('--mask', type=str, default='all_true', help='[binomial, con
 parser.add_argument('--pool', type=str, default=None, help='[avg, max]')
 # training
 parser.add_argument('--lr', type=float, default=1e-4, help='learning rate')
-parser.add_argument('--schedule', type=str, default=None, help='[plateau, step, cosine, cosine_warm, None]')
+parser.add_argument('--schedule', type=str, default=None, help='[plateau, step, cosine, cosine_warm, exp, None]')
 parser.add_argument('--batch_size', type=int, default=256, help='batch size')
 parser.add_argument('--epochs', type=int, default=100, help='number of epochs')
 parser.add_argument('--shuffle', type=str, default='random', help='way to shuffle the data')

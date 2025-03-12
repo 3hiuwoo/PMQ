@@ -110,8 +110,8 @@ def load_split_ids(root='dataset', name='chapman'):
         pids_STD = list(labels[np.where(labels[:, 0] == 7)][:, 1])
         pids_STE = list(labels[np.where(labels[:, 0] == 8)][:, 1])
 
-        train_ids = pids_Normal[:-210] + pids_AF[:-210] + pids_IAVB[:-210] + pids_LBBB[:-60] + pids_RBBB[:-210] + pids_PAC[:-210] + pids_PVC[:-210] + pids_STD[:-210] + pids_STE[:-60]
-        val_ids = pids_Normal[-210:-150] + pids_AF[-210:-150] + pids_IAVB[-210:-150] + pids_LBBB[-60:-50] + pids_RBBB[-210:-150] + pids_PAC[-210:-150] + pids_PVC[-210:-150] + pids_STD[-210:-150] + pids_STE[-60:-50]
+        train_ids = pids_Normal[:-300] + pids_AF[:-300] + pids_IAVB[:-300] + pids_LBBB[:-100] + pids_RBBB[:-300] + pids_PAC[:-300] + pids_PVC[:-300] + pids_STD[:-300] + pids_STE[:-100]
+        val_ids = pids_Normal[-300:-150] + pids_AF[-300:-150] + pids_IAVB[-300:-150] + pids_LBBB[-100:-50] + pids_RBBB[-300:-150] + pids_PAC[-300:-150] + pids_PVC[-300:-150] + pids_STD[-300:-150] + pids_STE[-100:-50]
         test_ids = pids_Normal[-150:] + pids_AF[-150:] + pids_IAVB[-150:] + pids_LBBB[-50:] + pids_RBBB[-150:] + pids_PAC[-150:] + pids_PVC[-150:] + pids_STD[-150:] + pids_STE[-50:]
     
     elif name == 'cinc2017':
@@ -120,9 +120,9 @@ def load_split_ids(root='dataset', name='chapman'):
         pids_o = list(labels[np.where(labels[:, 0]==2)][:, 1])
         
         # val 50 50 50 test 300 300 300
-        train_ids = pids_n[:-350] + pids_a[:-350] + pids_o[:-350]
-        val_ids = pids_n[-350:-300] + pids_a[-350:-300] + pids_o[-350:-300]
-        test_ids = pids_n[-300:] + pids_a[-300:] + pids_o[-300:]
+        train_ids = pids_n[:-900] + pids_a[:-300] + pids_o[:-800]
+        val_ids = pids_n[-900:-450] + pids_a[-300:-150] + pids_o[-800:-400]
+        test_ids = pids_n[-450:] + pids_a[-150:] + pids_o[-400:]
         
     else:
         raise ValueError(f'Unknown dataset: {name}')
