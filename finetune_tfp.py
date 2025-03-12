@@ -162,6 +162,13 @@ def run(logdir, seed, fraction):
             #     del weights['module.input_fc.bias']
             #     print(f'=> Skip loading input projector weights')
             
+            if 'module.input_fc.weight' in weights['net_t'] and weights['net_t']['module.input_fc.weight'].shape[1] != input_dims:
+                del weights['net_t']['module.input_fc.weight']
+                del weights['net_t']['module.input_fc.bias']
+                del weights['net_f']['module.input_fc.weight']
+                del weights['net_f']['module.input_fc.bias']
+                print(f'=> Skip loading input projector weights')
+                
             msg1 = model.net_t.load_state_dict(weights['net_t'], strict=False)
             msg2 = model.net_f.load_state_dict(weights['net_f'], strict=False)
             msg3 = model.proj.load_state_dict(weights['proj'], strict=False)
