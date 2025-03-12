@@ -16,7 +16,7 @@ parser = argparse.ArgumentParser(description="MoPa training")
 parser.add_argument("--seed", type=int, default=42, help="random seed")
 # data
 parser.add_argument(
-    "--root", type=str, default="dataset", help="root directory of datasets"
+    "--root", type=str, default="/root/autodl-tmp/dataset", help="root directory of datasets"
 )
 parser.add_argument("--data", type=str, default="chapman", help="[chapman, ptb, ptbxl]")
 parser.add_argument("--length", type=int, default=300, help="length of each sample")

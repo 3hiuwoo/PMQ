@@ -10,7 +10,7 @@ warnings.filterwarnings('ignore')
 parser = argparse.ArgumentParser(description='TFP training')
 parser.add_argument('--seed', type=int, default=42, help='random seed')
 # data
-parser.add_argument('--root', type=str, default='dataset', help='root directory of datasets')
+parser.add_argument('--root', type=str, default='/root/autodl-tmp/dataset', help='root directory of datasets')
 parser.add_argument('--data', type=str, default='ptbxl', help='[chapman, ptb, ptbxl]')
 parser.add_argument('--length', type=int, default=300, help='length of each sample')
 parser.add_argument('--overlap', type=float, default=0., help='overlap of each sample')
