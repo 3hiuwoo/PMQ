@@ -9,7 +9,7 @@ def load_data(root='dataset', name='chapman', length=None, overlap=0, norm=True)
     ''' load and preprocess data
     '''
     data_path = os.path.join(root, name, 'feature')
-    labels, train_ids, valid_ids, test_ids = load_label_split(root, name)
+    labels, train_ids, valid_ids, test_ids = load_split_ids(root, name)
     
     filenames = []
     for fn in os.listdir(data_path):
@@ -62,7 +62,7 @@ def load_data(root='dataset', name='chapman', length=None, overlap=0, norm=True)
     return X_train, X_val, X_test, y_train, y_val, y_test
 
 
-def load_label_split(root='dataset', name='chapman'):
+def load_split_ids(root='dataset', name='chapman'):
     '''
     load labels for dataset and split information
     '''
@@ -98,7 +98,33 @@ def load_label_split(root='dataset', name='chapman'):
         val_ids = pids_norm[-1200:-600] + pids_mi[-600:-300] + pids_sttc[-600:-300] + pids_cd[-400:-200] + pids_hyp[-200:-100]
         test_ids = pids_norm[-600:] + pids_mi[-300:] + pids_sttc[-300:] + pids_cd[-200:] + pids_hyp[-100:]
     
-    # TODO: CPSC2018, etc.
+    elif name == 'cpsc2018':
+        labels[:, 0] -= 1
+        
+        pids_Normal = list(labels[np.where(labels[:, 0] == 0)][:, 1])
+        pids_AF = list(labels[np.where(labels[:, 0] == 1)][:, 1])
+        pids_IAVB = list(labels[np.where(labels[:, 0] == 2)][:, 1])
+        pids_LBBB = list(labels[np.where(labels[:, 0] == 3)][:, 1])
+        pids_RBBB = list(labels[np.where(labels[:, 0] == 4)][:, 1])
+        pids_PAC = list(labels[np.where(labels[:, 0] == 5)][:, 1])
+        pids_PVC = list(labels[np.where(labels[:, 0] == 6)][:, 1])
+        pids_STD = list(labels[np.where(labels[:, 0] == 7)][:, 1])
+        pids_STE = list(labels[np.where(labels[:, 0] == 8)][:, 1])
+
+        train_ids = pids_Normal[:-210] + pids_AF[:-210] + pids_IAVB[:-210] + pids_LBBB[:-60] + pids_RBBB[:-210] + pids_PAC[:-210] + pids_PVC[:-210] + pids_STD[:-210] + pids_STE[:-60]
+        val_ids = pids_Normal[-210:-150] + pids_AF[-210:-150] + pids_IAVB[-210:-150] + pids_LBBB[-60:-50] + pids_RBBB[-210:-150] + pids_PAC[-210:-150] + pids_PVC[-210:-150] + pids_STD[-210:-150] + pids_STE[-60:-50]
+        test_ids = pids_Normal[-150:] + pids_AF[-150:] + pids_IAVB[-150:] + pids_LBBB[-50:] + pids_RBBB[-150:] + pids_PAC[-150:] + pids_PVC[-150:] + pids_STD[-150:] + pids_STE[-50:]
+    
+    elif name == 'cinc2017':
+        pids_n = list(labels[np.where(labels[:, 0]==0)][:, 1])
+        pids_a = list(labels[np.where(labels[:, 0]==1)][:, 1])
+        pids_o = list(labels[np.where(labels[:, 0]==2)][:, 1])
+        
+        # val 50 50 50 test 300 300 300
+        train_ids = pids_n[:-350] + pids_a[:-350] + pids_o[:-350]
+        val_ids = pids_n[-50:-300] + pids_a[-50:-300] + pids_o[-50:-300]
+        test_ids = pids_n[-300:] + pids_a[-300:] + pids_o[-300:]
+        
     else:
         raise ValueError(f'Unknown dataset: {name}')
         
