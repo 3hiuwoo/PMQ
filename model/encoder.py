@@ -62,12 +62,16 @@ class ProjectionHead(nn.Module):
         else:
             return x
 
-def MLP(input_dims, output_dims, hidden_dims=128):
-    return nn.Sequential(
-        nn.Linear(input_dims, hidden_dims),
-        nn.GELU(),
-        nn.Linear(hidden_dims, output_dims)
-    )
+def MLP(input_dims, output_dims, nlayers=1, hidden_dims=320):
+    layers = []
+    for i in range(nlayers):
+        layers.append(nn.Linear(input_dims, hidden_dims))
+        layers.append(nn.BatchNorm1d(hidden_dims))
+        layers.append(nn.ReLU())
+        input_dims = hidden_dims
+    layers.append(nn.Linear(hidden_dims, output_dims))
+    layers.append(nn.BatchNorm1d(output_dims))
+    return nn.Sequential(*layers)
     
 
 class FTClassifier(nn.Module):

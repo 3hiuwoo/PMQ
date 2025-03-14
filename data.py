@@ -44,6 +44,11 @@ def load_data(root='dataset', name='chapman', length=None, overlap=0, norm=True)
     y_val = np.array(valid_labels)
     y_test = np.array(test_labels)
     
+    if name == 'ptb':
+        X_train = X_train[:, :, :12]
+        X_val = X_val[:, :, :12]
+        X_test = X_test[:, :, :12]
+
     if norm:
         X_train = process_batch_ts(X_train, normalized=True, bandpass_filter=False)
         X_val = process_batch_ts(X_val, normalized=True, bandpass_filter=False)
