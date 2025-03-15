@@ -554,7 +554,7 @@ class TFP2:
             scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=0.95)
         elif schedule == 'warmup':
             steps = epochs * iters
-            scheduler = LinearWarmupCosineAnnealingLR(optimizer, int(0.1*steps), steps)
+            scheduler = LinearWarmupCosineAnnealingLR(optimizer, int(0.05*steps), steps)
         else:
             scheduler = None
             
