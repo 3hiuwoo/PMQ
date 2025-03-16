@@ -75,7 +75,7 @@ def MLP(input_dims, output_dims, nlayers=1, hidden_dims=320):
     
 
 class FTClassifier(nn.Module):
-    def __init__(self, input_dims, output_dims, depth, p_output_dims, hidden_dims=64, p_hidden_dims=128,
+    def __init__(self, input_dims, output_dims, depth, p_output_dims, hidden_dims=64, p_hidden_dims=128, pool='max',
                  device='cuda', multi_gpu=True):
         super().__init__()
         self.input_dims = input_dims  # Ci
@@ -83,6 +83,7 @@ class FTClassifier(nn.Module):
         self.hidden_dims = hidden_dims  # Ch
         self.p_hidden_dims = p_hidden_dims  # Cph
         self.p_output_dims = p_output_dims  # Cp
+        self.pool = pool
         self._net = TSEncoder(input_dims=input_dims, output_dims=output_dims, hidden_dims=hidden_dims, depth=depth)
         # projection head for finetune
         self.proj_head = ProjectionHead(output_dims, p_output_dims, p_hidden_dims)
@@ -97,7 +98,7 @@ class FTClassifier(nn.Module):
 
 
     def forward(self, x):
-        out = self.net(x, pool='max')  # B x Co
+        out = self.net(x, pool=self.pool)  # B x Co
         x = self.proj_head(out)  # B x Cp
         if self.p_output_dims == 2:  # binary or multi-class
             return torch.sigmoid(x)
