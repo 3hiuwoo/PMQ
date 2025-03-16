@@ -3,6 +3,7 @@ from torch import nn
 import torch.nn.functional as F
 import numpy as np
 from .dilated_conv import DilatedConvEncoder
+from utils import freq_perturb
 
 def generate_continuous_mask(B, T, C=None, n=5, l=0.1):
     if C:
@@ -256,8 +257,11 @@ class TSEncoder(nn.Module):
                 mask = self.mask_mode
             else:
                 mask = 'all_true'
-        
-        if mask == 'binomial':
+                
+        if mask == 'bif':
+            x = freq_perturb(x, 0.1)
+            
+        if mask == 'binomial' or mask == 'bif':
             mask = generate_binomial_mask(x.size(0), x.size(1)).to(x.device)
         elif mask == 'channel_binomial':
             mask = generate_binomial_mask(x.size(0), x.size(1), x.size(2)).to(x.device)

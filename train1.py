@@ -20,7 +20,7 @@ parser.add_argument('--hidden_dim', type=int, default=64, help='hidden dimension
 parser.add_argument('--output_dim', type=int, default=320, help='output dimension of the encoder')
 parser.add_argument('--momentum', type=float, default=0.99, help='momentum for the momentum encoder')
 parser.add_argument('--tau', type=float, default=0.1, help='temperature for cosine similarity')
-parser.add_argument('--mask', type=str, default='binomial', help='[binomial, continuous, channel_binomial, channel_continuous, all_true]')
+parser.add_argument('--mask', type=str, default='bif', help='[bif, binomial, continuous, channel_binomial, channel_continuous, all_true]')
 parser.add_argument('--pool', type=str, default='avg', help='[avg, max]')
 # training
 parser.add_argument('--lr', type=float, default=1e-4, help='learning rate')
