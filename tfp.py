@@ -411,12 +411,12 @@ class TFP2:
         Returns:
             epoch_loss_list: a list containing the training losses on each epoch.
         '''
-        assert X.ndim == 3 # X.shape = (total_size, length, channels)
-        assert y.shape[1] == 3
+        # assert X.ndim == 3 # X.shape = (total_size, length, channels)
+        # assert y.shape[1] == 3
         
-        if X.shape.index(min(X.shape)) == 1:
-            print('=> Transpose X to have the last dimension of feature size')
-            X = X.transpose(0, 2, 1)
+        # if X.shape.index(min(X.shape)) == 1:
+        #     print('=> Transpose X to have the last dimension of feature size')
+        #     X = X.transpose(0, 2, 1)
 
         if shuffle_function == 'trial':
             X, y = shuffle_feature_label(X, y, shuffle_function=shuffle_function, batch_size=self.batch_size)
@@ -455,27 +455,29 @@ class TFP2:
                     
                 optimizer.zero_grad()
                 
+                x1 = x[:, 0, ...]
+                x2 = x[:, 1, ...]
                 # x1 = freq_perturb(x)
                 # x2 = freq_perturb(x)
                 
-                # q1 = self._net(x1, mask=mask, pool=self.pool)
-                # q2 = self._net(x2, mask=mask, pool=self.pool)
-                # q1 = F.normalize(q1, dim=-1)
-                # q2 = F.normalize(q2, dim=-1)
+                q1 = self._net(x1, mask=mask, pool=self.pool)
+                q2 = self._net(x2, mask=mask, pool=self.pool)
+                q1 = F.normalize(q1, dim=-1)
+                q2 = F.normalize(q2, dim=-1)
                 
-                # k1 = self.momentum_net(x1, mask=mask, pool=self.pool)
-                # k2 = self.momentum_net(x2, mask=mask, pool=self.pool)
-                # k1 = F.normalize(k1, dim=-1)
-                # k2 = F.normalize(k2, dim=-1)
+                k1 = self.momentum_net(x1, mask=mask, pool=self.pool)
+                k2 = self.momentum_net(x2, mask=mask, pool=self.pool)
+                k1 = F.normalize(k1, dim=-1)
+                k2 = F.normalize(k2, dim=-1)
                 
-                q = self._net(x, mask=mask, pool=self.pool)
-                q = F.normalize(q, dim=-1)
-                k = self.momentum_net(x, mask=mask, pool=self.pool)
-                k = F.normalize(k, dim=-1)
+                # q = self._net(x, mask=mask, pool=self.pool)
+                # q = F.normalize(q, dim=-1)
+                # k = self.momentum_net(x, mask=mask, pool=self.pool)
+                # k = F.normalize(k, dim=-1)
                 
-                loss = self.loss_func(q, k, pid)
-                # loss = self.loss_func(q1, k2, pid)
-                # loss += self.loss_func(q2, k1, pid)
+                # loss = self.loss_func(q, k, pid)
+                loss = self.loss_func(q1, k2, pid)
+                loss += self.loss_func(q2, k1, pid)
                 
                 loss.backward()
                 optimizer.step()

@@ -57,6 +57,7 @@ def main():
                                        args.data,
                                        length=args.length,
                                        overlap=args.overlap,
+                                       neighbor=True
                                        )
     
     device = get_device()

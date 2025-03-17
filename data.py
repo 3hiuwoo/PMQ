@@ -1,11 +1,12 @@
 import os
 import numpy as np
+from sklearn.utils import shuffle
 from tqdm import tqdm
 from sklearn.preprocessing import StandardScaler
 from scipy.signal import butter, lfilter
 from itertools import repeat
     
-def load_data(root='dataset', name='chapman', length=None, overlap=0, norm=True):
+def load_data(root='dataset', name='chapman', length=None, overlap=0, norm=True, neighbor=False):
     ''' load and preprocess data
     '''
     data_path = os.path.join(root, name, 'feature')
@@ -44,6 +45,10 @@ def load_data(root='dataset', name='chapman', length=None, overlap=0, norm=True)
     y_val = np.array(valid_labels)
     y_test = np.array(test_labels)
     
+    X_train, y_train = shuffle(X_train, y_train, random_state=42)
+    X_val, y_val = shuffle(X_val, y_val, random_state=42)
+    X_test, y_test = shuffle(X_test, y_test, random_state=42)
+
     if name == 'ptb':
         X_train = X_train[:, :, :12]
         X_val = X_val[:, :, :12]
@@ -62,7 +67,13 @@ def load_data(root='dataset', name='chapman', length=None, overlap=0, norm=True)
         X_val, y_val = split_data_label(X_val, y_val, sample_timestamps=length, overlapping=overlap)
         X_test, y_test = split_data_label(X_test, y_test, sample_timestamps=length, overlapping=overlap)
         
-    
+    if neighbor:
+        length = X_train.shape[1]
+        nleads = X_train.shape[-1]
+        assert length % 2 == 0
+        
+        X_train = X_train.reshape(-1, 2, int(length/2), nleads)
+        
     return X_train, X_val, X_test, y_train, y_val, y_test
 
 
