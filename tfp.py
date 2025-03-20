@@ -418,6 +418,7 @@ class TFP2:
         #     print('=> Transpose X to have the last dimension of feature size')
         #     X = X.transpose(0, 2, 1)
 
+        print('=> Number of dimension of training data:', X.ndim)
         if shuffle_function == 'trial':
             X, y = shuffle_feature_label(X, y, shuffle_function=shuffle_function, batch_size=self.batch_size)
 
