@@ -2,7 +2,7 @@ import os
 import argparse
 import warnings
 import numpy as np
-from tfp import TFP2
+from tfp import TFP3
 from data import load_data
 from utils import seed_everything, get_device
 warnings.filterwarnings('ignore')
@@ -14,6 +14,7 @@ parser.add_argument('--root', type=str, default='/root/autodl-tmp/dataset', help
 parser.add_argument('--data', type=str, default='ptbxl', help='[chapman, ptb, ptbxl]')
 parser.add_argument('--length', type=int, default=300, help='length of each sample')
 parser.add_argument('--overlap', type=float, default=0., help='overlap of each sample')
+parser.add_argument('--neighbor', action='store_true', help='whether to use neighbor samples')
 # model
 parser.add_argument('--depth', type=int, default=10, help='number of dilated convolutional blocks')
 parser.add_argument('--hidden_dim', type=int, default=64, help='hidden dimension of the encoder')
@@ -22,15 +23,16 @@ parser.add_argument('--momentum', type=float, default=0.999, help='momentum for 
 parser.add_argument('--tau', type=float, default=0.1, help='temperature for cosine similarity')
 parser.add_argument('--mask', type=str, default='bif', help='[bif, binomial, continuous, channel_binomial, channel_continuous, all_true]')
 parser.add_argument('--pool', type=str, default='avg', help='[avg, max]')
+parser.add_argument('--queue_size', type=int, default=16384, help='queue size for the momentum encoder')
 # training
 parser.add_argument('--lr', type=float, default=1e-4, help='learning rate')
 parser.add_argument('--wd', type=float, default=1.5e-6, help='weight decay')
 parser.add_argument('--optim', type=str, default='adamw', help='[adamw, lars]')
 parser.add_argument('--schedule', type=str, default=None, help='[plateau, step, cosine, warmup, exp]')
-parser.add_argument('--batch_size', type=int, default=4096, help='batch size')
+parser.add_argument('--batch_size', type=int, default=256, help='batch size')
 parser.add_argument('--epochs', type=int, default=100, help='number of epochs')
 parser.add_argument('--shuffle', type=str, default='trial', help='way to shuffle the data')
-parser.add_argument('--logdir', type=str, default='log_tfp', help='directory to save weights and logs')
+parser.add_argument('--logdir', type=str, default='log_mcp', help='directory to save weights and logs')
 parser.add_argument('--checkpoint', type=int, default=1, help='frequency to save checkpoint')
 parser.add_argument('--multi_gpu', action='store_true', help='whether to use multiple GPUs')
 parser.add_argument('--verbose', type=int, default=1, help='if large than 0: print loss after each epoch')
@@ -57,13 +59,13 @@ def main():
                                        args.data,
                                        length=args.length,
                                        overlap=args.overlap,
-                                       neighbor=True
+                                       neighbor=args.neighbor
                                        )
     
     device = get_device()
     print(f'=> Running on {device}')
     
-    model = TFP2(
+    model = TFP3(
         input_dims=X_train.shape[-1],
         output_dims=args.output_dim,
         hidden_dims=args.hidden_dim,
@@ -75,10 +77,11 @@ def main():
         momentum=args.momentum,
         tau=args.tau,
         wd=args.wd,
+        queue_size=args.queue_size,
         multi_gpu=args.multi_gpu
     )
     
-    print(f'=> Training TFP')
+    print(f'=> Training TFP3')
     loss_list = model.fit(
         X_train,
         y_train,
