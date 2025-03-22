@@ -2,7 +2,7 @@ import os
 import argparse
 import warnings
 import numpy as np
-from MoCoP import MoCoP, MocoQ
+from MoCoP import MoCoP, MoCoQ
 from data import load_data
 from utils import seed_everything, get_device
 warnings.filterwarnings('ignore')
@@ -22,7 +22,7 @@ parser.add_argument('--output_dim', type=int, default=320, help='output dimensio
 parser.add_argument('--momentum', type=float, default=0.999, help='momentum for the momentum encoder')
 parser.add_argument('--tau', type=float, default=0.1, help='temperature for cosine similarity')
 parser.add_argument('--mask', type=str, default='bif', help='[bif, binomial, continuous, channel_binomial, channel_continuous, all_true]')
-parser.add_argument('--pool', type=str, default='max', help='[avg, max]')
+parser.add_argument('--pool', type=str, default='avg', help='[avg, max]')
 parser.add_argument('--queue_size', type=int, default=16384, help='queue size for the momentum encoder')
 # training
 parser.add_argument('--lr', type=float, default=1e-4, help='learning rate')
@@ -66,24 +66,8 @@ def main():
     print(f'=> Running on {device}')
     
     if args.queue_size:
-        print(f'=> Using MoCo-P')
-        model = MoCoP(
-            input_dims=X_train.shape[-1],
-            output_dims=args.output_dim,
-            hidden_dims=args.hidden_dim,
-            depth=args.depth,
-            pool=args.pool,
-            device=device,
-            lr=args.lr,
-            batch_size=args.batch_size,
-            momentum=args.momentum,
-            tau=args.tau,
-            wd=args.wd,
-            multi_gpu=args.multi_gpu
-    )
-    else:
         print(f'=> Using MoCo-Q')
-        model = MocoQ(
+        model = MoCoQ(
             input_dims=X_train.shape[-1],
             output_dims=args.output_dim,
             hidden_dims=args.hidden_dim,
@@ -98,6 +82,23 @@ def main():
             queue_size=args.queue_size,
             multi_gpu=args.multi_gpu
         )
+    else:
+        print(f'=> Using MoCo-P')
+        model = MoCoP(
+            input_dims=X_train.shape[-1],
+            output_dims=args.output_dim,
+            hidden_dims=args.hidden_dim,
+            depth=args.depth,
+            pool=args.pool,
+            device=device,
+            lr=args.lr,
+            batch_size=args.batch_size,
+            momentum=args.momentum,
+            tau=args.tau,
+            wd=args.wd,
+            multi_gpu=args.multi_gpu
+        )
+        
     
     loss_list = model.fit(
         X_train,

@@ -43,7 +43,8 @@ All processed data should be organized as below(all notebooks produce the data i
 To pre-train with the same setting as in the paper, just run:
 ```
 python train.py --root [folder containing all datasets]\
---logdir [folder to save pre-trained model weights and training loss]
+--logdir [folder to save pre-trained model weights and training loss]\
+--neighbor
 ```
 
 If you want to try different settings, run the following for details:

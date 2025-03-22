@@ -320,7 +320,7 @@ class MoCoP:
         return 2 * self.tau * loss
     
     
-class MocoQ:
+class MoCoQ:
     ''' A momentum contrastive learning model cross time, frequency, patient.
     
     Args:

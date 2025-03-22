@@ -29,7 +29,7 @@ parser.add_argument('--hidden_dim', type=int, default=64, help='hidden dimension
 parser.add_argument('--output_dim', type=int, default=320, help='output dimension of the encoder')
 parser.add_argument('--p_hidden_dim', type=int, default=128, help='hidden dimension of the projection head')
 parser.add_argument('--pretrain', type=str, default='', help='encoder weight file path')
-parser.add_argument('--pool', type=str, default='max', help='[avg, max]')
+parser.add_argument('--pool', type=str, default='avg', help='[avg, max]')
 # training
 parser.add_argument('--lr', type=float, default=1e-4, help='learning rate')
 parser.add_argument('--batch_size', type=int, default=256, help='batch size')
