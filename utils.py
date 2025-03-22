@@ -193,36 +193,10 @@ def batch_shuffle_feature_label(X, y, batch_size=256):
     return X_shuffled, y_shuffled
 
 
-def transform(x, opt='t'):
-    if opt[0] == 't': # original temporal signal
-        re = x
-    elif opt[0] == 'f': # frequency distortion
-        re = freq_perturb(x, ratio=0.1)
-    elif opt[0] == 's': # spectrum
-        re = fft.rfft(x, dim=1, norm='ortho', n=2*x.shape[1]-1).abs()
-    
-    # mask argument passed to the encoder
-    if len(opt) == 1:
-        mask = 'all_true'
-    elif opt[1:] == 'b':
-        mask = 'binomial'
-    elif opt[1:] == 'c':
-        mask = 'continuous'
-    elif opt[1:] == 'cb':
-        mask = 'channel_binomial'
-    elif opt[1:] == 'cc':
-        mask = 'channel_continuous'
-    
-    return re, mask
-    
-
 def freq_perturb(x, ratio=0.1):
     xf = fft.rfft(x, dim=1)
     aug_1 = remove_frequency(xf, ratio=ratio)
     xf = fft.irfft(aug_1, dim=1)
-    # aug_2 = add_frequency(x, ratio=ratio)
-    # aug_F = aug_1 + aug_2
-    # return aug_F
     return xf
 
 
@@ -241,67 +215,6 @@ def add_frequency(x, ratio=0.0):
     random_am = torch.rand(mask.shape) * (max_amplitude * 0.1)
     pertub_matrix = mask * random_am
     return x + pertub_matrix
-
-
-def beat_shift(x, beat_width=0.5, shift_ratio=1):
-    batch_size, length, features = x.shape
-    beat_width = int(length * beat_width)
-    beat_center = length // 2
-    beat_start = beat_center - beat_width // 2
-    beat_end = beat_center + beat_width // 2
-    
-    max_left_shift = beat_start
-    max_right_shift = length - beat_end
-    max_shift = min(max_left_shift, max_right_shift, int(length * shift_ratio))
-    
-    shifts = torch.randint(-max_shift, max_shift + 1, (batch_size, features), device=x.device)
-    
-    shifted_x = torch.zeros_like(x)
-    for i in range(batch_size):
-        for j in range(features):
-            shift = shifts[i, j]
-            if shift > 0:
-                shifted_x[i, shift:, j] = x[i, :-shift, j]
-            elif shift < 0:
-                shifted_x[i, :shift, j] = x[i, -shift:, j]
-            else:
-                shifted_x[i, :, j] = x[i, :, j]
-    
-    return shifted_x
-
-
-def crop_overlap(x, width=0.5):
-    ts_l = x.size(1)
-    crop_l = np.random.randint(low=x.size(1)*width, high=ts_l+1)
-    crop_left = np.random.randint(int((ts_l - crop_l)/2) + 1)
-    crop_right = crop_left + crop_l
-    crop_eleft = np.random.randint(crop_left + 1)
-    crop_eright = np.random.randint(low=crop_right, high=ts_l + 1)
-    crop_offset = np.random.randint(low=-crop_eleft, high=ts_l - crop_eright + 1, size=x.size(0))
-    
-    x1 = take_per_row(x, crop_offset + crop_eleft, crop_right - crop_eleft)
-    x2 = take_per_row(x, crop_offset + crop_left, crop_eright - crop_left)
-    
-    return x1, x2, crop_l
-    
-    
-def take_per_row(x, indx, num_elem):
-    all_indx = indx[:,None] + np.arange(num_elem)
-    return x[torch.arange(all_indx.shape[0])[:,None], all_indx]
-
-
-def take_topk_component(x, ratio=0.5):
-    spectrum = fft.rfft(x, dim=1, norm='ortho') # complex matrix with shape (batch_size, length//2+1, features)
-    amp = spectrum.abs()
-    avg_amp = amp.mean(dim=-1)
-    _, idx = torch.topk(avg_amp, int(avg_amp.size(1) * ratio), dim=1)
-    
-    mask = torch.ones_like(avg_amp, dtype=torch.bool)
-    mask.scatter_(1, idx, False)
-    
-    spectrum.masked_fill_(mask.unsqueeze(-1), 0)
-    
-    return spectrum
     
 
 

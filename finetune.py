@@ -20,7 +20,7 @@ parser = argparse.ArgumentParser(description='Fine-tuning/Training from scratch'
 parser.add_argument('--seeds', type=int, nargs='+', default=[41, 42, 43, 44, 45], help='list of random seeds')
 # data
 parser.add_argument('--root', type=str, default='/root/autodl-tmp/dataset', help='root directory of datasets')
-parser.add_argument('--data', type=str, default='ptbxl', help='select pre-training dataset')
+parser.add_argument('--data', type=str, default='ptb', help='select pre-training dataset')
 parser.add_argument('--length', type=int, default=300, help='length of each sample')
 parser.add_argument('--overlap', type=float, default=0., help='overlap of each sample')
 # model
@@ -35,7 +35,7 @@ parser.add_argument('--lr', type=float, default=1e-4, help='learning rate')
 parser.add_argument('--batch_size', type=int, default=256, help='batch size')
 parser.add_argument('--epochs', type=int, default=50, help='number of epochs')
 parser.add_argument('--fractions', type=float, nargs='+', default=[1.0, 0.1, 0.01], help='list of fractions of training data')
-parser.add_argument('--logdir', type=str, default='log_mopa', help='directory to save logs')
+parser.add_argument('--logdir', type=str, default='log', help='directory to save logs')
 parser.add_argument('--multi_gpu', action='store_true', help='whether to use multiple GPUs')
 parser.add_argument('--verbose', type=int, default=1, help='control how much information to print out')
 
