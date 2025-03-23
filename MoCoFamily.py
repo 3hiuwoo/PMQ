@@ -40,6 +40,7 @@ class MoCoP:
         tau=0.1,
         wd=1.5e-6,
         multi_gpu=False,
+        use_patient=True,
     ):
         super().__init__()
         self.device = device
@@ -50,6 +51,9 @@ class MoCoP:
         self.hidden_dims = hidden_dims
         
         self.multi_gpu = multi_gpu
+        if not use_patient:
+            print('=> !!! Using normal MoCo loss !!!')
+        self.use_patient = use_patient
         
         self.momentum = momentum
         self.tau = tau
@@ -146,7 +150,7 @@ class MoCoP:
             cum_loss = 0
             for x, y in tqdm(train_loader, desc=f'=> Epoch {epoch+1}', leave=False):
                 x = x.to(self.device)
-                pid = y[:, 1]  # patient id
+                pid = y[:, 1] if self.use_patient else None # patient id
 
                 self._momentum_update()
                     
@@ -170,16 +174,16 @@ class MoCoP:
                 q1 = F.normalize(q1, dim=-1)
                 q2 = F.normalize(q2, dim=-1)
                 
-                k1 = self.momentum_net(x1, mask=mask, pool=self.pool)
-                k1 = self.momentum_proj(k1)
-                
-                k2 = self.momentum_net(x2, mask=mask, pool=self.pool)
-                k2 = self.momentum_proj(k2)
+                with torch.no_grad():
+                    k1 = self.momentum_net(x1, mask=mask, pool=self.pool)
+                    k1 = self.momentum_proj(k1)
+                    
+                    k2 = self.momentum_net(x2, mask=mask, pool=self.pool)
+                    k2 = self.momentum_proj(k2)
                 
                 k1 = F.normalize(k1, dim=-1)
                 k2 = F.normalize(k2, dim=-1)
                 
-                # loss = self.loss_func(q, k, pid)
                 loss = self.loss_func(q1, k2, pid)
                 loss += self.loss_func(q2, k1, pid)
                 
@@ -190,8 +194,6 @@ class MoCoP:
                 self._update_swa()
 
                 cum_loss += loss.item()
-                
-                # self._update_queue(k, pid)
 
             cum_loss /= len(train_loader)
             epoch_loss_list.append(cum_loss)
@@ -277,7 +279,21 @@ class MoCoP:
         raise NotImplementedError
     
     
-    def loss_func(self, q, k, id):
+    def loss_func(self, q, k, id=None):
+        if id is None:
+            return self.moco_loss(q, k)
+        else:
+            return self.patient_moco_loss(q, k, id)
+        
+        
+    def moco_loss(self, q, k):
+        logits = torch.mm(q, k.t())  # [N, N] pairs
+        labels = torch.arange(logits.size(0), device=logits.device)  # positives are in diagonal
+        loss = F.cross_entropy(logits / self.tau, labels)
+        return 2 * self.tau * loss
+    
+      
+    def patient_moco_loss(self, q, k, id):
         id = id.cpu().detach().numpy()
 
         interest_matrix = np.equal.outer(id, id).astype(int) # B x B
@@ -351,6 +367,7 @@ class MoCoQ:
         wd=1.5e-6,
         queue_size=16384,
         multi_gpu=False,
+        use_patient=True,
     ):
         super().__init__()
         self.device = device
@@ -361,6 +378,9 @@ class MoCoQ:
         self.hidden_dims = hidden_dims
         
         self.multi_gpu = multi_gpu
+        if not use_patient:
+            print('=> !!! Using normal MoCo loss !!!')
+        self.use_patient = use_patient
         
         self.momentum = momentum
         self.tau = tau
@@ -402,7 +422,7 @@ class MoCoQ:
         self.queue = F.normalize(self.queue, dim=1)
         print('=> Initialized the queue with shape:', self.queue.shape)
         
-        self.id_queue = torch.zeros(queue_size, dtype=torch.long, device=device, requires_grad=False)
+        self.id_queue = torch.zeros(queue_size, dtype=torch.long, device=device, requires_grad=False) if use_patient else None
         self.queue_ptr = torch.zeros(1, dtype=torch.long, device=device, requires_grad=False)
     
         
@@ -465,7 +485,7 @@ class MoCoQ:
             cum_loss = 0
             for x, y in tqdm(train_loader, desc=f'=> Epoch {epoch+1}', leave=False):
                 x = x.to(self.device)
-                pid = y[:, 1]  # patient id
+                pid = y[:, 1] if self.use_patient else None # patient id
 
                 self._momentum_update()
                     
@@ -483,8 +503,9 @@ class MoCoQ:
                 q = self._pred(q)
                 q = F.normalize(q, dim=-1)
                 
-                k = self.momentum_net(x2, mask=mask, pool=self.pool)
-                k = self.momentum_proj(k)
+                with torch.no_grad():
+                    k = self.momentum_net(x2, mask=mask, pool=self.pool)
+                    k = self.momentum_proj(k)
                 k = F.normalize(k, dim=-1)
                 
                 loss = self.loss_func(q, k, pid)
@@ -542,7 +563,7 @@ class MoCoQ:
                 param_k.data = param_k.data * self.momentum + param_q.data * (1.0 - self.momentum)
             
                 
-    def _update_queue(self, k, pid):
+    def _update_queue(self, k, pid=None):
         '''
         update all queues
         '''
@@ -554,7 +575,9 @@ class MoCoQ:
 
         # replace the keys at ptr (dequeue and enqueue)
         self.queue[ptr : ptr + batch_size, ...] = k
-        self.id_queue[ptr : ptr + batch_size] = pid
+        if pid is not None:
+            self.id_queue[ptr : ptr + batch_size] = pid
+            
         ptr = (ptr + batch_size) % self.queue_size  # move pointer
 
         self.queue_ptr[0] = ptr
@@ -601,7 +624,24 @@ class MoCoQ:
         raise NotImplementedError
     
     
-    def loss_func(self, q, k, id):
+    def loss_func(self, q, k, id=None):
+        if id is None:
+            return self.moco_loss(q, k)
+        else:
+            return self.patient_moco_loss(q, k, id)
+    
+    
+    def moco_loss(self, q, k):
+        N, C = q.shape
+        l_pos = torch.bmm(q.view(N, 1, C), k.view(N, C, 1)).squeeze(-1)  # positive logits: Nx1
+        l_neg = torch.mm(q, self.queue.t())  # negative logits: NxK
+        logits = torch.cat([l_pos, l_neg], dim=1)  # logits: Nx(1+K)
+        labels = torch.zeros(N, dtype=torch.long, device=q.device)  # positives are the 0-th
+        loss = F.cross_entropy(logits / self.tau, labels)
+        return 2 * self.tau * loss
+        
+        
+    def patient_moco_loss(self, q, k, id):
         id = id.cpu().detach().numpy()
         id_queue = self.id_queue.clone().detach().cpu().numpy()
         queue = self.queue.clone().detach()
@@ -614,7 +654,6 @@ class MoCoQ:
         rows1, cols1 = np.where(np.triu(interest_matrix, 1))  # upper triangle same patient combs
         # rows2, cols2 = np.where(np.tril(interest_matrix, -1))  # down triangle same patient combs
         
-        loss = 0
         eps = 1e-12
         batch_sim_matrix = torch.mm(q, k.t()) # B x B
         queue_sim_matrix = torch.mm(q, queue.t()) # B x K
@@ -632,8 +671,7 @@ class MoCoQ:
         if len(rows1) > 0:
             triu_elements = sim_matrix_exp[rows1, cols1]  # row and column for upper triangle same patient combinations
             loss_triu = -torch.mean(torch.log((triu_elements + eps) / (triu_sum[rows1] + eps)))
-            loss += loss_triu  # technicalneed to add 1 more term for symmetry
-            # loss_term += 1
+            loss += loss_triu 
             loss /= 2
             
         return 2 * self.tau * loss

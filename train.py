@@ -1,8 +1,15 @@
+''' 
+TODO1: moco without patient loss and use random shuffle -> omit --patient
+TODO2: time mask probability 0, 0.25, 0.5(now), 0.75, 1(NA) -> new branch
+TODO3: freq mask probability 0, 0.1(now), 0.2, 0.5, ... -> pass mask=binomial for 0, new branch for others
+TODO4: no temporal neighbor -> omit --neighbor and pass --length=300
+
+'''
 import os
 import argparse
 import warnings
 import numpy as np
-from MoCoP import MoCoP, MoCoQ
+from MoCoFamily import MoCoP, MoCoQ
 from data import load_data
 from utils import seed_everything, get_device
 warnings.filterwarnings('ignore')
@@ -21,11 +28,12 @@ parser.add_argument('--hidden_dim', type=int, default=64, help='hidden dimension
 parser.add_argument('--output_dim', type=int, default=320, help='output dimension of the encoder')
 parser.add_argument('--momentum', type=float, default=0.999, help='momentum for the momentum encoder')
 parser.add_argument('--tau', type=float, default=0.1, help='temperature for cosine similarity')
-parser.add_argument('--mask', type=str, default='bif', help='[bif, binomial, continuous, channel_binomial, channel_continuous, all_true]')
+parser.add_argument('--mask', type=str, default='binomialf', help='{binomial, continuous, channel_binomial, channel_continuous, all_true}(f)')
 parser.add_argument('--pool', type=str, default='avg', help='[avg, max]')
 parser.add_argument('--queue_size', type=int, default=16384, help='queue size for the momentum encoder')
+parser.add_argument('--patient', action='store_true', help='whether to use patient loss')
 # training
-parser.add_argument('--lr', type=float, default=1e-4, help='learning rate')
+parser.add_argument('--lr', type=float, default=1e-3, help='learning rate')
 parser.add_argument('--wd', type=float, default=1.5e-6, help='weight decay')
 parser.add_argument('--optim', type=str, default='adamw', help='[adamw, lars]')
 parser.add_argument('--schedule', type=str, default=None, help='[plateau, step, cosine, warmup, exp]')
@@ -80,7 +88,8 @@ def main():
             tau=args.tau,
             wd=args.wd,
             queue_size=args.queue_size,
-            multi_gpu=args.multi_gpu
+            multi_gpu=args.multi_gpu,
+            use_patient=args.patient
         )
     else:
         print(f'=> Using MoCo-P')
@@ -96,10 +105,10 @@ def main():
             momentum=args.momentum,
             tau=args.tau,
             wd=args.wd,
-            multi_gpu=args.multi_gpu
+            multi_gpu=args.multi_gpu,
+            use_patient=args.patient
         )
         
-    
     loss_list = model.fit(
         X_train,
         y_train,

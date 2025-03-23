@@ -43,8 +43,9 @@ All processed data should be organized as below(all notebooks produce the data i
 To pre-train with the same setting as in the paper, just run:
 ```
 python train.py --root [folder containing all datasets]\
---logdir [folder to save pre-trained model weights and training loss]\
---neighbor
+                --logdir [folder to save weights and training loss]\
+                --neighbor\
+                --patient
 ```
 
 If you want to try different settings, run the following for details:
@@ -59,9 +60,8 @@ To fine-tune and test following our paper, run:
 
 ```
 python finetune.py --root [folder containing all datasets]\
---logdir [folder to save fine-tuned weights and logs]\
---pretrain [path of the pre-trained weight file]
-
+                   --logdir [folder to save fine-tuned weights and logs]\
+                   --pretrain [path of the pre-trained weight file]
 ```
 To fine-tune with any amount of datasets and any combinations of fractions with other settings, run the following for details:
 

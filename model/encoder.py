@@ -134,10 +134,11 @@ class TSEncoder(nn.Module):
             else:
                 mask = 'all_true'
                 
-        if mask == 'bif':
+        if mask[-1] == 'f':
             x = freq_perturb(x, 0.1)
+            mask = mask[:-1]
             
-        if mask == 'binomial' or mask == 'bif':
+        if mask == 'binomial':
             mask = generate_binomial_mask(x.size(0), x.size(1)).to(x.device)
         elif mask == 'channel_binomial':
             mask = generate_binomial_mask(x.size(0), x.size(1), x.size(2)).to(x.device)
