@@ -10,7 +10,7 @@ from torch import nn
 from torch.utils.data import TensorDataset, DataLoader
 from tqdm import tqdm
 from datetime import datetime
-from model.encoder import FTClassifier
+from encoder import FTClassifier
 from data import load_data
 from utils import seed_everything, get_device, start_logging, stop_logging
 from torchmetrics import Accuracy, F1Score, AUROC, Precision, Recall, AveragePrecision, MetricCollection

@@ -9,7 +9,7 @@ import os
 import argparse
 import warnings
 import numpy as np
-from MoCoFamily import MoCoP, MoCoQ
+from model import MoCoP, MoCoQ
 from data import load_data
 from utils import seed_everything, get_device
 warnings.filterwarnings('ignore')
