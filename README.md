@@ -16,7 +16,7 @@ pip install -r requirement.txt
 
 - **PTB-XL**: Download the zip file from [here](https://physionet.org/content/ptb-xl/1.0.3/) and extract the data.
 
-- **Chapman**: Download the **ECGDataDenoised.zip** and **Diagnostics.xlsx** files from [here](https://figshare.com/collections/ChapmanECG/4560497/1) and extract the data from the .zip file.
+- **Chapman**: Download the *ECGDataDenoised.zip* and *Diagnostics.xlsx* files from [here](https://figshare.com/collections/ChapmanECG/4560497/1) and extract the data from the .zip file.
 
 - **PTB**: Download the zip file from [here](https://physionet.org/content/ptbdb/1.0.0/) and extract the data.
 
