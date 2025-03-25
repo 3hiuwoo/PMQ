@@ -33,6 +33,7 @@ def R_Peaks(ecg):
     pos = []
     # get R Peak intervals
     trial_interval = []
+
     for ch in range(ecg.shape[1]):
         cleaned_ecg = nk.ecg_clean(ecg[:, ch], sampling_rate=250, method='neurokit')
         signals, _ = nk.ecg_peaks(cleaned_ecg, sampling_rate=250, correct_artifacts=False)
