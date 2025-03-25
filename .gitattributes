@@ -1,2 +1,2 @@
-*.ipynb linguish-language=Python
-*/*.ipynb linguish-language=Python
+*.ipynb linguish-language=python
+*/*.ipynb linguish-language=python
