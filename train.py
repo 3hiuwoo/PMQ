@@ -86,7 +86,6 @@ def main():
             mask_f=args.mask_f,
             momentum=args.momentum,
             tau=args.tau,
-            wd=args.wd,
             queue_size=args.queue_size,
             use_id=args.use_id,
             device=device,
@@ -104,7 +103,6 @@ def main():
             mask_f=args.mask_f,
             momentum=args.momentum,
             tau=args.tau,
-            wd=args.wd,
             use_id=args.use_id,
             device=device,
             multi_gpu=args.multi_gpu

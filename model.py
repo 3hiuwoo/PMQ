@@ -11,7 +11,7 @@ from encoder import TSEncoder, MLP
 from utils import shuffle_feature_label, MyBatchSampler
 
 class MoCoPB:
-    ''' Momentum contrastive learning model across time, frequency and patients versioning with queue.
+    ''' Momentum contrastive learning model across time, frequency and patients versioning with no queue.
     Args:
         input_dims (int): The input dimension. For a uni-variate time series, this should be set to 1.
         output_dims (int): The representation dimension.
@@ -91,7 +91,7 @@ class MoCoPB:
         self.pred.update_parameters(self._pred)
         
 
-    def fit(self, X, y, shuffle_function='random', epochs=None, batch_size=256, lr=1e-4, wd=1.5e-6, optim='adamw', schedule=None, logdir='', checkpoint=1, verbose=1):
+    def fit(self, X, y, shuffle_function='trial', epochs=None, batch_size=256, lr=1e-4, wd=1.5e-6, optim='adamw', schedule=None, logdir='', checkpoint=1, verbose=1):
         ''' Training the model.
         Args:
             X (numpy.ndarray): The training data with shape of (n_samples, sample_timestamps, features) or (n_samples, 2, sample_timestamps, features).
@@ -478,7 +478,7 @@ class MoCoPQ:
         self.queue_ptr = torch.zeros(1, dtype=torch.long, device=device, requires_grad=False)
     
            
-    def fit(self, X, y, shuffle_function='random', epochs=None, batch_size=256, lr=1e-4, wd=1.5e-6, optim='adamw', schedule=None, logdir='', checkpoint=1, verbose=1):
+    def fit(self, X, y, shuffle_function='trial', epochs=None, batch_size=256, lr=1e-4, wd=1.5e-6, optim='adamw', schedule=None, logdir='', checkpoint=1, verbose=1):
         ''' Training the model.
         Args:
             X (numpy.ndarray): The training data with shape of (n_samples, sample_timestamps, features) or (n_samples, 2, sample_timestamps, features).

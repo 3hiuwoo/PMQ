@@ -50,7 +50,7 @@ To pre-train with the same setting as in the paper, just run:
 python train.py --root [folder containing all datasets]\
                 --logdir [folder to save weights and training loss]\
                 --neighbor\
-                --patient
+                --use_id
 ```
 
 If you want to try different settings, run the following for details:
