@@ -1,2 +1,2 @@
 *.ipynb linguish-language=Python
-**/data_preprocess/*.ipynb linguish-language=Python
+**/data_preprocessing/*.ipynb linguish-language=Python
