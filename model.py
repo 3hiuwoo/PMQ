@@ -10,20 +10,21 @@ from torch.utils.data import TensorDataset, DataLoader
 from encoder import TSEncoder, MLP
 from utils import shuffle_feature_label, MyBatchSampler
 
-class MoCoP:
-    ''' A momentum contrastive learning model cross time, frequency, patient.
-    
+class MoCoPB:
+    ''' Momentum contrastive learning model across time, frequency and patients versioning with queue.
     Args:
         input_dims (int): The input dimension. For a uni-variate time series, this should be set to 1.
         output_dims (int): The representation dimension.
-        hidden_dims (int): The hidden dimension of the encoder.
-        proj_dims (int): The hidden and output dimension of the projection head, pass None to disable appending projection head to encoder.
+        hidden_dims (int): The dimension of input projector.
         depth (int): The number of hidden residual blocks in the encoder.
-        device (str): The gpu used for training and inference.
-        lr (float): The learning rate.
-        batch_size (int): The batch size of samples.
-        momentum (float): The momentum used for the key encoder.
+        pool (str): The pooling method for the representation.
+        mask_t (float): The temporal masking probability.
+        mask_f (float): The frequency masking ratio.
+        momentum (float): The momentum update parameter.
+        tau (float): The temperature parameter.
         queue_size (int): The size of the queue.
+        use_id (bool): A flag to indicate whether using patient id for patient-level contrastive learning.
+        device (str): The gpu used for training and inference.
         multi_gpu (bool): A flag to indicate whether using multiple gpus
     '''
     def __init__(
@@ -32,41 +33,39 @@ class MoCoP:
         output_dims=320,
         hidden_dims=64,
         depth=10,
-        pool=None,
-        device='cuda',
-        lr=1e-4,
-        batch_size=256,
-        momentum=0.99,
+        pool='avg',
+        mask_t=0.5,
+        mask_f=0.1,
+        momentum=0.999,
         tau=0.1,
-        wd=1.5e-6,
-        multi_gpu=False,
-        use_patient=True,
+        use_id=True,
+        device='cuda',
+        multi_gpu=False
     ):
         super().__init__()
-        self.device = device
-        self.lr = lr
-        self.batch_size = batch_size
-        self.pool = pool
         self.output_dims = output_dims
         self.hidden_dims = hidden_dims
-        
+        self.pool = pool
+        self.mask_t = mask_t
+        self.mask_f = mask_f
+        self.device = device
         self.multi_gpu = multi_gpu
-        if not use_patient:
-            print('=> !!! Using normal MoCo loss !!!')
-        self.use_patient = use_patient
+        
+        if not use_id:
+            print('=> !!! No patient ids are used !!!')
+        self.use_id = use_id
         
         self.momentum = momentum
         self.tau = tau
-        self.wd = wd
         
-        self._net = TSEncoder(input_dims=input_dims, output_dims=output_dims, hidden_dims=hidden_dims, depth=depth)
+        self._net = TSEncoder(input_dims=input_dims, output_dims=output_dims, hidden_dims=hidden_dims, depth=depth, mask_t=mask_t, mask_f=mask_f, pool=pool)
         self._proj = MLP(input_dims=output_dims, output_dims=output_dims, nlayers=2, hidden_dims=output_dims)
         self._pred = MLP(input_dims=output_dims, output_dims=output_dims, nlayers=1, hidden_dims=output_dims)
         
-        self.momentum_net = TSEncoder(input_dims=input_dims, output_dims=output_dims, hidden_dims=hidden_dims, depth=depth)
+        self.momentum_net = TSEncoder(input_dims=input_dims, output_dims=output_dims, hidden_dims=hidden_dims, depth=depth, mask_t=mask_t, mask_f=mask_f, pool=pool)
         self.momentum_proj = MLP(input_dims=output_dims, output_dims=output_dims, hidden_dims=output_dims)
         
-        self._momentum_init() # initialize all momentum parts
+        self._momentum_init()
                 
         device = torch.device(device)
         if device == torch.device('cuda') and self.multi_gpu:
@@ -83,6 +82,7 @@ class MoCoP:
         self.momentum_net.to(device)
         self.momentum_proj.to(device)
         
+        # Use stochastic weight averaging
         self.net = torch.optim.swa_utils.AveragedModel(self._net)
         self.net.update_parameters(self._net)
         self.proj = torch.optim.swa_utils.AveragedModel(self._proj)
@@ -90,37 +90,32 @@ class MoCoP:
         self.pred = torch.optim.swa_utils.AveragedModel(self._pred)
         self.pred.update_parameters(self._pred)
         
-        
-    def _momentum_init(self):
-        for param_q, param_k in zip(self._net.parameters(), self.momentum_net.parameters()):
-            param_k.data.copy_(param_q.data)
-            param_k.requires_grad = False
 
-        for param_q, param_k in zip(self._proj.parameters(), self.momentum_proj.parameters()):
-            param_k.data.copy_(param_q.data)
-            param_k.requires_grad = False
-            
-            
-    def fit(self, X, y, shuffle_function='random', mask='binomial', epochs=None,
-            optim='adamw', schedule=None, logdir='', checkpoint=1, verbose=1):
-        ''' Training the TFP model.
-        
+    def fit(self, X, y, shuffle_function='random', epochs=None, batch_size=256, lr=1e-4, wd=1.5e-6, optim='adamw', schedule=None, logdir='', checkpoint=1, verbose=1):
+        ''' Training the model.
         Args:
-            X (numpy.ndarray): The training data. It should have a shape of (n_samples, sample_timestamps, features).
+            X (numpy.ndarray): The training data with shape of (n_samples, sample_timestamps, features) or (n_samples, 2, sample_timestamps, features).
             y (numpy.ndarray): The training labels. It should have a shape of (n_samples, 3). The three columns are the label, patient id, and trial id.
-            shuffle_function (str): specify the shuffle function.
-            mask_type (str): A list of masking functions applied (str).
-            epochs (Union[int, NoneType]): The number of epochs. When this reaches, the training stops.
-            verbose (int): Whether to print the training loss after each epoch.
-            
+            shuffle_function (str): specify the shuffle method (random/trial).
+            mask_t (int): Temporal masking probability.
+            mask_f (int): Frequency masking ratio.
+            epochs (Union[int, NoneType]): The number of epochs..
+            batch_size (int): The batch size.
+            lr (float): The learning rate.
+            wd (float): The weight decay.
+            optim (str): The optimizer used for training.
+            schedule (str): The learning rate scheduler.
+            logdir (str): The directory to save the model.
+            checkpoint (int): The number of epochs to save the model.
+            verbose (int): >0 to print the training loss after each epoch.
         Returns:
-            epoch_loss_list: a list containing the training losses on each epoch.
+            epoch_loss_list (list): a list containing the training losses on each epoch.
         '''
         assert y.shape[1] == 3
-
         print('=> Number of dimension of training data:', X.ndim)
+        
         if shuffle_function == 'trial':
-            X, y = shuffle_feature_label(X, y, shuffle_function=shuffle_function, batch_size=self.batch_size)
+            X, y = shuffle_feature_label(X, y, shuffle_function=shuffle_function, batch_size=batch_size)
 
         # we need patient id for patient-level contrasting and trial id for trial-level contrasting
         train_dataset = TensorDataset(
@@ -129,19 +124,15 @@ class MoCoP:
             )
         
         if shuffle_function == 'random':
-            train_loader = DataLoader(train_dataset, batch_size=self.batch_size, shuffle=True, drop_last=True)
+            train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, drop_last=True)
         else:
             print('=> Shuffle data by trial')
-            my_sampler = MyBatchSampler(range(len(train_dataset)), batch_size=self.batch_size, drop_last=True)
+            my_sampler = MyBatchSampler(range(len(train_dataset)), batch_size=batch_size, drop_last=True)
             train_loader = DataLoader(train_dataset, batch_sampler=my_sampler)
         
         params = list(self._net.parameters()) + list(self._proj.parameters()) + list(self._pred.parameters())
-        optimizer = self._get_optimizer(optim, params, self.lr)
-        print(f'=> Using optimizer: {optim}')
-        
+        optimizer = self._get_optimizer(optim, params, lr, wd)
         scheduler = self._get_scheduler(schedule, optimizer, epochs, len(train_loader))
-        if scheduler:
-            print(f'=> Using scheduler: {schedule}')
                   
         epoch_loss_list = []
             
@@ -150,12 +141,13 @@ class MoCoP:
             cum_loss = 0
             for x, y in tqdm(train_loader, desc=f'=> Epoch {epoch+1}', leave=False):
                 x = x.to(self.device)
-                pid = y[:, 1] if self.use_patient else None # patient id
+                pid = y[:, 1] if self.use_id else None
 
                 self._momentum_update()
                     
                 optimizer.zero_grad()
                 
+                # check if the data is segmented into neighbors
                 if x.ndim == 4:
                     x1 = x[:, 0, ...]
                     x2 = x[:, 1, ...]
@@ -163,11 +155,11 @@ class MoCoP:
                     x1 = x
                     x2 = x
                 
-                q1 = self._net(x1, mask=mask, pool=self.pool)
+                q1 = self._net(x1)
                 q1 = self._proj(q1)
                 q1 = self._pred(q1)
                 
-                q2 = self._net(x2, mask=mask, pool=self.pool)
+                q2 = self._net(x2)
                 q2 = self._proj(q2)
                 q2 = self._pred(q2)
                 
@@ -175,10 +167,10 @@ class MoCoP:
                 q2 = F.normalize(q2, dim=-1)
                 
                 with torch.no_grad():
-                    k1 = self.momentum_net(x1, mask=mask, pool=self.pool)
+                    k1 = self.momentum_net(x1)
                     k1 = self.momentum_proj(k1)
                     
-                    k2 = self.momentum_net(x2, mask=mask, pool=self.pool)
+                    k2 = self.momentum_net(x2)
                     k2 = self.momentum_proj(k2)
                 
                 k1 = F.normalize(k1, dim=-1)
@@ -189,9 +181,11 @@ class MoCoP:
                 
                 loss.backward()
                 optimizer.step()
+                
+                # warmup by step not epoch
                 if schedule == 'warmup':
                     scheduler.step()
-                self._update_swa()
+                self._update_swa() # stochastic weight averaging
 
                 cum_loss += loss.item()
 
@@ -199,6 +193,7 @@ class MoCoP:
             epoch_loss_list.append(cum_loss)
             
             if schedule != 'warmup':
+                # if using reduceOnPlateau scheduler, pass the loss
                 if schedule == 'plateau':
                     scheduler.step(cum_loss)
                 elif scheduler:
@@ -216,7 +211,23 @@ class MoCoP:
         return epoch_loss_list
         
     
+    def _momentum_init(self):
+        '''
+        Initialize the momentum encoder and projector with the same weights as the original encoder and projector.
+        '''
+        for param_q, param_k in zip(self._net.parameters(), self.momentum_net.parameters()):
+            param_k.data.copy_(param_q.data)
+            param_k.requires_grad = False
+
+        for param_q, param_k in zip(self._proj.parameters(), self.momentum_proj.parameters()):
+            param_k.data.copy_(param_q.data)
+            param_k.requires_grad = False
+            
+            
     def _update_swa(self):
+        '''
+        update SWA models
+        '''
         self.net.update_parameters(self._net)
         self.proj.update_parameters(self._proj)
         self.pred.update_parameters(self._pred)
@@ -224,7 +235,7 @@ class MoCoP:
     
     def _momentum_update(self):
         '''
-        Momentum update of the key encoder
+        perform momentum update
         '''
         with torch.no_grad():
             for param_q, param_k in zip(
@@ -238,7 +249,35 @@ class MoCoP:
                 param_k.data = param_k.data * self.momentum + param_q.data * (1.0 - self.momentum)
             
 
+    def _get_optimizer(self, optim, params, lr, wd):
+        ''' get optimizer
+        Args:
+            optim (str): optimizer name
+            params (list): list of parameters
+            lr (float): learning rate
+            wd (float): weight decay
+        Returns:
+            optimizer(torch.optim.Optimizer): optimizer
+        '''
+        if optim == 'adamw':
+            optimizer = torch.optim.AdamW(params, lr)
+        elif optim == 'lars':
+            optimizer = LARS(params, lr, weight_decay=wd)
+        else:
+            raise ValueError(f'{optim} is not supported')
+        return optimizer
+    
+    
     def _get_scheduler(self, schedule, optimizer, epochs, iters):
+        ''' get scheduler
+        Args:
+            schedule (str): scheduler name
+            optimizer (torch.optim.Optimizer): optimizer
+            epochs (int): number of epochs
+            iters (int): number of iterations per epoch, used by warmup scheduler only.
+        Returns:
+            scheduler(torch.optim.lr_scheduler._LRScheduler): scheduler
+        '''
         if schedule == 'step':
             scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=[30], gamma=0.1)
         elif schedule == 'plateau':
@@ -256,16 +295,6 @@ class MoCoP:
         return scheduler
     
     
-    def _get_optimizer(self, optim, params, lr):
-        if optim == 'adamw':
-            optimizer = torch.optim.AdamW(params, lr)
-        elif optim == 'lars':
-            optimizer = LARS(params, lr, weight_decay=self.wd)
-        else:
-            raise ValueError(f'{optim} is not supported')
-        return optimizer
-   
-   
     def save(self, fn):
         '''Save the model to a file.
         
@@ -280,25 +309,47 @@ class MoCoP:
     
     
     def loss_func(self, q, k, id=None):
+        ''' compute the patient infoNCE/infoNCE loss
+        Args:
+            q (torch.Tensor): query representations
+            k (torch.Tensor): key representations
+            id (torch.Tensor, optional): patient id, set None to use infoNCE loss.
+        Returns:
+            loss (torch.Tensor): loss
+        '''
         if id is None:
-            return self.moco_loss(q, k)
+            return self.infoNCE_loss(q, k)
         else:
-            return self.patient_moco_loss(q, k, id)
-        
-        
-    def moco_loss(self, q, k):
+            return self.patient_infoNCE_loss(q, k, id)
+    
+    
+    def infoNCE_loss(self, q, k):
+        ''' compute the infoNCE loss
+        Args:
+            q (torch.Tensor): query representations
+            k (torch.Tensor): key representations
+        Returns:
+            loss (torch.Tensor): loss
+        '''
         logits = torch.mm(q, k.t())  # [N, N] pairs
         labels = torch.arange(logits.size(0), device=logits.device)  # positives are in diagonal
         loss = F.cross_entropy(logits / self.tau, labels)
         return 2 * self.tau * loss
     
       
-    def patient_moco_loss(self, q, k, id):
+    def patient_infoNCE_loss(self, q, k, id):
+        ''' compute the patient infoNCE loss
+        Args:
+            q (torch.Tensor): query representations
+            k (torch.Tensor): key representations
+            id (torch.Tensor): patient id
+        Returns:
+            loss (torch.Tensor): loss
+        '''
         id = id.cpu().detach().numpy()
 
         interest_matrix = np.equal.outer(id, id).astype(int) # B x B
         
-        # only consider upper diagnoal where the queue is taken into account
         rows1, cols1 = np.where(np.triu(interest_matrix, 1))  # upper triangle same patient combs
         rows2, cols2 = np.where(np.tril(interest_matrix, -1))  # down triangle same patient combs
         
@@ -318,6 +369,7 @@ class MoCoP:
         loss_diag2 = -torch.mean(torch.log((diag_elements + eps) / (torch.sum(sim_matrix_exp, 0) + eps)))
         loss = loss_diag1 + loss_diag2
         loss_term = 2
+        
         # upper triangle same patient combs exist
         if len(rows1) > 0:
             triu_elements = sim_matrix_exp[rows1, cols1]  # row and column for upper triangle same patient combinations
@@ -325,6 +377,7 @@ class MoCoP:
             loss += loss_triu  # technicalneed to add 1 more term for symmetry
             loss_term += 1
         
+        # down triangle same patient combs exist
         if len(rows2) > 0:
             eps = 1e-12
             tril_elements = sim_matrix_exp[rows2, cols2]
@@ -336,20 +389,21 @@ class MoCoP:
         return 2 * self.tau * loss
     
     
-class MoCoQ:
-    ''' A momentum contrastive learning model cross time, frequency, patient.
-    
+class MoCoPQ:
+    ''' Momentum contrastive learning model across time, frequency and patients versioning with queue.
     Args:
         input_dims (int): The input dimension. For a uni-variate time series, this should be set to 1.
         output_dims (int): The representation dimension.
-        hidden_dims (int): The hidden dimension of the encoder.
-        proj_dims (int): The hidden and output dimension of the projection head, pass None to disable appending projection head to encoder.
+        hidden_dims (int): The dimension of input projector.
         depth (int): The number of hidden residual blocks in the encoder.
-        device (str): The gpu used for training and inference.
-        lr (float): The learning rate.
-        batch_size (int): The batch size of samples.
-        momentum (float): The momentum used for the key encoder.
+        pool (str): The pooling method for the representation.
+        mask_t (float): The temporal masking probability.
+        mask_f (float): The frequency masking ratio.
+        momentum (float): The momentum update parameter.
+        tau (float): The temperature parameter.
         queue_size (int): The size of the queue.
+        use_id (bool): A flag to indicate whether using patient id for patient-level contrastive learning.
+        device (str): The gpu used for training and inference.
         multi_gpu (bool): A flag to indicate whether using multiple gpus
     '''
     def __init__(
@@ -358,43 +412,41 @@ class MoCoQ:
         output_dims=320,
         hidden_dims=64,
         depth=10,
-        pool=None,
-        device='cuda',
-        lr=1e-4,
-        batch_size=256,
+        pool='avg',
+        mask_t=0.5,
+        mask_f=0.1,
         momentum=0.99,
         tau=0.1,
-        wd=1.5e-6,
         queue_size=16384,
-        multi_gpu=False,
-        use_patient=True,
+        use_id=True,
+        device='cuda',
+        multi_gpu=False
     ):
         super().__init__()
-        self.device = device
-        self.lr = lr
-        self.batch_size = batch_size
-        self.pool = pool
         self.output_dims = output_dims
         self.hidden_dims = hidden_dims
-        
+        self.pool = pool
+        self.mask_t = mask_t
+        self.mask_f = mask_f
+        self.device = device
         self.multi_gpu = multi_gpu
-        if not use_patient:
-            print('=> !!! Using normal MoCo loss !!!')
-        self.use_patient = use_patient
+        
+        if not use_id:
+            print('=> !!! No patient ids are used !!!')
+        self.use_id = use_id
         
         self.momentum = momentum
         self.tau = tau
-        self.wd = wd
         self.queue_size = queue_size
         
-        self._net = TSEncoder(input_dims=input_dims, output_dims=output_dims, hidden_dims=hidden_dims, depth=depth)
+        self._net = TSEncoder(input_dims=input_dims, output_dims=output_dims, hidden_dims=hidden_dims, depth=depth, mask_t=mask_t, mask_f=mask_f, pool=pool)
         self._proj = MLP(input_dims=output_dims, output_dims=output_dims, nlayers=2, hidden_dims=output_dims)
         self._pred = MLP(input_dims=output_dims, output_dims=output_dims, nlayers=1, hidden_dims=output_dims)
         
-        self.momentum_net = TSEncoder(input_dims=input_dims, output_dims=output_dims, hidden_dims=hidden_dims, depth=depth)
+        self.momentum_net = TSEncoder(input_dims=input_dims, output_dims=output_dims, hidden_dims=hidden_dims, depth=depth, mask_t=mask_t, mask_f=mask_f, pool=pool)
         self.momentum_proj = MLP(input_dims=output_dims, output_dims=output_dims, hidden_dims=output_dims)
         
-        self._momentum_init() # initialize all momentum parts
+        self._momentum_init()
                 
         device = torch.device(device)
         if device == torch.device('cuda') and self.multi_gpu:
@@ -411,6 +463,7 @@ class MoCoQ:
         self.momentum_net.to(device)
         self.momentum_proj.to(device)
         
+        # Use stochastic weight averaging
         self.net = torch.optim.swa_utils.AveragedModel(self._net)
         self.net.update_parameters(self._net)
         self.proj = torch.optim.swa_utils.AveragedModel(self._proj)
@@ -420,42 +473,36 @@ class MoCoQ:
         
         self.queue = torch.randn(queue_size, output_dims, device=device, requires_grad=False)
         self.queue = F.normalize(self.queue, dim=1)
-        print('=> Initialized the queue with shape:', self.queue.shape)
-        
-        self.id_queue = torch.zeros(queue_size, dtype=torch.long, device=device, requires_grad=False) if use_patient else None
+        # queue storing patient ids
+        self.id_queue = torch.zeros(queue_size, dtype=torch.long, device=device, requires_grad=False) if use_id else None
         self.queue_ptr = torch.zeros(1, dtype=torch.long, device=device, requires_grad=False)
     
-        
-    def _momentum_init(self):
-        for param_q, param_k in zip(self._net.parameters(), self.momentum_net.parameters()):
-            param_k.data.copy_(param_q.data)
-            param_k.requires_grad = False
-
-        for param_q, param_k in zip(self._proj.parameters(), self.momentum_proj.parameters()):
-            param_k.data.copy_(param_q.data)
-            param_k.requires_grad = False
-            
-            
-    def fit(self, X, y, shuffle_function='random', mask='binomial', epochs=None,
-            optim='adamw', schedule=None, logdir='', checkpoint=1, verbose=1):
-        ''' Training the TFP model.
-        
+           
+    def fit(self, X, y, shuffle_function='random', epochs=None, batch_size=256, lr=1e-4, wd=1.5e-6, optim='adamw', schedule=None, logdir='', checkpoint=1, verbose=1):
+        ''' Training the model.
         Args:
-            X (numpy.ndarray): The training data. It should have a shape of (n_samples, sample_timestamps, features).
+            X (numpy.ndarray): The training data with shape of (n_samples, sample_timestamps, features) or (n_samples, 2, sample_timestamps, features).
             y (numpy.ndarray): The training labels. It should have a shape of (n_samples, 3). The three columns are the label, patient id, and trial id.
-            shuffle_function (str): specify the shuffle function.
-            mask_type (str): A list of masking functions applied (str).
-            epochs (Union[int, NoneType]): The number of epochs. When this reaches, the training stops.
-            verbose (int): Whether to print the training loss after each epoch.
-            
+            shuffle_function (str): specify the shuffle method (random/trial).
+            mask_t (int): Temporal masking probability.
+            mask_f (int): Frequency masking ratio.
+            epochs (Union[int, NoneType]): The number of epochs..
+            batch_size (int): The batch size.
+            lr (float): The learning rate.
+            wd (float): The weight decay.
+            optim (str): The optimizer used for training.
+            schedule (str): The learning rate scheduler.
+            logdir (str): The directory to save the model.
+            checkpoint (int): The number of epochs to save the model.
+            verbose (int): >0 to print the training loss after each epoch.
         Returns:
-            epoch_loss_list: a list containing the training losses on each epoch.
+            epoch_loss_list (list): a list containing the training losses on each epoch.
         '''
         assert y.shape[1] == 3
-
         print('=> Number of dimension of training data:', X.ndim)
+        
         if shuffle_function == 'trial':
-            X, y = shuffle_feature_label(X, y, shuffle_function=shuffle_function, batch_size=self.batch_size)
+            X, y = shuffle_feature_label(X, y, shuffle_function=shuffle_function, batch_size=batch_size)
 
         # we need patient id for patient-level contrasting and trial id for trial-level contrasting
         train_dataset = TensorDataset(
@@ -464,19 +511,15 @@ class MoCoQ:
             )
         
         if shuffle_function == 'random':
-            train_loader = DataLoader(train_dataset, batch_size=self.batch_size, shuffle=True, drop_last=True)
+            train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, drop_last=True)
         else:
             print('=> Shuffle data by trial')
-            my_sampler = MyBatchSampler(range(len(train_dataset)), batch_size=self.batch_size, drop_last=True)
+            my_sampler = MyBatchSampler(range(len(train_dataset)), batch_size=batch_size, drop_last=True)
             train_loader = DataLoader(train_dataset, batch_sampler=my_sampler)
         
         params = list(self._net.parameters()) + list(self._proj.parameters()) + list(self._pred.parameters())
-        optimizer = self._get_optimizer(optim, params, self.lr)
-        print(f'=> Using optimizer: {optim}')
-        
+        optimizer = self._get_optimizer(optim, params, lr, wd)
         scheduler = self._get_scheduler(schedule, optimizer, epochs, len(train_loader))
-        if scheduler:
-            print(f'=> Using scheduler: {schedule}')
                   
         epoch_loss_list = []
             
@@ -485,12 +528,13 @@ class MoCoQ:
             cum_loss = 0
             for x, y in tqdm(train_loader, desc=f'=> Epoch {epoch+1}', leave=False):
                 x = x.to(self.device)
-                pid = y[:, 1] if self.use_patient else None # patient id
+                pid = y[:, 1] if self.use_id else None
 
                 self._momentum_update()
                     
                 optimizer.zero_grad()
                 
+                # check if the data is segmented into neighbors
                 if x.ndim == 4:
                     x1 = x[:, 0, ...]
                     x2 = x[:, 1, ...]
@@ -498,13 +542,13 @@ class MoCoQ:
                     x1 = x
                     x2 = x
                 
-                q = self._net(x1, mask=mask, pool=self.pool)
+                q = self._net(x1)
                 q = self._proj(q)
                 q = self._pred(q)
                 q = F.normalize(q, dim=-1)
                 
                 with torch.no_grad():
-                    k = self.momentum_net(x2, mask=mask, pool=self.pool)
+                    k = self.momentum_net(x2)
                     k = self.momentum_proj(k)
                 k = F.normalize(k, dim=-1)
                 
@@ -512,9 +556,11 @@ class MoCoQ:
                 
                 loss.backward()
                 optimizer.step()
+                
+                # warmup by step not epoch
                 if schedule == 'warmup':
                     scheduler.step()
-                self._update_swa()
+                self._update_swa() # stochastic weight averaging
 
                 cum_loss += loss.item()
                 
@@ -524,6 +570,7 @@ class MoCoQ:
             epoch_loss_list.append(cum_loss)
             
             if schedule != 'warmup':
+                # if using reduceOnPlateau scheduler, pass the loss
                 if schedule == 'plateau':
                     scheduler.step(cum_loss)
                 elif scheduler:
@@ -541,7 +588,23 @@ class MoCoQ:
         return epoch_loss_list
         
     
+    def _momentum_init(self):
+        '''
+        Initialize the momentum encoder and projector with the same weights as the original encoder and projector.
+        '''
+        for param_q, param_k in zip(self._net.parameters(), self.momentum_net.parameters()):
+            param_k.data.copy_(param_q.data)
+            param_k.requires_grad = False
+
+        for param_q, param_k in zip(self._proj.parameters(), self.momentum_proj.parameters()):
+            param_k.data.copy_(param_q.data)
+            param_k.requires_grad = False
+            
+            
     def _update_swa(self):
+        '''
+        update SWA models
+        '''
         self.net.update_parameters(self._net)
         self.proj.update_parameters(self._proj)
         self.pred.update_parameters(self._pred)
@@ -549,7 +612,7 @@ class MoCoQ:
     
     def _momentum_update(self):
         '''
-        Momentum update of the key encoder
+        perform momentum update
         '''
         with torch.no_grad():
             for param_q, param_k in zip(
@@ -564,8 +627,10 @@ class MoCoQ:
             
                 
     def _update_queue(self, k, pid=None):
-        '''
-        update all queues
+        ''' perform enqueue and dequeue
+        Args:
+            k (torch.Tensor): representations from momentum projector
+            pid (torch.Tensor, optional): patient id
         '''
         # gather keys before updating queue
         batch_size = k.shape[0]
@@ -575,6 +640,7 @@ class MoCoQ:
 
         # replace the keys at ptr (dequeue and enqueue)
         self.queue[ptr : ptr + batch_size, ...] = k
+        
         if pid is not None:
             self.id_queue[ptr : ptr + batch_size] = pid
             
@@ -582,8 +648,36 @@ class MoCoQ:
 
         self.queue_ptr[0] = ptr
         
-        
+    
+    def _get_optimizer(self, optim, params, lr, wd):
+        ''' get optimizer
+        Args:
+            optim (str): optimizer name
+            params (list): list of parameters
+            lr (float): learning rate
+            wd (float): weight decay
+        Returns:
+            optimizer(torch.optim.Optimizer): optimizer
+        '''
+        if optim == 'adamw':
+            optimizer = torch.optim.AdamW(params, lr)
+        elif optim == 'lars':
+            optimizer = LARS(params, lr, weight_decay=wd)
+        else:
+            raise ValueError(f'{optim} is not supported')
+        return optimizer
+    
+    
     def _get_scheduler(self, schedule, optimizer, epochs, iters):
+        ''' get scheduler
+        Args:
+            schedule (str): scheduler name
+            optimizer (torch.optim.Optimizer): optimizer
+            epochs (int): number of epochs
+            iters (int): number of iterations per epoch, used by warmup scheduler only.
+        Returns:
+            scheduler(torch.optim.lr_scheduler._LRScheduler): scheduler
+        '''
         if schedule == 'step':
             scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=[30], gamma=0.1)
         elif schedule == 'plateau':
@@ -601,16 +695,6 @@ class MoCoQ:
         return scheduler
     
     
-    def _get_optimizer(self, optim, params, lr):
-        if optim == 'adamw':
-            optimizer = torch.optim.AdamW(params, lr)
-        elif optim == 'lars':
-            optimizer = LARS(params, lr, weight_decay=self.wd)
-        else:
-            raise ValueError(f'{optim} is not supported')
-        return optimizer
-   
-   
     def save(self, fn):
         '''Save the model to a file.
         
@@ -625,13 +709,28 @@ class MoCoQ:
     
     
     def loss_func(self, q, k, id=None):
+        ''' compute the patient infoNCE/infoNCE loss
+        Args:
+            q (torch.Tensor): query representations
+            k (torch.Tensor): key representations
+            id (torch.Tensor, optional): patient id, set None to use infoNCE loss.
+        Returns:
+            loss (torch.Tensor): loss
+        '''
         if id is None:
-            return self.moco_loss(q, k)
+            return self.infoNCE_loss(q, k)
         else:
-            return self.patient_moco_loss(q, k, id)
+            return self.patient_infoNCE_loss(q, k, id)
     
     
-    def moco_loss(self, q, k):
+    def infoNCE_loss(self, q, k):
+        ''' compute the infoNCE loss
+        Args:
+            q (torch.Tensor): query representations
+            k (torch.Tensor): key representations
+        Returns:
+            loss (torch.Tensor): loss
+        '''
         N, C = q.shape
         l_pos = torch.bmm(q.view(N, 1, C), k.view(N, C, 1)).squeeze(-1)  # positive logits: Nx1
         l_neg = torch.mm(q, self.queue.t())  # negative logits: NxK
@@ -641,7 +740,15 @@ class MoCoQ:
         return 2 * self.tau * loss
         
         
-    def patient_moco_loss(self, q, k, id):
+    def patient_infoNCE_loss(self, q, k, id):
+        ''' compute the patient infoNCE loss
+        Args:
+            q (torch.Tensor): query representations
+            k (torch.Tensor): key representations
+            id (torch.Tensor): patient id
+        Returns:
+            loss (torch.Tensor): loss
+        '''
         id = id.cpu().detach().numpy()
         id_queue = self.id_queue.clone().detach().cpu().numpy()
         queue = self.queue.clone().detach()
@@ -658,7 +765,6 @@ class MoCoQ:
         batch_sim_matrix = torch.mm(q, k.t()) # B x B
         queue_sim_matrix = torch.mm(q, queue.t()) # B x K
         sim_matrix = torch.cat((batch_sim_matrix, queue_sim_matrix), dim=1) # B x (B+K)
-        # sim_matrix = torch.mm(q, k.t()) # B x B
         argument = sim_matrix / self.tau
         sim_matrix_exp = torch.exp(argument)
 

@@ -20,16 +20,16 @@ parser = argparse.ArgumentParser(description='Fine-tuning/Training from scratch'
 parser.add_argument('--seeds', type=int, nargs='+', default=[41, 42, 43, 44, 45], help='list of random seeds')
 # data
 parser.add_argument('--root', type=str, default='/root/autodl-tmp/dataset', help='root directory of datasets')
-parser.add_argument('--data', type=str, default='ptb', help='select pre-training dataset')
+parser.add_argument('--data', type=str, default='ptb', help='pretraining dataset: [ptb, ptbxl, chapman, cpsc2018]')
 parser.add_argument('--length', type=int, default=300, help='length of each sample')
 parser.add_argument('--overlap', type=float, default=0., help='overlap of each sample')
 # model
 parser.add_argument('--depth', type=int, default=10, help='number of dilated convolutional blocks')
-parser.add_argument('--hidden_dim', type=int, default=64, help='hidden dimension of the encoder')
+parser.add_argument('--hidden_dim', type=int, default=64, help='output dimension of input projector')
 parser.add_argument('--output_dim', type=int, default=320, help='output dimension of the encoder')
 parser.add_argument('--p_hidden_dim', type=int, default=128, help='hidden dimension of the projection head')
 parser.add_argument('--pretrain', type=str, default='', help='encoder weight file path')
-parser.add_argument('--pool', type=str, default='avg', help='[avg, max]')
+parser.add_argument('--pool', type=str, default='avg', help='pooling method: [avg, max]')
 # training
 parser.add_argument('--lr', type=float, default=1e-4, help='learning rate')
 parser.add_argument('--batch_size', type=int, default=256, help='batch size')
@@ -37,7 +37,7 @@ parser.add_argument('--epochs', type=int, default=50, help='number of epochs')
 parser.add_argument('--fractions', type=float, nargs='+', default=[1.0, 0.1, 0.01], help='list of fractions of training data')
 parser.add_argument('--logdir', type=str, default='log', help='directory to save logs')
 parser.add_argument('--multi_gpu', action='store_true', help='whether to use multiple GPUs')
-parser.add_argument('--verbose', type=int, default=1, help='control how much information to print out')
+parser.add_argument('--verbose', type=int, default=1, help='0: no print, 1: print loss, 2: print test metrics, 3: print all metrics')
 
 args = parser.parse_args()
 
@@ -56,6 +56,7 @@ def main():
     
     print(f'=> Weights and logs will be saved in {logdir}')
 
+    # save argumens information
     with open(os.path.join(logdir, 'args.txt'), 'w') as f:
         for key, value in vars(args).items():
             f.write(f'{key}: {value}\n')
@@ -122,10 +123,10 @@ def run(logdir, seed, fraction):
         input_dims=input_dims,
         output_dims=args.output_dim,
         hidden_dims=args.hidden_dim,
+        depth=args.depth,
         p_hidden_dims=args.p_hidden_dim,
         p_output_dims=num_classes,
         pool=args.pool,
-        depth=args.depth,
         device=device,
         multi_gpu=args.multi_gpu,
         )
@@ -143,25 +144,6 @@ def run(logdir, seed, fraction):
         if os.path.isfile(args.pretrain):
             print(f'=> Loading pretrained model from {args.pretrain}')
             weights = torch.load(args.pretrain)
-            
-            if 'net_t' in weights.keys():
-                weights = weights['net_t']
-                print(f'=> Using only temporal encoder')
-                
-            if 'module.input_fc_t.weight' in weights.keys():
-                weights['module.input_fc.weight'] = weights['module.input_fc_t.weight']
-                weights['module.input_fc.bias'] = weights['module.input_fc_t.bias']
-                del weights['module.input_fc_t.weight']
-                del weights['module.input_fc_t.bias']
-                del weights['module.input_fc_f.weight']
-                del weights['module.input_fc_f.bias']
-                print(f'=> Using only temporal projector')
-                
-            if weights['module.input_fc.weight'].shape[1] != input_dims:
-                del weights['module.input_fc.weight']
-                del weights['module.input_fc.bias']
-                print(f'=> Skip loading input projector weights')
-            
             msg = model.net.load_state_dict(weights, strict=False)
             print('=>', msg)
         else:
@@ -177,8 +159,7 @@ def run(logdir, seed, fraction):
 
     epoch_lost_list, epoch_f1_list = [], []
     start_time = datetime.now()
-    model.train()
-    
+ 
     for epoch in range(args.epochs):
         # training loop
         loss = train(model, train_loader, optimizer, criterion, epoch, device)
@@ -189,7 +170,7 @@ def run(logdir, seed, fraction):
         f1 = val_metrics_dict['f1']
         epoch_f1_list.append(f1)
         
-        # save the model
+        # save the model with best F1
         finetune_callback(logdir, model, epoch, f1, fraction, seed)
         
         if args.verbose:
@@ -224,6 +205,8 @@ def train(model, loader, optimizer, criterion, epoch, device):
     '''
     one epoch training
     '''
+    model.train()
+    
     cum_loss = 0
     for x, y in tqdm(loader, desc=f'=> Epoch {epoch+1}', leave=False):
         x, y = x.to(device), y.to(device)
@@ -257,6 +240,9 @@ def evaluate(model, loader, metrics, device):
 
 
 def finetune_callback(logdir, model, epoch, f1, fraction, seed):
+    '''
+    save the model with best F1
+    '''
     if (epoch+1) == 1:
         model.finetune_f1 = f1
         torch.save(model.state_dict(), os.path.join(logdir, f'bestf1_{fraction}_{seed}.pth'))

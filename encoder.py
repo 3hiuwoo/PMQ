@@ -4,7 +4,6 @@ import torch.nn.functional as F
 import numpy as np
 from utils import freq_perturb
 
-
 class SamePadConv(nn.Module):
     def __init__(self, in_channels, out_channels, kernel_size, dilation=1, groups=1):
         super().__init__()
@@ -117,6 +116,7 @@ class ProjectionHead(nn.Module):
         else:
             return x
 
+
 def MLP(input_dims, output_dims, nlayers=1, hidden_dims=320):
     layers = []
     for i in range(nlayers):
@@ -130,8 +130,7 @@ def MLP(input_dims, output_dims, nlayers=1, hidden_dims=320):
     
 
 class FTClassifier(nn.Module):
-    def __init__(self, input_dims, output_dims, depth, p_output_dims, hidden_dims=64, p_hidden_dims=128, pool='max',
-                 device='cuda', multi_gpu=True):
+    def __init__(self, input_dims, output_dims, depth, p_output_dims, hidden_dims=64, p_hidden_dims=128, pool='avg', device='cuda', multi_gpu=True):
         super().__init__()
         self.input_dims = input_dims  # Ci
         self.output_dims = output_dims  # Co
@@ -139,7 +138,7 @@ class FTClassifier(nn.Module):
         self.p_hidden_dims = p_hidden_dims  # Cph
         self.p_output_dims = p_output_dims  # Cp
         self.pool = pool
-        self._net = TSEncoder(input_dims=input_dims, output_dims=output_dims, hidden_dims=hidden_dims, depth=depth)
+        self._net = TSEncoder(input_dims=input_dims, output_dims=output_dims, hidden_dims=hidden_dims, depth=depth, pool=pool)
         # projection head for finetune
         self.proj_head = ProjectionHead(output_dims, p_output_dims, p_hidden_dims)
         device = torch.device(device)
@@ -148,12 +147,13 @@ class FTClassifier(nn.Module):
             self.proj_head = nn.DataParallel(self.proj_head)
         self._net.to(device)
         self.proj_head.to(device)
+        # just for matching the key names
         self.net = torch.optim.swa_utils.AveragedModel(self._net)
         self.net.update_parameters(self._net)
 
 
     def forward(self, x):
-        out = self.net(x, pool=self.pool)  # B x Co
+        out = self.net(x)  # B x Co
         x = self.proj_head(out)  # B x Cp
         if self.p_output_dims == 2:  # binary or multi-class
             return torch.sigmoid(x)
@@ -162,12 +162,14 @@ class FTClassifier(nn.Module):
     
     
 class TSEncoder(nn.Module):
-    def __init__(self, input_dims, output_dims, hidden_dims=64, depth=10, mask_mode='all_true'):
+    def __init__(self, input_dims, output_dims, hidden_dims=64, depth=10, mask_t=0, mask_f=0, pool='avg'):
         super().__init__()
         self.input_dims = input_dims  # Ci
         self.output_dims = output_dims  # Co
         self.hidden_dims = hidden_dims  # Ch
-        self.mask_mode = mask_mode
+        self.mask_t = mask_t
+        self.mask_f = mask_f
+        self.pool = pool
         self.input_fc = nn.Linear(input_dims, hidden_dims)
         self.feature_extractor = DilatedConvEncoder(
             hidden_dims,
@@ -177,50 +179,39 @@ class TSEncoder(nn.Module):
         self.repr_dropout = nn.Dropout(p=0.1)
         
         
-    def forward(self, x, mask=None, pool=None):  # input dimension : B x O x Ci
+    def forward(self, x):  # input dimension : B x O x Ci
         x = self.input_fc(x)  # B x O x Ch (hidden_dims)
         
-        # generate & apply mask, default is binomial
-        if mask is None:
-            # mask should only use in training phase
-            if self.training:
-                mask = self.mask_mode
-            else:
-                mask = 'all_true'
-                
-        if mask[-1] == 'f':
-            x = freq_perturb(x, 0.1)
-            mask = mask[:-1]
-            
-        if mask == 'binomial':
-            mask = generate_binomial_mask(x.size(0), x.size(1)).to(x.device)
-        elif mask == 'channel_binomial':
-            mask = generate_binomial_mask(x.size(0), x.size(1), x.size(2)).to(x.device)
-        elif mask == 'continuous':
-            mask = generate_continuous_mask(x.size(0), x.size(1)).to(x.device)
-        elif mask == 'channel_continuous':
-            mask = generate_continuous_mask(x.size(0), x.size(1), x.size(2)).to(x.device)
-        elif mask == 'all_true':
-            mask = x.new_full((x.size(0), x.size(1)), True, dtype=torch.bool)
-        elif mask == 'all_false':
-            mask = x.new_full((x.size(0), x.size(1)), False, dtype=torch.bool)
-        elif mask == 'mask_last':
-            mask = x.new_full((x.size(0), x.size(1)), True, dtype=torch.bool)
-            mask[:, -1] = False
-        else:
-            raise ValueError(f'\'{mask}\' is a wrong argument for mask function!')
-
-        # mask &= nan_masK
-        # ~ works as operator.invert
-        x[~mask] = 0
-
-        # conv encoder
+        if self.mask_f > 0:
+            x = freq_perturb(x, self.mask_f)
+        
+        if self.mask_t > 0:
+            mask = generate_binomial_mask(x.size(0), x.size(1), p=self.mask_t).to(x.device)
+            x[~mask] = 0
+        # if mask == 'binomial':
+        #     mask = generate_binomial_mask(x.size(0), x.size(1)).to(x.device)
+        # elif mask == 'channel_binomial':
+        #     mask = generate_binomial_mask(x.size(0), x.size(1), x.size(2)).to(x.device)
+        # elif mask == 'continuous':
+        #     mask = generate_continuous_mask(x.size(0), x.size(1)).to(x.device)
+        # elif mask == 'channel_continuous':
+        #     mask = generate_continuous_mask(x.size(0), x.size(1), x.size(2)).to(x.device)
+        # elif mask == 'all_true':
+        #     mask = x.new_full((x.size(0), x.size(1)), True, dtype=torch.bool)
+        # elif mask == 'all_false':
+        #     mask = x.new_full((x.size(0), x.size(1)), False, dtype=torch.bool)
+        # elif mask == 'mask_last':
+        #     mask = x.new_full((x.size(0), x.size(1)), True, dtype=torch.bool)
+        #     mask[:, -1] = False
+        # else:
+        #     raise ValueError(f'\'{mask}\' is a wrong argument for mask function!')
+        
         x = x.transpose(1, 2)  # B x Ch x O
         x = self.repr_dropout(self.feature_extractor(x))  # B x Co x O
         
-        if pool == 'max':
+        if self.pool == 'max':
             x = F.max_pool1d(x, kernel_size=x.size(-1)).squeeze(-1)
-        elif pool == 'avg':
+        elif self.pool == 'avg':
             x = F.avg_pool1d(x, kernel_size=x.size(-1)).squeeze(-1)
         else:
             x = x.transpose(1, 2)  # B x O x Co
