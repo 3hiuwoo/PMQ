@@ -10,8 +10,8 @@ from torch.utils.data import TensorDataset, DataLoader
 from encoder import TSEncoder, MLP
 from utils import shuffle_feature_label, MyBatchSampler
 
-class MoCoPB:
-    ''' Momentum contrastive learning model across time, frequency and patients versioning with no queue.
+class TFPB:
+    ''' TFP with no queue.
     Args:
         input_dims (int): The input dimension. For a uni-variate time series, this should be set to 1.
         output_dims (int): The representation dimension.
@@ -389,8 +389,8 @@ class MoCoPB:
         return 2 * self.tau * loss
     
     
-class MoCoPQ:
-    ''' Momentum contrastive learning model across time, frequency and patients versioning with queue.
+class TFPQ:
+    ''' TFP with queue.
     Args:
         input_dims (int): The input dimension. For a uni-variate time series, this should be set to 1.
         output_dims (int): The representation dimension.

@@ -1,4 +1,4 @@
-# MCP: Momentum Contrast cross Patient
+# TFP: Patient discriminative contrastive learning across time and frequency
 
 ## Requirements
 

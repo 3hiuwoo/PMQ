@@ -8,7 +8,7 @@ import os
 import argparse
 import warnings
 import numpy as np
-from model import MoCoPB, MoCoPQ
+from model import TFPB, TFPQ
 from data import load_data
 from utils import seed_everything, get_device
 warnings.filterwarnings('ignore')
@@ -75,8 +75,8 @@ def main():
     print(f'=> Running on {device}')
     
     if args.queue_size:
-        print(f'=> Using MoCo-PQ')
-        model = MoCoPQ(
+        print(f'=> Using TFP-Q')
+        model = TFPQ(
             input_dims=X_train.shape[-1],
             output_dims=args.output_dim,
             hidden_dims=args.hidden_dim,
@@ -92,8 +92,8 @@ def main():
             multi_gpu=args.multi_gpu
         )
     else:
-        print(f'=> Using MoCo-PB')
-        model = MoCoPB(
+        print(f'=> Using TFP-B')
+        model = TFPB(
             input_dims=X_train.shape[-1],
             output_dims=args.output_dim,
             hidden_dims=args.hidden_dim,
