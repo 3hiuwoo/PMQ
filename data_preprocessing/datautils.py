@@ -1,3 +1,6 @@
+'''
+All utility functions shared between data preprocessing notebooks.
+'''
 import numpy as np
 import pandas as pd
 import neurokit2 as nk

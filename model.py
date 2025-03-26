@@ -1,3 +1,6 @@
+'''
+TFP model with queue and without queue.
+'''
 import os
 from datetime import datetime
 import torch

@@ -1,10 +1,20 @@
+'''
+This file contains the implementation of the encoder for pretraining and the classifier for finetuning.
+'''
 import torch
 from torch import nn
 import torch.nn.functional as F
-import numpy as np
-from utils import freq_perturb
+from utils import generate_binomial_mask, freq_perturb
 
 class SamePadConv(nn.Module):
+    ''' Conv1d layer with same padding
+    Args:
+        in_channels (int): number of input channels, i.e. feature dimension
+        out_channels (int): number of output channels
+        kernel_size (int): size of the convolving kernel
+        dilation (int): spacing between kernel elements
+        groups (int): number of blocked connections from input channels to output channels
+    '''
     def __init__(self, in_channels, out_channels, kernel_size, dilation=1, groups=1):
         super().__init__()
         self.receptive_field = (kernel_size - 1) * dilation + 1
@@ -17,6 +27,7 @@ class SamePadConv(nn.Module):
         )
         self.remove = 1 if self.receptive_field % 2 == 0 else 0
         
+        
     def forward(self, x):
         out = self.conv(x)
         if self.remove > 0:
@@ -25,11 +36,20 @@ class SamePadConv(nn.Module):
 
 
 class ConvBlock(nn.Module):
+    ''' Conv1d block with same padding and GELU activation
+    Args:
+        in_channels (int): number of input channels, i.e. feature dimension
+        out_channels (int): number of output channels
+        kernel_size (int): size of the convolving kernel
+        dilation (int): spacing between kernel elements
+        final (bool): whether this block is the final block
+    '''
     def __init__(self, in_channels, out_channels, kernel_size, dilation, final=False):
         super().__init__()
         self.conv1 = SamePadConv(in_channels, out_channels, kernel_size, dilation=dilation)
         self.conv2 = SamePadConv(out_channels, out_channels, kernel_size, dilation=dilation)
         self.projector = nn.Conv1d(in_channels, out_channels, 1) if in_channels != out_channels or final else None
+    
     
     def forward(self, x):
         residual = x if self.projector is None else self.projector(x)
@@ -41,6 +61,12 @@ class ConvBlock(nn.Module):
 
 
 class DilatedConvEncoder(nn.Module):
+    ''' Dilated Conv1d Encoder consisting of multiple ConvBlocks
+    Args:
+        in_channels (int): number of input channels, i.e. feature dimension
+        channels (list): number of output channels for each ConvBlock
+        kernel_size (int): size of all the convolving kernel
+    '''
     def __init__(self, in_channels, channels, kernel_size):
         super().__init__()
         self.net = nn.Sequential(*[
@@ -53,45 +79,19 @@ class DilatedConvEncoder(nn.Module):
             )
             for i in range(len(channels))
         ])
-        
+     
+       
     def forward(self, x):
         return self.net(x)
     
     
-def generate_continuous_mask(B, T, C=None, n=5, l=0.1):
-    if C:
-        res = torch.full((B, T, C), True, dtype=torch.bool)
-    else:
-        res = torch.full((B, T), True, dtype=torch.bool)
-    if isinstance(n, float):
-        n = int(n * T)
-    n = max(min(n, T // 2), 1)
-    
-    if isinstance(l, float):
-        l = int(l * T)
-    l = max(l, 1)
-    
-    for i in range(B):
-        for _ in range(n):
-            t = np.random.randint(T-l+1)
-            if C:
-                # For a continuous timestamps, mask random half channels
-                index = np.random.choice(C, int(C/2), replace=False)
-                res[i, t:t + l, index] = False
-            else:
-                # For a continuous timestamps, mask all channels
-                res[i, t:t+l] = False
-    return res
-
-
-def generate_binomial_mask(B, T, C=None, p=0.5):
-    if C:
-        return torch.from_numpy(np.random.binomial(1, p, size=(B, T, C))).to(torch.bool)
-    else:
-        return torch.from_numpy(np.random.binomial(1, p, size=(B, T))).to(torch.bool)
-
-
 class ProjectionHead(nn.Module):
+    ''' Classfication head for finetuning
+    Args:
+        input_dims (int): number of input dimensions
+        output_dims (int): number of output dimensions
+        hidden_dims (int): number of hidden dimensions
+    '''
     def __init__(self, input_dims, output_dims, hidden_dims=128):
         super().__init__()
         self.input_dims = input_dims
@@ -118,6 +118,13 @@ class ProjectionHead(nn.Module):
 
 
 def MLP(input_dims, output_dims, nlayers=1, hidden_dims=320):
+    ''' Projection head or Prediction head for pretraining
+    Args:
+        input_dims (int): number of input dimensions
+        output_dims (int): number of output dimensions
+        nlayers (int): number of layers
+        hidden_dims (int): number of hidden dimensions
+    '''
     layers = []
     for i in range(nlayers):
         layers.append(nn.Linear(input_dims, hidden_dims))
@@ -130,7 +137,19 @@ def MLP(input_dims, output_dims, nlayers=1, hidden_dims=320):
     
 
 class FTClassifier(nn.Module):
-    def __init__(self, input_dims, output_dims, depth, p_output_dims, hidden_dims=64, p_hidden_dims=128, pool='avg', device='cuda', multi_gpu=True):
+    ''' Classifier for finetuning
+    Args:
+        input_dims (int): number of input dimensions
+        output_dims (int): number of output dimensions of encoder
+        hidden_dims (int): number of ouput dimensions of input projector
+        depth (int): number of layers for encoder
+        p_hidden_dims (int): number of hidden dimensions of projection head
+        p_output_dims (int): number of output dimensions of projection head
+        pool (str): pooling method for encoder
+        device (str): device to run the model
+        multi_gpu (bool): whether to use multi-gpu
+    '''
+    def __init__(self, input_dims, output_dims=320, hidden_dims=64, depth=10, p_hidden_dims=128, p_output_dims=320, pool='avg', device='cuda', multi_gpu=True):
         super().__init__()
         self.input_dims = input_dims  # Ci
         self.output_dims = output_dims  # Co
@@ -139,7 +158,6 @@ class FTClassifier(nn.Module):
         self.p_output_dims = p_output_dims  # Cp
         self.pool = pool
         self._net = TSEncoder(input_dims=input_dims, output_dims=output_dims, hidden_dims=hidden_dims, depth=depth, pool=pool)
-        # projection head for finetune
         self.proj_head = ProjectionHead(output_dims, p_output_dims, p_hidden_dims)
         device = torch.device(device)
         if device == torch.device('cuda') and multi_gpu:
@@ -162,6 +180,16 @@ class FTClassifier(nn.Module):
     
     
 class TSEncoder(nn.Module):
+    ''' Encoder for pretraining
+    Args:
+        input_dims (int): number of input dimensions
+        output_dims (int): number of output dimensions
+        hidden_dims (int): number of output dimensions of input projector
+        depth (int): number of layers
+        mask_t (float): probability of time mask
+        mask_f (float): ratio of freq mask
+        pool (str): pooling method for encoder
+    '''
     def __init__(self, input_dims, output_dims, hidden_dims=64, depth=10, mask_t=0, mask_f=0, pool='avg'):
         super().__init__()
         self.input_dims = input_dims  # Ci
@@ -210,9 +238,9 @@ class TSEncoder(nn.Module):
         x = self.repr_dropout(self.feature_extractor(x))  # B x Co x O
         
         if self.pool == 'max':
-            x = F.max_pool1d(x, kernel_size=x.size(-1)).squeeze(-1)
+            x = F.max_pool1d(x, kernel_size=x.size(-1)).squeeze(-1) # B x Co
         elif self.pool == 'avg':
-            x = F.avg_pool1d(x, kernel_size=x.size(-1)).squeeze(-1)
+            x = F.avg_pool1d(x, kernel_size=x.size(-1)).squeeze(-1) # B x Co
         else:
             x = x.transpose(1, 2)  # B x O x Co
         

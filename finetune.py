@@ -1,4 +1,5 @@
-''' Perform full fine-tuning or training from scratch and testing cross multiple seeds and fractions of training data.
+'''
+Full fine-tuning or training from scratch and testing cross multiple seeds and fractions of training data.
 '''
 import os
 import argparse
@@ -87,6 +88,13 @@ def main():
 
 
 def run(logdir, seed, fraction):
+    ''' Run for one random seed and one fraction of training data
+    
+    Args:
+        logdir (str): directory to save logs
+        seed (int): random seed
+        fraction (float): fraction of training data 
+    '''
     seed_everything(seed)
     print(f'=> Set seed to {seed}')
     

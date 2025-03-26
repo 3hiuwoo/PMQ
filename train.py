@@ -1,4 +1,6 @@
-''' 
+'''
+Pretrain with TFP-B or TFP-Q.
+
 TODO1: moco without use_id loss and use random shuffle -> omit --use_id
 TODO2: time mask probability 0, 0.25, 0.5(now), 0.75, 1(NA) -> pass mask_t=*
 TODO3: freq mask probability 0, 0.1(now), 0.2, 0.5, ... -> pass mask_f=*
@@ -30,8 +32,8 @@ parser.add_argument('--tau', type=float, default=0.1, help='temperature for cosi
 parser.add_argument('--mask_t', type=float, default=0.5, help='probability of time mask')
 parser.add_argument('--mask_f', type=float, default=0.1, help='ratio of freq mask')
 parser.add_argument('--pool', type=str, default='avg', help='pooling method for representation: [avg, max]')
-parser.add_argument('--queue_size', type=int, default=16384, help='queue size for MoCoPQ, set 0 for MoCoPB')
-parser.add_argument('--use_id', action='store_true', help='whether to use use_id loss')
+parser.add_argument('--queue_size', type=int, default=16384, help='queue size for TFPQ, set 0 for TFPB')
+parser.add_argument('--use_id', action='store_true', help='whether to use patient-infoNCE loss')
 # training
 parser.add_argument('--lr', type=float, default=1e-3, help='learning rate')
 parser.add_argument('--wd', type=float, default=1.5e-6, help='weight decay')
@@ -123,7 +125,6 @@ def main():
         verbose=args.verbose
         )
     
-    # save training loss
     np.save(os.path.join(logdir, 'loss.npy'), loss_list)
 
 if __name__ == '__main__':

@@ -1,4 +1,4 @@
-# TFP: Patient discriminative contrastive learning across time and frequency
+# TFP: Patient Discriminative Contrastive Learning Across Time and Frequency
 
 ## Requirements
 
@@ -6,6 +6,7 @@ Run the following to prepare all required modules.
 
 ```
 pip install -r requirement.txt
+
 # If you want to use conda
 # conda install --file requirement.txt
 ```
@@ -26,7 +27,7 @@ pip install -r requirement.txt
 
 Run jupyter notebooks corresponding to each dataset from this [folder](https://github.com/3hiuwoo/MCP/blob/main/data_preprocessing) to preprocess the raw data, remember to modify the path in notebooks to load your downloaded dataset and to save processed dataset.
 
-### training data organization
+### Training data organization
 All processed data should be organized as below(all notebooks produce the data in this format automatically):
 
 ```

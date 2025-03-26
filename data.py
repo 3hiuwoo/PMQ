@@ -1,3 +1,10 @@
+'''
+This file contains functions for loading and preprocessing datasets, e.g. segment, normalize, shuffle.
+You might always import only load_data from this file since other files are sub-functions of load_data.
+Please construct the dataset of our format following the README file.
+Supporting dataset includes chapman, ptb, ptbxl, cpsc2018, cinc2017 currently.
+If want to add more datasets, you may construct the dataset and implement splits information in load_split_ids().
+'''
 import os
 import numpy as np
 from sklearn.utils import shuffle
@@ -7,7 +14,23 @@ from scipy.signal import butter, lfilter
 from itertools import repeat
     
 def load_data(root='dataset', name='chapman', length=None, overlap=0, norm=True, neighbor=False):
-    ''' load and preprocess data
+    ''' load, segment and preprocess train/val/test data
+    
+    Args:
+        root (str): root path for directory containing datasets folder
+        name (str): dataset name
+        length (int): segment length, if None, no segment
+        overlap (float): segment overlapping ratio
+        norm (bool): whether to normalize the data
+        neighbor (bool): whether to split the data into two halves
+        
+    Returns:
+        X_train (numpy.ndarray): train data
+        X_val (numpy.ndarray): validation data
+        X_test (numpy.ndarray): test data
+        y_train (numpy.ndarray): train labels
+        y_val (numpy.ndarray): validation labels
+        y_test (numpy.ndarray): test labels
     '''
     data_path = os.path.join(root, name, 'feature')
     labels, train_ids, valid_ids, test_ids = load_split_ids(root, name)
@@ -49,6 +72,7 @@ def load_data(root='dataset', name='chapman', length=None, overlap=0, norm=True,
     X_val, y_val = shuffle(X_val, y_val, random_state=42)
     X_test, y_test = shuffle(X_test, y_test, random_state=42)
 
+    # only use first 12 leads for PTB dataset, which is the same as other datasets
     if name == 'ptb':
         X_train = X_train[:, :, :12]
         X_val = X_val[:, :, :12]
@@ -60,9 +84,6 @@ def load_data(root='dataset', name='chapman', length=None, overlap=0, norm=True,
         X_test = process_batch_ts(X_test, normalized=True, bandpass_filter=False)
       
     if length:
-        # X_train, y_train = segment(X_train, y_train, split)
-        # X_val, y_val = segment(X_val, y_val, split)
-        # X_test, y_test = segment(X_test, y_test, split)
         X_train, y_train = split_data_label(X_train, y_train, sample_timestamps=length, overlapping=overlap)
         X_val, y_val = split_data_label(X_val, y_val, sample_timestamps=length, overlapping=overlap)
         X_test, y_test = split_data_label(X_test, y_test, sample_timestamps=length, overlapping=overlap)
@@ -78,31 +99,43 @@ def load_data(root='dataset', name='chapman', length=None, overlap=0, norm=True,
 
 
 def load_split_ids(root='dataset', name='chapman'):
-    '''
-    load labels for dataset and split information
+    ''' split patients into train, validation, and test set for loading data
+    
+    Args:
+        root (str): root path for directory containing datasets folder
+        name (str): dataset name
+        
+    Returns:
+        labels (numpy.ndarray): all labels
+        train_ids (list): patient IDs for training set
+        val_ids (list): patient IDs for validation set
+        test_ids (list): patient IDs
     '''
     label_path = os.path.join(root, name, 'label', 'label.npy')
     labels = np.load(label_path)
     
     if name == 'chapman':
+        # 4 classes: SB, AF, GSVT, SR
         pids_sb = list(labels[np.where(labels[:, 0]==0)][:, 1])
         pids_af = list(labels[np.where(labels[:, 0]==1)][:, 1])
         pids_gsvt = list(labels[np.where(labels[:, 0]==2)][:, 1])
         pids_sr = list(labels[np.where(labels[:, 0]==3)][:, 1])
         
         train_ids = pids_sb[:-500] + pids_af[:-500] + pids_gsvt[:-500] + pids_sr[:-500]
-        val_ids = pids_sb[-500:-250] + pids_af[-500:-250] + pids_gsvt[-500:-250] + pids_sr[-500:-250]
-        test_ids = pids_sb[-250:] + pids_af[-250:] + pids_gsvt[-250:] + pids_sr[-250:]
+        val_ids = pids_sb[-500:-250] + pids_af[-500:-250] + pids_gsvt[-500:-250] + pids_sr[-500:-250] # 1000 patients, 250 for each class
+        test_ids = pids_sb[-250:] + pids_af[-250:] + pids_gsvt[-250:] + pids_sr[-250:] # 1000 patients, 250 for each class
         
     elif name == 'ptb':
+        # 2 classes: healthy, MI
         pids_neg = list(labels[np.where(labels[:, 0]==0)][:, 1])
         pids_pos = list(labels[np.where(labels[:, 0]==1)][:, 1])
         
-        train_ids = pids_neg[:-14] + pids_pos[:-42]  # specify patient ID for training, validation, and test set
+        train_ids = pids_neg[:-14] + pids_pos[:-42]
         val_ids = pids_neg[-14:-7] + pids_pos[-42:-21]   # 28 patients, 7 healthy and 21 positive
         test_ids = pids_neg[-7:] + pids_pos[-21:]  # # 28 patients, 7 healthy and 21 positive
         
     elif name == 'ptbxl':
+        # 5 classes: normal, MI, STTC, CD, Hyp
         pids_norm = list(labels[np.where(labels[:, 0]==0)][:, 1])
         pids_mi = list(labels[np.where(labels[:, 0]==1)][:, 1])
         pids_sttc = list(labels[np.where(labels[:, 0]==2)][:, 1])
@@ -110,11 +143,12 @@ def load_split_ids(root='dataset', name='chapman'):
         pids_hyp = list(labels[np.where(labels[:, 0]==3)][:, 1])
         
         train_ids = pids_norm[:-1200] + pids_mi[:-600] + pids_sttc[:-600] + pids_cd[:-400] + pids_hyp[:-200]
-        val_ids = pids_norm[-1200:-600] + pids_mi[-600:-300] + pids_sttc[-600:-300] + pids_cd[-400:-200] + pids_hyp[-200:-100]
-        test_ids = pids_norm[-600:] + pids_mi[-300:] + pids_sttc[-300:] + pids_cd[-200:] + pids_hyp[-100:]
+        val_ids = pids_norm[-1200:-600] + pids_mi[-600:-300] + pids_sttc[-600:-300] + pids_cd[-400:-200] + pids_hyp[-200:-100] # 1500 patients
+        test_ids = pids_norm[-600:] + pids_mi[-300:] + pids_sttc[-300:] + pids_cd[-200:] + pids_hyp[-100:] # 1500 patients
     
     elif name == 'cpsc2018':
-        labels[:, 0] -= 1
+        # 9 classes: Normal, AF, IAVB, LBBB, RBBB, PAC, PVC, STD, STE
+        labels[:, 0] -= 1 # original labels start from 1
         
         pids_Normal = list(labels[np.where(labels[:, 0] == 0)][:, 1])
         pids_AF = list(labels[np.where(labels[:, 0] == 1)][:, 1])
@@ -127,18 +161,20 @@ def load_split_ids(root='dataset', name='chapman'):
         pids_STE = list(labels[np.where(labels[:, 0] == 8)][:, 1])
 
         train_ids = pids_Normal[:-300] + pids_AF[:-300] + pids_IAVB[:-300] + pids_LBBB[:-100] + pids_RBBB[:-300] + pids_PAC[:-300] + pids_PVC[:-300] + pids_STD[:-300] + pids_STE[:-100]
+        # 1150 patients
         val_ids = pids_Normal[-300:-150] + pids_AF[-300:-150] + pids_IAVB[-300:-150] + pids_LBBB[-100:-50] + pids_RBBB[-300:-150] + pids_PAC[-300:-150] + pids_PVC[-300:-150] + pids_STD[-300:-150] + pids_STE[-100:-50]
+        # 1150 patients
         test_ids = pids_Normal[-150:] + pids_AF[-150:] + pids_IAVB[-150:] + pids_LBBB[-50:] + pids_RBBB[-150:] + pids_PAC[-150:] + pids_PVC[-150:] + pids_STD[-150:] + pids_STE[-50:]
     
     elif name == 'cinc2017':
+        # 3 classes: N, A, O (Normal, AF, Other), we drop ~ (Noise) class
         pids_n = list(labels[np.where(labels[:, 0]==0)][:, 1])
         pids_a = list(labels[np.where(labels[:, 0]==1)][:, 1])
         pids_o = list(labels[np.where(labels[:, 0]==2)][:, 1])
         
-        # val 50 50 50 test 300 300 300
         train_ids = pids_n[:-900] + pids_a[:-300] + pids_o[:-800]
-        val_ids = pids_n[-900:-450] + pids_a[-300:-150] + pids_o[-800:-400]
-        test_ids = pids_n[-450:] + pids_a[-150:] + pids_o[-400:]
+        val_ids = pids_n[-900:-450] + pids_a[-300:-150] + pids_o[-800:-400] # 1000 patients
+        test_ids = pids_n[-450:] + pids_a[-150:] + pids_o[-400:] # 1000 patients
         
     else:
         raise ValueError(f'Unknown dataset: {name}')
@@ -155,8 +191,8 @@ def butter_bandpass(lowcut, highcut, fs, order=5):
 
 
 def butter_bandpass_filter(data, lowcut, highcut, fs, order=5):
-    ''' see https://stackoverflow.com/questions/12093594/how-to-implement-band-pass-butterworth-filter-with-scipy-signal-butter
-
+    '''
+    see https://stackoverflow.com/questions/12093594/how-to-implement-band-pass-butterworth-filter-with-scipy-signal-butter
     '''
     b, a = butter_bandpass(lowcut, highcut, fs, order=order)
     y = lfilter(b, a, data, axis=0)
@@ -214,6 +250,7 @@ def split_data_label(X_trial, y_trial, sample_timestamps, overlapping):
         X_sample (numpy.ndarray): It should have a shape of (n_samples, sample_timestamps, features) B_sample x T_sample x C. The B_sample = B x sample_num.
         y_sample (numpy.ndarray): It should have a shape of (n_samples, 3). The three columns are the label, patient id, and trial id.
     '''
+    
     X_sample, trial_ids, sample_num = split_data(X_trial, sample_timestamps, overlapping)
     # all samples from same trial should have same label and patient id
     y_sample = np.repeat(y_trial, repeats=sample_num, axis=0)
@@ -235,6 +272,7 @@ def split_data(X_trial, sample_timestamps=256, overlapping=0.5):
         trial_ids (numpy.ndarray): (n_samples,)
         sample_num (int): one trial splits into sample_num of samples
     '''
+    
     length = X_trial.shape[1]
     # check if sub_length and overlapping compatible
     if overlapping:
