@@ -1,5 +1,7 @@
 '''
 Full fine-tuning or training from scratch and testing cross multiple seeds and fractions of training data.
+
+TODO: Add linear evaluation / partial fine-tuning.
 '''
 import os
 import argparse
@@ -29,7 +31,7 @@ parser.add_argument('--depth', type=int, default=10, help='number of dilated con
 parser.add_argument('--hidden_dim', type=int, default=64, help='output dimension of input projector')
 parser.add_argument('--output_dim', type=int, default=320, help='output dimension of the encoder')
 parser.add_argument('--p_hidden_dim', type=int, default=128, help='hidden dimension of the projection head')
-parser.add_argument('--pretrain', type=str, default='', help='encoder weight file path')
+parser.add_argument('--pretrain', type=str, default='', help='encoder weight file path, if None, train from scratch')
 parser.add_argument('--pool', type=str, default='avg', help='pooling method: [avg, max]')
 # training
 parser.add_argument('--lr', type=float, default=1e-4, help='learning rate')

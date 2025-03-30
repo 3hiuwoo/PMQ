@@ -50,6 +50,7 @@ To pre-train with the same setting as in the paper, just run:
 ```
 python train.py --root [folder containing all datasets]\
                 --logdir [folder to save weights and training loss]\
+                --schedule warmup\
                 --neighbor\
                 --use_id
 ```

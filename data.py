@@ -2,7 +2,7 @@
 This file contains functions for loading and preprocessing datasets, e.g. segment, normalize, shuffle.
 You might always import only load_data from this file since other files are sub-functions of load_data.
 Please construct the dataset of our format following the README file.
-Supporting dataset includes chapman, ptb, ptbxl, cpsc2018, cinc2017 currently.
+Supporting dataset includes chapman, ptb, ptbxl, cpsc2018, currently.
 If want to add more datasets, you may construct the dataset and implement splits information in load_split_ids().
 '''
 import os
@@ -166,7 +166,7 @@ def load_split_ids(root='dataset', name='chapman'):
         # 1150 patients
         test_ids = pids_Normal[-150:] + pids_AF[-150:] + pids_IAVB[-150:] + pids_LBBB[-50:] + pids_RBBB[-150:] + pids_PAC[-150:] + pids_PVC[-150:] + pids_STD[-150:] + pids_STE[-50:]
     
-    elif name == 'cinc2017':
+    elif name == 'cinc2017': # no longer supported
         # 3 classes: N, A, O (Normal, AF, Other), we drop ~ (Noise) class
         pids_n = list(labels[np.where(labels[:, 0]==0)][:, 1])
         pids_a = list(labels[np.where(labels[:, 0]==1)][:, 1])

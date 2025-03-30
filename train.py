@@ -1,10 +1,10 @@
 '''
 Pretrain with TFP-B or TFP-Q.
 
-TODO1: moco without use_id loss and use random shuffle -> omit --use_id
-TODO2: time mask probability 0, 0.25, 0.5(now), 0.75, 1(NA) -> pass mask_t=*
-TODO3: freq mask probability 0, 0.1(now), 0.2, 0.5, ... -> pass mask_f=*
-TODO4: no temporal neighbor -> omit --neighbor and pass --length=300
+TODO: moco without use_id loss and use random shuffle -> omit --use_id
+TODO: time mask probability 0, 0.25, 0.5(now), 0.75, 1(NA) -> pass mask_t=*
+TODO: freq mask ratio 0, 0.1(now), 0.2, 0.5, ... -> pass mask_f=*
+TODO: no temporal neighbor -> omit --neighbor and pass --length=300
 '''
 import os
 import argparse
@@ -39,7 +39,7 @@ parser.add_argument('--lr', type=float, default=1e-3, help='learning rate')
 parser.add_argument('--wd', type=float, default=1.5e-6, help='weight decay')
 parser.add_argument('--optim', type=str, default='adamw', help='optimizer: [adamw, lars]')
 parser.add_argument('--schedule', type=str, default=None, help='scheduler: [plateau, step, cosine, warmup, exp]')
-parser.add_argument('--batch_size', type=int, default=2048, help='batch size')
+parser.add_argument('--batch_size', type=int, default=256, help='batch size')
 parser.add_argument('--epochs', type=int, default=100, help='number of epochs')
 parser.add_argument('--shuffle', type=str, default='trial', help='way to shuffle the data: [random, trial]')
 parser.add_argument('--logdir', type=str, default='log', help='directory to save weights and logs')
