@@ -1,8 +1,8 @@
-'''
+"""
 Full fine-tuning or training from scratch and testing cross multiple seeds and fractions of training data.
 
 TODO: Add linear evaluation / partial fine-tuning.
-'''
+"""
 import os
 import argparse
 import warnings
@@ -17,64 +17,64 @@ from encoder import FTClassifier
 from data import load_data
 from utils import seed_everything, get_device, start_logging, stop_logging
 from torchmetrics import Accuracy, F1Score, AUROC, Precision, Recall, AveragePrecision, MetricCollection
-warnings.filterwarnings('ignore')
+warnings.filterwarnings("ignore")
 
-parser = argparse.ArgumentParser(description='Fine-tuning/Training from scratch')
-parser.add_argument('--seeds', type=int, nargs='+', default=[41, 42, 43, 44, 45], help='list of random seeds')
+parser = argparse.ArgumentParser(description="Fine-tuning/Training from scratch")
+parser.add_argument("--seeds", type=int, nargs="+", default=[41, 42, 43, 44, 45], help="list of random seeds")
 # data
-parser.add_argument('--root', type=str, default='/root/autodl-tmp/dataset', help='root directory of datasets')
-parser.add_argument('--data', type=str, default='ptb', help='pretraining dataset: [ptb, ptbxl, chapman, cpsc2018]')
-parser.add_argument('--length', type=int, default=300, help='length of each sample')
-parser.add_argument('--overlap', type=float, default=0., help='overlap of each sample')
+parser.add_argument("--root", type=str, default="/root/autodl-tmp/dataset", help="root directory of datasets")
+parser.add_argument("--data", type=str, default="ptb", help="pretraining dataset: [ptb, ptbxl, chapman, cpsc2018]")
+parser.add_argument("--length", type=int, default=300, help="length of each sample")
+parser.add_argument("--overlap", type=float, default=0., help="overlap of each sample")
 # model
-parser.add_argument('--depth', type=int, default=10, help='number of dilated convolutional blocks')
-parser.add_argument('--hidden_dim', type=int, default=64, help='output dimension of input projector')
-parser.add_argument('--output_dim', type=int, default=320, help='output dimension of the encoder')
-parser.add_argument('--p_hidden_dim', type=int, default=128, help='hidden dimension of the projection head')
-parser.add_argument('--pretrain', type=str, default='', help='encoder weight file path, if None, train from scratch')
-parser.add_argument('--pool', type=str, default='avg', help='pooling method: [avg, max]')
+parser.add_argument("--depth", type=int, default=10, help="number of dilated convolutional blocks")
+parser.add_argument("--hidden_dim", type=int, default=64, help="output dimension of input projector")
+parser.add_argument("--output_dim", type=int, default=320, help="output dimension of the encoder")
+parser.add_argument("--p_hidden_dim", type=int, default=128, help="hidden dimension of the projection head")
+parser.add_argument("--pretrain", type=str, default="", help="encoder weight file path, if None, train from scratch")
+parser.add_argument("--pool", type=str, default="avg", help="pooling method: [avg, max]")
 # training
-parser.add_argument('--lr', type=float, default=1e-4, help='learning rate')
-parser.add_argument('--batch_size', type=int, default=256, help='batch size')
-parser.add_argument('--epochs', type=int, default=50, help='number of epochs')
-parser.add_argument('--fractions', type=float, nargs='+', default=[1.0, 0.1, 0.01], help='list of fractions of training data')
-parser.add_argument('--logdir', type=str, default='log', help='directory to save logs')
-parser.add_argument('--multi_gpu', action='store_true', help='whether to use multiple GPUs')
-parser.add_argument('--verbose', type=int, default=1, help='0: no print, 1: print loss, 2: print test metrics, 3: print all metrics')
+parser.add_argument("--lr", type=float, default=1e-4, help="learning rate")
+parser.add_argument("--batch_size", type=int, default=256, help="batch size")
+parser.add_argument("--epochs", type=int, default=50, help="number of epochs")
+parser.add_argument("--fractions", type=float, nargs="+", default=[1.0, 0.1, 0.01], help="list of fractions of training data")
+parser.add_argument("--logdir", type=str, default="log", help="directory to save logs")
+parser.add_argument("--multi_gpu", action="store_true", help="whether to use multiple GPUs")
+parser.add_argument("--verbose", type=int, default=1, help="0: no print, 1: print loss, 2: print test metrics, 3: print all metrics")
 
 args = parser.parse_args()
 
 def main():
     # figure out the task
     if args.pretrain:
-        task = 'finetune'
+        task = "finetune"
     else:
-        task = 'scratch'
+        task = "scratch"
         
-    print('=> Arguments:', vars(args))
+    print("=> Arguments:", vars(args))
             
-    logdir = os.path.join(args.logdir, f'{task}_{args.data}')
+    logdir = os.path.join(args.logdir, f"{task}_{args.data}")
     if not os.path.exists(logdir):
         os.makedirs(logdir)
     
-    print(f'=> Weights and logs will be saved in {logdir}')
+    print(f"=> Weights and logs will be saved in {logdir}")
 
     # save argumens information
-    with open(os.path.join(logdir, 'args.txt'), 'w') as f:
+    with open(os.path.join(logdir, "args.txt"), "w") as f:
         for key, value in vars(args).items():
-            f.write(f'{key}: {value}\n')
+            f.write(f"{key}: {value}\n")
     
-    print(f'=> Running cross {len(args.seeds)} seeds and {len(args.fractions)} fractions')
+    print(f"=> Running cross {len(args.seeds)} seeds and {len(args.fractions)} fractions")
     for seed in args.seeds:
         for fraction in args.fractions:
             run(logdir, seed, fraction)
 
-    print(f'==================== Calculating total metrics ====================')
-    start_logging('total', logdir) # simultaneously save the print out to file
+    print(f"==================== Calculating total metrics ====================")
+    start_logging("total", logdir) # simultaneously save the print out to file
     for fraction in args.fractions:
-        print(f'=> Fraction: {fraction}, Seeds: {args.seeds}')
-        val_path = os.path.join(logdir, f'val_{fraction}.csv')
-        test_path = os.path.join(logdir, f'test_{fraction}.csv')
+        print(f"=> Fraction: {fraction}, Seeds: {args.seeds}")
+        val_path = os.path.join(logdir, f"val_{fraction}.csv")
+        test_path = os.path.join(logdir, f"test_{fraction}.csv")
         val_df = pd.read_csv(val_path, index_col=0)
         test_df = pd.read_csv(test_path, index_col=0)
         val_mean = val_df.mean().to_dict()
@@ -82,23 +82,23 @@ def main():
         val_std = val_df.std().to_dict()
         test_std = test_df.std().to_dict()
         
-        val_out = (f'{k}: {m:.6f}±{s:.6f}' for k, m, s in zip(val_mean.keys(), val_mean.values(), val_std.values()))
-        test_out = (f'{k}: {m:.6f}±{s:.6f}' for k, m, s in zip(test_mean.keys(), test_mean.values(), test_std.values()))
-        print('=> Metrics for validation set\n', '\n'.join(val_out))
-        print('=> Metrics for test set\n', '\n'.join(test_out))
+        val_out = (f"{k}: {m:.6f}±{s:.6f}" for k, m, s in zip(val_mean.keys(), val_mean.values(), val_std.values()))
+        test_out = (f"{k}: {m:.6f}±{s:.6f}" for k, m, s in zip(test_mean.keys(), test_mean.values(), test_std.values()))
+        print("=> Metrics for validation set\n", "\n".join(val_out))
+        print("=> Metrics for test set\n", "\n".join(test_out))
     stop_logging()
 
 
 def run(logdir, seed, fraction):
-    ''' Run for one random seed and one fraction of training data
+    """ Run for one random seed and one fraction of training data
     
     Args:
         logdir (str): directory to save logs
         seed (int): random seed
         fraction (float): fraction of training data 
-    '''
+    """
     seed_everything(seed)
-    print(f'=> Set seed to {seed}')
+    print(f"=> Set seed to {seed}")
     
     X_train, X_val, X_test,\
     y_train, y_val, y_test = load_data(args.root,
@@ -110,7 +110,7 @@ def run(logdir, seed, fraction):
     if fraction < 1:
         X_train = X_train[:int(X_train.shape[0] * fraction)]
         y_train = y_train[:int(y_train.shape[0] * fraction)]
-        print(f'=> Using {fraction}% of training data')
+        print(f"=> Using {fraction}% of training data")
     
     train_dataset = TensorDataset(torch.from_numpy(X_train).to(torch.float),
                                   torch.from_numpy(y_train[:, 0]).to(torch.long))
@@ -124,7 +124,7 @@ def run(logdir, seed, fraction):
     test_loader = DataLoader(test_dataset, batch_size=args.batch_size, shuffle=True)
     
     device = get_device()
-    print(f'=> Running on {device}')
+    print(f"=> Running on {device}")
     device = torch.device(device)
     
     input_dims = X_test.shape[-1]
@@ -142,24 +142,24 @@ def run(logdir, seed, fraction):
         )
     
     metrics = MetricCollection({
-        'acc': Accuracy(task='multiclass', num_classes=num_classes),
-        'f1': F1Score(task='multiclass', num_classes=num_classes, average='macro'), 
-        'auroc': AUROC(task='multiclass', num_classes=num_classes),
-        'precision': Precision(task='multiclass', num_classes=num_classes, average='macro'),
-        'recall': Recall(task='multiclass', num_classes=num_classes, average='macro'),
-        'auprc': AveragePrecision(task='multiclass', num_classes=num_classes) 
+        "acc": Accuracy(task="multiclass", num_classes=num_classes),
+        "f1": F1Score(task="multiclass", num_classes=num_classes, average="macro"), 
+        "auroc": AUROC(task="multiclass", num_classes=num_classes),
+        "precision": Precision(task="multiclass", num_classes=num_classes, average="macro"),
+        "recall": Recall(task="multiclass", num_classes=num_classes, average="macro"),
+        "auprc": AveragePrecision(task="multiclass", num_classes=num_classes) 
         }).to(device)
            
     if args.pretrain:
         if os.path.isfile(args.pretrain):
-            print(f'=> Loading pretrained model from {args.pretrain}')
+            print(f"=> Loading pretrained model from {args.pretrain}")
             weights = torch.load(args.pretrain)
             msg = model.net.load_state_dict(weights, strict=False)
-            print('=>', msg)
+            print("=>", msg)
         else:
-            print(f'=> Find nothing in {args.pretrain}')
+            print(f"=> Find nothing in {args.pretrain}")
     else:
-        print(f'=> Training from scratch')
+        print(f"=> Training from scratch")
             
     # params = list(filter(lambda p: p.requires_grad, model.parameters()))
     # optimizer = torch.optim.AdamW(params, lr=args.lr)
@@ -177,7 +177,7 @@ def run(logdir, seed, fraction):
         
         # validation
         val_metrics_dict = evaluate(model, val_loader, metrics, device)
-        f1 = val_metrics_dict['f1']
+        f1 = val_metrics_dict["f1"]
         epoch_f1_list.append(f1)
         
         # save the model with best F1
@@ -189,36 +189,36 @@ def run(logdir, seed, fraction):
                 print(val_metrics_dict)
                 
     end_time = datetime.now()
-    print(f'=> Training finished in {end_time - start_time}')
+    print(f"=> Training finished in {end_time - start_time}")
     
-    np.save(os.path.join(logdir, f'loss_{fraction}_{seed}.npy'), epoch_lost_list)
-    np.save(os.path.join(logdir, f'f1_{fraction}_{seed}.npy'), epoch_f1_list)
+    np.save(os.path.join(logdir, f"loss_{fraction}_{seed}.npy"), epoch_lost_list)
+    np.save(os.path.join(logdir, f"f1_{fraction}_{seed}.npy"), epoch_f1_list)
     
     # testing
-    test_path = os.path.join(logdir, f'bestf1_{fraction}_{seed}.pth')
+    test_path = os.path.join(logdir, f"bestf1_{fraction}_{seed}.pth")
     
     start_logging(seed, logdir) # simultaneously save the print out to file
-    print(f'=> Testing on {test_path}')
+    print(f"=> Testing on {test_path}")
     model.load_state_dict(torch.load(test_path))
     
     val_metrics_dict = evaluate(model, val_loader, metrics, device)
     if args.verbose > 1:
-        print('=> Metrics for validation set\n', val_metrics_dict)
+        print("=> Metrics for validation set\n", val_metrics_dict)
     
     test_metrics_dict = evaluate(model, test_loader, metrics, device)
     if args.verbose > 1:
-        print('=> Metrics for test set\n', test_metrics_dict)
+        print("=> Metrics for test set\n", test_metrics_dict)
     stop_logging(logdir, seed, fraction, val_metrics_dict, test_metrics_dict)
 
 
 def train(model, loader, optimizer, criterion, epoch, device):
-    '''
+    """
     one epoch training
-    '''
+    """
     model.train()
     
     cum_loss = 0
-    for x, y in tqdm(loader, desc=f'=> Epoch {epoch+1}', leave=False):
+    for x, y in tqdm(loader, desc=f"=> Epoch {epoch+1}", leave=False):
         x, y = x.to(device), y.to(device)
         optimizer.zero_grad()
 
@@ -233,12 +233,12 @@ def train(model, loader, optimizer, criterion, epoch, device):
     
     
 def evaluate(model, loader, metrics, device):
-    '''
+    """
     do validation or test
-    '''
+    """
     model.eval()
     with torch.no_grad():
-        for x, y in tqdm(loader, desc=f'=> Evaluating', leave=False):
+        for x, y in tqdm(loader, desc=f"=> Evaluating", leave=False):
             x, y = x.to(device), y.to(device)
             y_pred = model(x)
             metrics.update(y_pred, y)
@@ -250,15 +250,15 @@ def evaluate(model, loader, metrics, device):
 
 
 def finetune_callback(logdir, model, epoch, f1, fraction, seed):
-    '''
+    """
     save the model with best F1
-    '''
+    """
     if (epoch+1) == 1:
         model.finetune_f1 = f1
-        torch.save(model.state_dict(), os.path.join(logdir, f'bestf1_{fraction}_{seed}.pth'))
+        torch.save(model.state_dict(), os.path.join(logdir, f"bestf1_{fraction}_{seed}.pth"))
     if f1 > model.finetune_f1:
         model.finetune_f1 = f1
-        torch.save(model.state_dict(), os.path.join(logdir, f'bestf1_{fraction}_{seed}.pth'))
+        torch.save(model.state_dict(), os.path.join(logdir, f"bestf1_{fraction}_{seed}.pth"))
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

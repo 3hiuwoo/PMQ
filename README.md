@@ -78,4 +78,10 @@ python finetune.py -h
 
 ## Reference
 
-We incorporate COMET's [Code](https://github.com/DL4mHealth/COMET) to conduct aligned experiments.
+We incorporate COMET"s [Code](https://github.com/DL4mHealth/COMET) to conduct aligned experiments.
+
+## TODO
+
+- Add annotation and README to CLOCS and PCLR.
+- update this README.
+

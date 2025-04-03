@@ -4,3 +4,8 @@ ptb*/
 __pycache__/
 test*/
 test*.*
+Training*/
+training*/
+log*/
+.vscode/
+.DS_Store
