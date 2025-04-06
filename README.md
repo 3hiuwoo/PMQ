@@ -4,7 +4,7 @@
 
 Run the following to prepare all required modules.
 
-```
+```shell
 pip install -r requirement.txt
 
 # If you want to use conda
@@ -28,9 +28,10 @@ pip install -r requirement.txt
 Run jupyter notebooks corresponding to each dataset from this [folder](https://github.com/3hiuwoo/MCP/blob/main/data_preprocessing) to preprocess the raw data, remember to modify the path in notebooks to load your downloaded dataset and to save processed dataset.
 
 ### Training data organization
+
 All processed data should be organized as below(all notebooks produce the data in this format automatically):
 
-```
+```text
 - [destination path specified in notebook]:
   - ptbxl:
     - features:
@@ -47,7 +48,8 @@ The "destination path specified in notebook" will be used by all scripts to load
 ## Pre-training
 
 To pre-train with the same setting as in the paper, just run:
-```
+
+```shell
 python train.py --root [folder containing all datasets]\
                 --logdir [folder to save weights and training loss]\
                 --schedule warmup\
@@ -57,7 +59,7 @@ python train.py --root [folder containing all datasets]\
 
 If you want to try different settings, run the following for details:
 
-```
+```shell
 python train.py -h
 ```
 
@@ -65,14 +67,15 @@ python train.py -h
 
 To fine-tune and test following our paper, run:
 
-```
+```shell
 python finetune.py --root [folder containing all datasets]\
                    --logdir [folder to save fine-tuned weights and logs]\
                    --pretrain [path of the pre-trained weight file]
 ```
+
 To fine-tune with any amount of datasets and any combinations of fractions with other settings, run the following for details:
 
-```
+```shell
 python finetune.py -h
 ```
 
@@ -84,4 +87,3 @@ We incorporate COMET"s [Code](https://github.com/DL4mHealth/COMET) to conduct al
 
 - Add annotation and README to CLOCS and PCLR.
 - update this README.
-

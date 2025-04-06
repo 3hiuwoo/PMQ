@@ -11,10 +11,9 @@ from torch.utils.data import DataLoader, TensorDataset
 from tqdm import tqdm
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../")))
+from encoder import ProjectionHead, TSEncoder
+from utils import MyBatchSampler, shuffle_feature_label
 
-from encoder import TSEncoder, ProjectionHead
-from utils import shuffle_feature_label
-from utils import MyBatchSampler
 
 class CLOCS:
     def __init__(

@@ -240,8 +240,6 @@ class PCLR:
     
     
     def loss_fn(self, z1, z2):
-        
-        
         eps = 1e-12
         sim1 = torch.mm(z1, z2.t())  # [N, N] pairs
         sim1 /= self.tau

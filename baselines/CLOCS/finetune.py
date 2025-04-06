@@ -1,18 +1,22 @@
+import argparse
 import os
 import sys
-import argparse
 import warnings
-import torch
+from datetime import datetime
+
 import numpy as np
 import pandas as pd
-from torch import nn
-from torch.utils.data import TensorDataset, DataLoader
-from tqdm import tqdm
-from datetime import datetime
+import torch
 from clocs import FTClassifier
+from torch import nn
+from torch.utils.data import DataLoader, TensorDataset
+from tqdm import tqdm
+from torchmetrics import AUROC, Accuracy, AveragePrecision, F1Score, MetricCollection, Precision, Recall
+
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../")))
 from data import load_data
-from utils import seed_everything, get_device, start_logging, stop_logging
-from torchmetrics import Accuracy, F1Score, AUROC, Precision, Recall, AveragePrecision, MetricCollection
+from utils import get_device, seed_everything, start_logging, stop_logging
+
 warnings.filterwarnings("ignore")
 
 parser = argparse.ArgumentParser(description="Fine-tuning/Training from scratch")
@@ -33,7 +37,7 @@ parser.add_argument("--lr", type=float, default=1e-4, help="learning rate")
 parser.add_argument("--batch_size", type=int, default=256, help="batch size")
 parser.add_argument("--epochs", type=int, default=50, help="number of epochs")
 parser.add_argument("--fractions", type=float, nargs="+", default=[1.0, 0.1, 0.01], help="list of fractions of training data")
-parser.add_argument("--logdir", type=str, default="log_mopa", help="directory to save logs")
+parser.add_argument("--logdir", type=str, default="log", help="directory to save logs")
 parser.add_argument("--multi_gpu", action="store_true", help="whether to use multiple GPUs")
 parser.add_argument("--verbose", type=int, default=1, help="control how much information to print out")
 

@@ -1,11 +1,13 @@
+import argparse
 import os
 import sys
-import argparse
+
 import numpy as np
 from clocs import CLOCS
+
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../")))
 from data import load_data
-from utils import seed_everything, get_device
+from utils import get_device, seed_everything
 
 parser = argparse.ArgumentParser(description="CLOCS Training")
 parser.add_argument("--seed", type=int, default=42, help="random seed")
