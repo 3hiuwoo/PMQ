@@ -1,4 +1,4 @@
-# TFP: Patient Discriminative Contrastive Learning Across Time and Frequency
+# PMQ: Introducing Patient Memory Queue to Patient Contrastive Learning For Electrocardiogram
 
 ## Requirements
 

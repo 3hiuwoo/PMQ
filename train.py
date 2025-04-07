@@ -10,7 +10,7 @@ import os
 import argparse
 import warnings
 import numpy as np
-from model import TFPB, TFPQ
+from model import PMB, PMQ
 from data import load_data
 from utils import seed_everything, get_device
 warnings.filterwarnings("ignore")
@@ -78,7 +78,7 @@ def main():
     
     if args.queue_size:
         print(f"=> Using TFP-Q")
-        model = TFPQ(
+        model = PMQ(
             input_dims=X_train.shape[-1],
             output_dims=args.output_dim,
             hidden_dims=args.hidden_dim,
@@ -95,7 +95,7 @@ def main():
         )
     else:
         print(f"=> Using TFP-B")
-        model = TFPB(
+        model = PMB(
             input_dims=X_train.shape[-1],
             output_dims=args.output_dim,
             hidden_dims=args.hidden_dim,
