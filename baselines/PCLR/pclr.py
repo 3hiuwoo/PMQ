@@ -1,3 +1,6 @@
+"""
+See the PMQ and PCLR paper for more details.
+"""
 import os
 import sys
 from datetime import datetime
@@ -15,10 +18,9 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../"
 from data import load_data
 from encoder import MLP, TSEncoder
 
-
 class ECGDataset(Dataset):
     def __init__(self, root="/root/autodl-tmp/dataset", name="chapman", length=300, overlap=0., norm=True, neighbor=False):
-        """ PyTorch Dataset for ECG data.
+        """ retrieve pairs from each patient.
 
         Args:
             root (str): Root directory containing the dataset.
@@ -64,13 +66,13 @@ class ECGDataset(Dataset):
             idx (int): Index of the trial.
 
         Returns:
-            segment (torch.Tensor): A tensor containing two segments from the same trial.
+            segment (torch.Tensor): A tensor containing two segments from the same trial with shape (2, length, feature).
         """
         pid = self.pids[idx]
         segments = self.patient_segemtns[pid]
 
         # Randomly select two segments from the trial
-        indices = np.random.choice(len(segments), size=2, replace=False)
+        indices = np.random.choice(len(segments), size=2, replace=True)
         segment1 = segments[indices[0]]
         segment2 = segments[indices[1]]
 

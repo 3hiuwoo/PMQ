@@ -1,3 +1,6 @@
+"""
+See the PMQ and CLOCS official repository for more details.
+"""
 import os
 import sys
 from datetime import datetime
@@ -13,7 +16,6 @@ from tqdm import tqdm
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../")))
 from encoder import ProjectionHead, TSEncoder
 from utils import MyBatchSampler, shuffle_feature_label
-
 
 class CLOCS:
     def __init__(
@@ -231,6 +233,9 @@ class CLOCS:
     
 
 class FTClassifier(nn.Module):
+    """
+    Modified version of the original FTClassifier class, to support CLOCS finetuning.
+    """
     def __init__(self, input_dims, output_dims, depth, p_output_dims, hidden_dims=64, p_hidden_dims=128,
                  device="cuda", multi_gpu=True):
         super().__init__()
@@ -257,6 +262,7 @@ class FTClassifier(nn.Module):
 
     def forward(self, x):
         sum = None
+        # ensemble
         for i in range(x.size(-1)):
             out = self.net(x[..., i].unsqueeze(-1))  # B x O x Co
             if sum is None:
