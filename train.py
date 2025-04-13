@@ -5,6 +5,7 @@ TODO: moco without use_id loss and use random shuffle -> omit --use_id
 TODO: time mask probability 0, 0.25, 0.5(now), 0.75, 1(NA) -> pass mask_t=*
 TODO: freq mask ratio 0, 0.1(now), 0.2, 0.5, ... -> pass mask_f=*
 TODO: no temporal neighbor -> omit --neighbor and pass --length=300
+
 """
 import os
 import argparse
