@@ -25,8 +25,13 @@ class PMQ:
         mask_f (float): The frequency masking ratio.
         momentum (float): The momentum update parameter.
         tau (float): The temperature parameter.
+        alpha (float): The scaling factor of positive pairs in multi-similarity loss.
+        beta (float): The scaling factor of negative pairs in multi-similarity loss.
+        thresh (float): The bias for pairs in multi-similarity loss.
+        margin (float): The margin for mining pairs in multi-similarity loss.
         queue_size (int): The size of the queue.
         use_id (bool): A flag to indicate whether using patient id for patient-level contrastive learning.
+        loss_func (str): The loss function used for training. It can be "ms" or "nce".
         device (str): The gpu used for training and inference.
         multi_gpu (bool): A flag to indicate whether using multiple gpus
     """
@@ -40,9 +45,14 @@ class PMQ:
         mask_t=0.5,
         mask_f=0.1,
         momentum=0.99,
-        tau=0.1,
+        tau=1.0,
+        alpha=2,
+        beta=50,
+        thresh=1.0,
+        margin=0.1,
         queue_size=16384,
         use_id=True,
+        loss_func="ms",
         device="cuda",
         multi_gpu=False
     ):
@@ -56,11 +66,19 @@ class PMQ:
         self.multi_gpu = multi_gpu
         
         if not use_id:
-            print("=> !!! No patient ids are used !!!")
+            print("=> !!! Training without patient IDs !!!")
         self.use_id = use_id
+        self.loss_func = loss_func
         
         self.momentum = momentum
         self.tau = tau
+        
+        # following 4 parameters are only used for multi-similarity loss
+        self.alpha = alpha
+        self.beta = beta
+        self.thresh = thresh
+        self.margin = margin
+        
         self.queue_size = queue_size
         
         self._net = TSEncoder(input_dims=input_dims, output_dims=output_dims, hidden_dims=hidden_dims, depth=depth, mask_t=mask_t, mask_f=mask_f, pool=pool)
@@ -343,8 +361,12 @@ class PMQ:
         """
         if id is None:
             return self.infoNCE_loss(q, k)
-        else:
+        elif self.loss_func == "ms":
+            return self.ms_loss(q, k, id)
+        elif self.loss_func == "nce":
             return self.patient_infoNCE_loss(q, k, id)
+        else:
+            raise ValueError(f"{self.loss_func} is not supported")
     
     
     def infoNCE_loss(self, q, k):
@@ -407,6 +429,59 @@ class PMQ:
         return 2 * self.tau * loss
     
     
+    def ms_loss(self, q, k, id):
+        """ compute the multi-similarity loss
+        Args:
+            q (torch.Tensor): query representations
+            k (torch.Tensor): key representations
+            id (torch.Tensor): patient id
+        Returns:
+            loss (torch.Tensor): loss
+        """
+        id = id.cpu().detach().numpy()
+        id_queue = self.id_queue.clone().detach().cpu().numpy()
+        queue = self.queue.clone().detach()
+
+        batch_interest_matrix = np.equal.outer(id, id).astype(int)
+        queue_interest_matrix = np.equal.outer(id, id_queue).astype(int) # B x K
+        interest_matrix = np.concatenate((batch_interest_matrix, queue_interest_matrix), axis=1) # B x (B+K)
+
+        batch_sim_matrix = torch.mm(q, k.t()) # B x B
+        queue_sim_matrix = torch.mm(q, queue.t()) # B x K
+        sim_matrix = torch.cat((batch_sim_matrix, queue_sim_matrix), dim=1) # B x (B+K)
+        sim_matrix /= self.tau
+        # sim_matrix_exp = torch.exp(argument)
+        
+        eps = 1e-5
+        loss = []
+        for i in range(sim_matrix.shape[0]):
+            pos_pair_ = sim_matrix[i][interest_matrix[i] == 1] # positive pairs
+            pos_pair_ = pos_pair_[pos_pair_ < 1 - eps]
+            neg_pair_ = sim_matrix[i][interest_matrix[i] == 0] # negative pairs
+            
+            pos_pair = pos_pair_[pos_pair_ - self.margin < max(neg_pair_)] # cherry-pick positive pairs
+            neg_pair = neg_pair_[neg_pair_ + self.margin > min(pos_pair_)] # cherry-pick negative pairs
+            
+            if len(pos_pair) == 0 or len(neg_pair) == 0:
+                continue
+            
+            pos_loss = 1.0 / self.alpha * torch.log(
+                1 + torch.sum(torch.exp(-self.alpha * (pos_pair - self.thresh))) # positive pairs
+            )
+            neg_loss = 1.0 / self.beta * torch.log(
+                1 + torch.sum(torch.exp(self.beta * (neg_pair - self.thresh))) # negative pairs   
+            )
+            loss.append(pos_loss + neg_loss)
+        
+        if len(loss) == 0:
+            print("=> No loss, return 0")
+            return torch.tensor(0.0, device=q.device)
+        else:
+            loss = sum(loss) / sim_matrix.shape[0]
+            return loss
+        
+        
+        
 class PMB:
     """ PMQ without queue.
     Args:
@@ -419,7 +494,11 @@ class PMB:
         mask_f (float): The frequency masking ratio.
         momentum (float): The momentum update parameter.
         tau (float): The temperature parameter.
-        queue_size (int): The size of the queue.
+        alpha (float): The scaling factor of positive pairs in multi-similarity loss.
+        beta (float): The scaling factor of negative pairs in multi-similarity loss.
+        thresh (float): The bias for pairs in multi-similarity loss.
+        margin (float): The margin for mining pairs in multi-similarity loss.
+        loss_func (str): The loss function used for training. It can be "ms" or "nce", since PMB has no queue, one can add s to the loss_func allowing computing the loss symmetrically.
         use_id (bool): A flag to indicate whether using patient id for patient-level contrastive learning.
         device (str): The gpu used for training and inference.
         multi_gpu (bool): A flag to indicate whether using multiple gpus
@@ -435,7 +514,12 @@ class PMB:
         mask_f=0.1,
         momentum=0.999,
         tau=0.1,
+        alpha=2,
+        beta=50,
+        thresh=1.0,
+        margin=0.1,
         use_id=True,
+        loss_func="ms",
         device="cuda",
         multi_gpu=False
     ):
@@ -449,11 +533,18 @@ class PMB:
         self.multi_gpu = multi_gpu
         
         if not use_id:
-            print("=> !!! No patient ids are used !!!")
+            print("=> !!! Training without patient IDs !!!")
         self.use_id = use_id
+        self.loss_func = loss_func
         
         self.momentum = momentum
         self.tau = tau
+        
+        # following 4 parameters are only used for multi-similarity loss
+        self.alpha = alpha
+        self.beta = beta
+        self.thresh = thresh
+        self.margin = margin
         
         self._net = TSEncoder(input_dims=input_dims, output_dims=output_dims, hidden_dims=hidden_dims, depth=depth, mask_t=mask_t, mask_f=mask_f, pool=pool)
         self._proj = MLP(input_dims=output_dims, output_dims=output_dims, nlayers=2, hidden_dims=output_dims)
@@ -574,7 +665,8 @@ class PMB:
                 k2 = F.normalize(k2, dim=-1)
                 
                 loss = self.loss_fn(q1, k2, pid)
-                loss += self.loss_fn(q2, k1, pid)
+                if self.loss_func[-1] == "s": # the last character of loss_func is used to indicate whether to compute loss symmetrically
+                    loss += self.loss_fn(q2, k1, pid)
                 
                 loss.backward()
                 optimizer.step()
@@ -716,8 +808,13 @@ class PMB:
         """
         if id is None:
             return self.infoNCE_loss(q, k)
-        else:
+        # the last character of loss_func is used to indicate whether to compute loss symmetrically
+        elif self.loss_func[:-1] == "ms":
+            return self.ms_loss(q, k, id)
+        elif self.loss_func[:-1] == "nce":
             return self.patient_infoNCE_loss(q, k, id)
+        else:
+            raise ValueError(f"{self.loss_func} is not supported")
     
     
     def infoNCE_loss(self, q, k):
@@ -784,3 +881,49 @@ class PMB:
             
         loss /= loss_term
         return 2 * self.tau * loss
+    
+    
+    def ms_loss(self, q, k, id):
+        """ compute the multi-similarity loss
+        Args:
+            q (torch.Tensor): query representations
+            k (torch.Tensor): key representations
+            id (torch.Tensor): patient id
+        Returns:
+            loss (torch.Tensor): loss
+        """
+        id = id.cpu().detach().numpy()
+
+        interest_matrix = np.equal.outer(id, id).astype(int) # B x B
+
+        sim_matrix = torch.mm(q, k.t()) # B x B
+        sim_matrix /= self.tau
+        # sim_matrix_exp = torch.exp(argument)
+        
+        eps = 1e-5
+        loss = []
+        for i in range(sim_matrix.shape[0]):
+            pos_pair_ = sim_matrix[i][interest_matrix[i] == 1] # positive pairs
+            pos_pair_ = pos_pair_[pos_pair_ < 1 - eps]
+            neg_pair_ = sim_matrix[i][interest_matrix[i] == 0] # negative pairs
+            
+            pos_pair = pos_pair_[pos_pair_ - self.margin < max(neg_pair_)] # cherry-pick positive pairs
+            neg_pair = neg_pair_[neg_pair_ + self.margin > min(pos_pair_)] # cherry-pick negative pairs
+            
+            if len(pos_pair) == 0 or len(neg_pair) == 0:
+                continue
+            
+            pos_loss = 1.0 / self.alpha * torch.log(
+                1 + torch.sum(torch.exp(-self.alpha * (pos_pair - self.thresh))) # positive pairs
+            )
+            neg_loss = 1.0 / self.beta * torch.log(
+                1 + torch.sum(torch.exp(self.beta * (neg_pair - self.thresh))) # negative pairs   
+            )
+            loss.append(pos_loss + neg_loss)
+        
+        if len(loss) == 0:
+            print("=> No loss, return 0")
+            return torch.tensor(0.0, device=q.device)
+        else:
+            loss = sum(loss) / sim_matrix.shape[0]
+            return loss

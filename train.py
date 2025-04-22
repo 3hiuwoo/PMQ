@@ -30,11 +30,16 @@ parser.add_argument("--hidden_dim", type=int, default=64, help="output dimension
 parser.add_argument("--output_dim", type=int, default=320, help="output dimension of input projector")
 parser.add_argument("--momentum", type=float, default=0.999, help="momentum update parameter")
 parser.add_argument("--tau", type=float, default=0.1, help="temperature for cosine similarity")
+parser.add_argument("--alpha", type=float, default=2.0, help="scaling factor of positive pairs in multi-similarity loss")
+parser.add_argument("--beta", type=float, default=50.0, help="scaling factor of negative pairs in multi-similarity loss")
+parser.add_argument("--thresh", type=float, default=0.5, help="bias for pairs in multi-similarity loss")
+parser.add_argument("--margin", type=float, default=0.1, help="margin for mining pairs in multi-similarity loss")
 parser.add_argument("--mask_t", type=float, default=0.5, help="probability of time mask")
 parser.add_argument("--mask_f", type=float, default=0.1, help="ratio of freq mask")
 parser.add_argument("--pool", type=str, default="avg", help="pooling method for representation: [avg, max]")
 parser.add_argument("--queue_size", type=int, default=16384, help="queue size for TFPQ, set 0 for TFPB")
 parser.add_argument("--use_id", action="store_true", help="whether to use patient-infoNCE loss")
+parser.add_argument("--loss_func", type=str, default="ms", help="contrastive loss function (add s to the end to compute loss symmetrically in PMB): [ms, nce](s)")
 # training
 parser.add_argument("--lr", type=float, default=1e-3, help="learning rate")
 parser.add_argument("--wd", type=float, default=1.5e-6, help="weight decay")
@@ -78,7 +83,6 @@ def main():
     print(f"=> Running on {device}")
     
     if args.queue_size:
-        print(f"=> Using TFP-Q")
         model = PMQ(
             input_dims=X_train.shape[-1],
             output_dims=args.output_dim,
@@ -89,13 +93,18 @@ def main():
             mask_f=args.mask_f,
             momentum=args.momentum,
             tau=args.tau,
+            alpha=args.alpha,
+            beta=args.beta,
+            thresh=args.thresh,
+            margin=args.margin,
             queue_size=args.queue_size,
             use_id=args.use_id,
+            loss_func=args.loss_func,
             device=device,
             multi_gpu=args.multi_gpu
         )
     else:
-        print(f"=> Using TFP-B")
+        print(f"=> !!! Training without queue !!!")
         model = PMB(
             input_dims=X_train.shape[-1],
             output_dims=args.output_dim,
@@ -106,7 +115,12 @@ def main():
             mask_f=args.mask_f,
             momentum=args.momentum,
             tau=args.tau,
+            alpha=args.alpha,
+            beta=args.beta,
+            thresh=args.thresh,
+            margin=args.margin,
             use_id=args.use_id,
+            loss_func=args.loss_func,
             device=device,
             multi_gpu=args.multi_gpu
         )
