@@ -5,10 +5,13 @@
 Run the following to prepare all required modules.
 
 ```shell
-pip install -r requirement.txt
+conda create -n pmq_env
+conda activate pmq_env
 
-# If you want to use conda
-# conda install --file requirement.txt
+git clone https://github.com/3hiuwoo/PMQ.git
+cd PMQ
+
+pip install -r requirement.txt
 ```
 
 ## Datasets

@@ -85,8 +85,8 @@ def load_data(root="dataset", name="chapman", length=None, overlap=0, norm=True,
       
     if length:
         X_train, y_train = split_data_label(X_train, y_train, sample_timestamps=length, overlapping=overlap)
-        X_val, y_val = split_data_label(X_val, y_val, sample_timestamps=length, overlapping=overlap)
-        X_test, y_test = split_data_label(X_test, y_test, sample_timestamps=length, overlapping=overlap)
+        X_val, y_val = split_data_label(X_val, y_val, sample_timestamps=length, overlapping=overlap, keep_dim=True)
+        X_test, y_test = split_data_label(X_test, y_test, sample_timestamps=length, overlapping=overlap, keep_dim=True)
         
     if neighbor:
         length = X_train.shape[1]
@@ -211,7 +211,6 @@ def process_ts(ts, fs, normalized=True, bandpass_filter=False):
     Returns:
         ts (numpy.ndarray): The processed time-series.
     """
-
     if bandpass_filter:
         ts = butter_bandpass_filter(ts, 0.5, 50, fs, 5)
     if normalized:
@@ -230,14 +229,13 @@ def process_batch_ts(batch, fs=256, normalized=True, bandpass_filter=False):
     Returns:
         A batch of processed time-series.
     """
-
     bool_iterator_1 = repeat(fs, len(batch))
     bool_iterator_2 = repeat(normalized, len(batch))
     bool_iterator_3 = repeat(bandpass_filter, len(batch))
     return np.array(list(map(process_ts, batch, bool_iterator_1, bool_iterator_2, bool_iterator_3)))
 
 
-def split_data_label(X_trial, y_trial, sample_timestamps, overlapping):
+def split_data_label(X_trial, y_trial, sample_timestamps, overlapping, keep_dim=False):
     """ split a batch of time-series trials into samples and adding trial ids to the label array y
 
     Args:
@@ -250,18 +248,19 @@ def split_data_label(X_trial, y_trial, sample_timestamps, overlapping):
         X_sample (numpy.ndarray): It should have a shape of (n_samples, sample_timestamps, features) B_sample x T_sample x C. The B_sample = B x sample_num.
         y_sample (numpy.ndarray): It should have a shape of (n_samples, 3). The three columns are the label, patient id, and trial id.
     """
-    
-    X_sample, trial_ids, sample_num = split_data(X_trial, sample_timestamps, overlapping)
+    X_sample, trial_ids, sample_num = split_data(X_trial, sample_timestamps, overlapping, keep_dim=keep_dim)
     # all samples from same trial should have same label and patient id
-    y_sample = np.repeat(y_trial, repeats=sample_num, axis=0)
+    if keep_dim:
+        y_sample = y_trial
+    else:
+        y_sample = np.repeat(y_trial, repeats=sample_num, axis=0)
     # append trial ids. Segments split from same trial should have same trial ids
     label_num = y_sample.shape[0]
     y_sample = np.hstack((y_sample.reshape((label_num, -1)), trial_ids.reshape((label_num, -1))))
-    # X_sample, y_sample = shuffle(X_sample, y_sample)
     return X_sample, y_sample
 
 
-def split_data(X_trial, sample_timestamps=256, overlapping=0.5):
+def split_data(X_trial, sample_timestamps=256, overlapping=0.5, keep_dim=False):
     """ split a batch of trials into samples and mark their trial ids
 
     Args:
@@ -285,15 +284,29 @@ def split_data(X_trial, sample_timestamps=256, overlapping=0.5):
     trial_id_list = []
     trial_id = 1
     for trial in X_trial:
+        if keep_dim:
+            sample_feature = []
+            
         counter = 0
-        # ex. split one trial(5s, 1280 timestamps) into 9 half-overlapping samples (1s, 256 timestamps)
         while counter*sample_timestamps*(1-overlapping)+sample_timestamps <= trial.shape[0]:
-            sample_feature = trial[int(counter*sample_timestamps*(1-overlapping)):int(counter*sample_timestamps*(1-overlapping)+sample_timestamps)]
-            # print(f"{int(counter*length*(1-overlapping))}:{int(counter*length*(1-overlapping)+length)}")
+            if keep_dim:
+                sample_feature.append(
+                    trial[int(counter*sample_timestamps*(1-overlapping)):int(counter*sample_timestamps*(1-overlapping)+sample_timestamps)]
+                    )
+            else:
+                sample_feature_list.append(
+                    trial[int(counter*sample_timestamps*(1-overlapping)):int(counter*sample_timestamps*(1-overlapping)+sample_timestamps)]
+                    )
+                trial_id_list.append(trial_id)
+            counter += 1
+            
+        if keep_dim:
+            sample_feature = np.array(sample_feature)
             sample_feature_list.append(sample_feature)
             trial_id_list.append(trial_id)
-            counter += 1
+            
         trial_id += 1
+        
     X_sample, trial_ids = np.array(sample_feature_list), np.array(trial_id_list)
 
     return X_sample, trial_ids, sample_num

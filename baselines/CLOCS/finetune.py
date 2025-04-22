@@ -229,7 +229,10 @@ def evaluate(model, loader, metrics, device):
     with torch.no_grad():
         for x, y in tqdm(loader, desc=f"=> Evaluating", leave=False):
             x, y = x.to(device), y.to(device)
-            y_pred = model(x)
+            B, S, T, F = x.shape
+            x = x.view(-1, T, F)
+            logits = model(x)
+            y_pred = logits.view(B, S, -1).mean(dim=1)
             metrics.update(y_pred, y)
     metrics_dict = metrics.compute()
     metrics.reset()
