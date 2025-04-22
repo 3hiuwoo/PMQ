@@ -3,20 +3,24 @@ Full fine-tuning or training from scratch and testing cross multiple seeds and f
 
 TODO: Add linear evaluation / partial fine-tuning.
 """
-import os
 import argparse
+import os
 import warnings
-import torch
+from datetime import datetime
+
 import numpy as np
 import pandas as pd
+import torch
 from torch import nn
-from torch.utils.data import TensorDataset, DataLoader
+from torch.utils.data import DataLoader, TensorDataset
+from torchmetrics import (AUROC, Accuracy, AveragePrecision, F1Score,
+                          MetricCollection, Precision, Recall)
 from tqdm import tqdm
-from datetime import datetime
-from encoder import FTClassifier
+
 from data import load_data
-from utils import seed_everything, get_device, start_logging, stop_logging
-from torchmetrics import Accuracy, F1Score, AUROC, Precision, Recall, AveragePrecision, MetricCollection
+from encoder import FTClassifier
+from utils import get_device, seed_everything, start_logging, stop_logging
+
 warnings.filterwarnings("ignore")
 
 parser = argparse.ArgumentParser(description="Fine-tuning/Training from scratch")
@@ -248,7 +252,7 @@ def train(model, loader, optimizer, criterion, epoch, device):
     
 def evaluate(model, loader, metrics, device):
     """
-    do validation or test
+    do validation or test on the whole trial
     """
     model.eval()
     with torch.no_grad():

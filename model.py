@@ -3,16 +3,18 @@ PMQ model with queue and without queue.
 """
 import os
 from datetime import datetime
+
+import numpy as np
 import torch
 import torch.nn.functional as F
-import numpy as np
 from flash.core.optimizers import LARS, LinearWarmupCosineAnnealingLR
-from tqdm import tqdm
 from torch import nn
-from torch.utils.data import TensorDataset, DataLoader
-from encoder import TSEncoder, MLP
-from utils import shuffle_feature_label, MyBatchSampler
-   
+from torch.utils.data import DataLoader, TensorDataset
+from tqdm import tqdm
+
+from encoder import MLP, TSEncoder
+from utils import MyBatchSampler, shuffle_feature_label
+
 class PMQ:
     """ PMQ with queue.
     Args:
@@ -113,10 +115,12 @@ class PMQ:
         self.pred = torch.optim.swa_utils.AveragedModel(self._pred)
         self.pred.update_parameters(self._pred)
         
+        # patient representation queue
         self.queue = torch.randn(queue_size, output_dims, device=device, requires_grad=False)
         self.queue = F.normalize(self.queue, dim=1)
-        # queue storing patient ids
+        # patient ID queue
         self.id_queue = torch.zeros(queue_size, dtype=torch.long, device=device, requires_grad=False) if use_id else None
+        # shared queue pointer
         self.queue_ptr = torch.zeros(1, dtype=torch.long, device=device, requires_grad=False)
     
            
@@ -143,10 +147,9 @@ class PMQ:
         assert y.shape[1] == 3
         print("=> Number of dimension of training data:", X.ndim)
         
-        if shuffle_function == "trial":
+        if shuffle_function == "trial": # shuffle the data in trial level
             X, y = shuffle_feature_label(X, y, shuffle_function=shuffle_function, batch_size=batch_size)
 
-        # we need patient id for patient-level contrasting and trial id for trial-level contrasting
         train_dataset = TensorDataset(
             torch.from_numpy(X).to(torch.float),
             torch.from_numpy(y).to(torch.long)
@@ -212,7 +215,6 @@ class PMQ:
             epoch_loss_list.append(cum_loss)
             
             if schedule != "warmup":
-                # if using reduceOnPlateau scheduler, pass the loss
                 if schedule == "plateau":
                     scheduler.step(cum_loss)
                 elif scheduler:
@@ -351,7 +353,7 @@ class PMQ:
     
     
     def loss_fn(self, q, k, id=None):
-        """ compute the patient infoNCE/infoNCE loss
+        """ compute the contrastive loss
         Args:
             q (torch.Tensor): query representations
             k (torch.Tensor): key representations
@@ -387,7 +389,7 @@ class PMQ:
         
         
     def patient_infoNCE_loss(self, q, k, id):
-        """ compute the patient infoNCE loss
+        """ compute the multi-infoNCE loss
         Args:
             q (torch.Tensor): query representations
             k (torch.Tensor): key representations
@@ -665,7 +667,8 @@ class PMB:
                 k2 = F.normalize(k2, dim=-1)
                 
                 loss = self.loss_fn(q1, k2, pid)
-                if self.loss_func[-1] == "s": # the last character of loss_func is used to indicate whether to compute loss symmetrically
+                # the last character of loss_func is used to indicate whether to compute loss symmetrically
+                if self.loss_func[-1] == "s":
                     loss += self.loss_fn(q2, k1, pid)
                 
                 loss.backward()
@@ -682,7 +685,6 @@ class PMB:
             epoch_loss_list.append(cum_loss)
             
             if schedule != "warmup":
-                # if using reduceOnPlateau scheduler, pass the loss
                 if schedule == "plateau":
                     scheduler.step(cum_loss)
                 elif scheduler:

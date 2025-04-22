@@ -2,16 +2,18 @@
 All utility functions are defined here.
 """
 import itertools
-import torch
-import random
 import os
+import random
 import sys
+
 import numpy as np
 import pandas as pd
+import torch
 import torch.nn.functional as F
-from torch import fft
 from sklearn.utils import shuffle
+from torch import fft
 from torch.utils.data import BatchSampler
+
 
 def seed_everything(seed=42):
     """

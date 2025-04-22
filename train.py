@@ -7,13 +7,16 @@ TODO: freq mask ratio 0, 0.1(now), 0.2, 0.5, ... -> pass mask_f=*
 TODO: no temporal neighbor -> omit --neighbor and pass --length=300
 
 """
-import os
 import argparse
+import os
 import warnings
+
 import numpy as np
-from model import PMB, PMQ
+
 from data import load_data
-from utils import seed_everything, get_device
+from model import PMB, PMQ
+from utils import get_device, seed_everything
+
 warnings.filterwarnings("ignore")
 
 parser = argparse.ArgumentParser(description="TFP training")

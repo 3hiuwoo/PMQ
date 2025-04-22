@@ -1,6 +1,6 @@
 # CLOCS Unofficial Implementation
 
-We implement the CMSC variant from CLOCS following the official implementation in order to better align with our experiments.
+We implement the CMSC variant of CLOCS following the official implementation in order to better align with our experiments.
 
 ## Preparation
 

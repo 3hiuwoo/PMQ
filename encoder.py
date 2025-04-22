@@ -2,9 +2,10 @@
 This file contains the implementation of the encoder for pretraining and the classifier for finetuning.
 """
 import torch
-from torch import nn
 import torch.nn.functional as F
-from utils import generate_binomial_mask, freq_perturb
+from torch import nn
+
+from utils import freq_perturb, generate_binomial_mask
 
 class SamePadConv(nn.Module):
     """ Conv1d layer with same padding

@@ -1,4 +1,8 @@
-# PMQ: Introducing Patient Memory Queue to Patient Contrastive Learning For Electrocardiogram
+# Enhancing Contrastive Learning-based Electrocardiogram Pretrained Model with Patient Memory Queue
+
+## Introduction
+
+The official implementation of **PMQ**.
 
 ## Requirements
 
@@ -36,7 +40,7 @@ All processed data should be organized as below(all notebooks produce the data i
 
 ```text
 - [destination path specified in notebook]:
-  - ptbxl:
+  - dataset name (e.g. ptbxl):
     - features:
       - feature_00001.npy
       ...
@@ -84,9 +88,14 @@ python finetune.py -h
 
 ## Reference
 
-We incorporate COMET"s [Code](https://github.com/DL4mHealth/COMET) to conduct aligned experiments.
+- COMET [Repo](https://github.com/DL4mHealth/COMET)
+
+- MS-Loss [Repo](https://github.com/msight-tech/research-ms-loss.git)
+
+- MoCo [Repo](https://github.com/facebookresearch/moco.git)
 
 ## TODO
 
-- Add annotation and README to CLOCS and PCLR.
-- update this README.
+- [x] Add annotation and README to CLOCS and PCLR.
+
+- [ ] Implement ETP.
