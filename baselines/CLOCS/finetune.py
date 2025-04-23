@@ -7,7 +7,7 @@ from datetime import datetime
 import numpy as np
 import pandas as pd
 import torch
-from clocs import FTClassifier
+from clocs import cmsc_split
 from torch import nn
 from torch.utils.data import DataLoader, TensorDataset
 from tqdm import tqdm
@@ -15,6 +15,7 @@ from torchmetrics import AUROC, Accuracy, AveragePrecision, F1Score, MetricColle
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../")))
 from data import load_data
+from encoder import FTClassifier
 from utils import get_device, seed_everything, start_logging, stop_logging
 
 warnings.filterwarnings("ignore")
@@ -97,11 +98,17 @@ def run(logdir, seed, fraction):
                                        length=args.length,
                                        overlap=args.overlap)
     
+    if (X_train.shape[-1] > 1) and not args.all_leads:
+        print("=> Using only II, V2, aVL, aVR leads")
+        X_train = X_train[..., [1, 3, 4, 7]]
+    
     # only use fraction of training samples.
     if fraction < 1:
         X_train = X_train[:int(X_train.shape[0] * fraction)]
         y_train = y_train[:int(y_train.shape[0] * fraction)]
         print(f"=> Using {fraction}% of training data")
+        
+    X_train, y_train = cmsc_split(X_train, y_train)
     
     train_dataset = TensorDataset(torch.from_numpy(X_train).to(torch.float),
                                   torch.from_numpy(y_train[:, 0]).to(torch.long))
@@ -230,9 +237,9 @@ def evaluate(model, loader, metrics, device):
         for x, y in tqdm(loader, desc=f"=> Evaluating", leave=False):
             x, y = x.to(device), y.to(device)
             B, S, T, F = x.shape
-            x = x.view(-1, T, F)
+            x = x.transpose(-2, -1).view(-1, T, 1)
             logits = model(x)
-            y_pred = logits.view(B, S, -1).mean(dim=1)
+            y_pred = logits.view(B, S*F, -1).mean(dim=1)
             metrics.update(y_pred, y)
     metrics_dict = metrics.compute()
     metrics.reset()

@@ -42,7 +42,7 @@ parser.add_argument("--mask_f", type=float, default=0.1, help="ratio of freq mas
 parser.add_argument("--pool", type=str, default="avg", help="pooling method for representation: [avg, max]")
 parser.add_argument("--queue_size", type=int, default=16384, help="queue size for TFPQ, set 0 for TFPB")
 parser.add_argument("--use_id", action="store_true", help="whether to use patient-infoNCE loss")
-parser.add_argument("--loss_func", type=str, default="ms", help="contrastive loss function (add s to the end to compute loss symmetrically in PMB): [ms, nce](s)")
+parser.add_argument("--loss_func", type=str, default="nce", help="contrastive loss function (add a/s to the end to compute loss (a)symmetrically in PMB): [ms, nce](a/s)")
 # training
 parser.add_argument("--lr", type=float, default=1e-3, help="learning rate")
 parser.add_argument("--wd", type=float, default=1.5e-6, help="weight decay")

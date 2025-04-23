@@ -274,3 +274,14 @@ class FTClassifier(nn.Module):
             return torch.sigmoid(x)
         else:
             return x
+        
+        
+def cmsc_split(x, y):
+    length = x.shape[1]
+    nleads = x.shape[-1]
+    assert length % 2 == 0
+    
+    x = x.transpose(2, 0, 1).reshape(-1, 2, int(length/2), 1)
+    y = np.tile(y, (nleads, 1))
+    
+    return x, y

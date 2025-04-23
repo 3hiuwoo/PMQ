@@ -41,7 +41,7 @@ parser.add_argument("--pool", type=str, default="avg", help="pooling method: [av
 parser.add_argument("--lr", type=float, default=1e-4, help="learning rate")
 parser.add_argument("--batch_size", type=int, default=256, help="batch size")
 parser.add_argument("--epochs", type=int, default=50, help="number of epochs")
-parser.add_argument("--fractions", type=float, nargs="+", default=[1.0, 0.1, 0.01], help="list of fractions of training data")
+parser.add_argument("--fractions", type=float, nargs="+", default=[0.3, 0.1, 0.01], help="list of fractions of training data")
 parser.add_argument("--freeze", action="store_true", help="whether to partial fine-tuning")
 parser.add_argument("--logdir", type=str, default="log", help="directory to save logs")
 parser.add_argument("--multi_gpu", action="store_true", help="whether to use multiple GPUs")
