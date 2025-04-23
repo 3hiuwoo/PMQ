@@ -455,7 +455,8 @@ class PMQ:
         # sim_matrix_exp = torch.exp(argument)
         
         eps = 1e-5
-        loss = []
+        pos_pairs = []
+        neg_pairs = []
         for i in range(sim_matrix.shape[0]):
             pos_pair_ = sim_matrix[i][interest_matrix[i] == 1] # positive pairs
             pos_pair_ = pos_pair_[pos_pair_ < 1 - eps]
@@ -467,20 +468,37 @@ class PMQ:
             if len(pos_pair) == 0 or len(neg_pair) == 0:
                 continue
             
-            pos_loss = 1.0 / self.alpha * torch.log(
-                1 + torch.sum(torch.exp(-self.alpha * (pos_pair - self.thresh))) # positive pairs
-            )
-            neg_loss = 1.0 / self.beta * torch.log(
-                1 + torch.sum(torch.exp(self.beta * (neg_pair - self.thresh))) # negative pairs   
-            )
-            loss.append(pos_loss + neg_loss)
+            pos_pairs.append(pos_pair)
+            neg_pairs.append(neg_pair)
+            
+            # pos_loss = 1.0 / self.alpha * torch.log(
+            #     1 + torch.sum(torch.exp(-self.alpha * (pos_pair - self.thresh))) # positive pairs
+            # )
+            # neg_loss = 1.0 / self.beta * torch.log(
+            #     1 + torch.sum(torch.exp(self.beta * (neg_pair - self.thresh))) # negative pairs   
+            # )
+            # loss.append(pos_loss + neg_loss)
         
-        if len(loss) == 0:
-            print("=> No loss, return 0")
-            return torch.tensor(0.0, device=q.device)
-        else:
-            loss = sum(loss) / sim_matrix.shape[0]
-            return loss
+        max_pos = max(len(pos) for pos in pos_pairs)
+        max_neg = max(len(neg) for neg in neg_pairs)
+        
+        pad_pos_pair = torch.stack([F.pad(pos, (0, max_pos - len(pos)), value=0) for pos in pos_pairs])
+        pad_neg_pair = torch.stack([F.pad(neg, (0, max_neg - len(neg)), value=0) for neg in neg_pairs])
+        
+        pos_loss = torch.mean(1.0 / self.alpha * torch.log(
+            1 + torch.sum(torch.exp(-self.alpha * (pad_pos_pair - self.thresh)), dim=1) # positive pairs
+        ))
+        neg_loss = torch.mean(1.0 / self.beta * torch.log(
+            1 + torch.sum(torch.exp(self.beta * (pad_neg_pair - self.thresh)), dim=1) # negative pairs
+        ))
+        
+        return pos_loss + neg_loss
+        # if len(loss) == 0:
+        #     print("=> No loss, return 0")
+        #     return torch.tensor(0.0, device=q.device)
+        # else:
+        #     loss = sum(loss) / sim_matrix.shape[0]
+        #     return loss
         
         
         
