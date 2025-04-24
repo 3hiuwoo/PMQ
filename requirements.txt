@@ -10,3 +10,4 @@ tqdm
 lightning
 lightning-flash
 jupyterlab
+openpyxl

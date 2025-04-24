@@ -121,31 +121,41 @@ def load_split_ids(root="dataset", name="chapman"):
         pids_gsvt = list(labels[np.where(labels[:, 0]==2)][:, 1])
         pids_sr = list(labels[np.where(labels[:, 0]==3)][:, 1])
         
-        train_ids = pids_sb[:-500] + pids_af[:-500] + pids_gsvt[:-500] + pids_sr[:-500]
-        val_ids = pids_sb[-500:-250] + pids_af[-500:-250] + pids_gsvt[-500:-250] + pids_sr[-500:-250] # 1000 patients, 250 for each class
-        test_ids = pids_sb[-250:] + pids_af[-250:] + pids_gsvt[-250:] + pids_sr[-250:] # 1000 patients, 250 for each class
+        print(f"=> Dataset {name} has {len(labels)} patients, with {len(pids_sb)} SB, {len(pids_af)} AF, {len(pids_gsvt)} GSVT, {len(pids_sr)} SR")
         
+        idxs = np.rint([0.1*len(pids_sb), 0.1*len(pids_af), 0.1*len(pids_gsvt), 0.1*len(pids_sr)]).astype(int)
+        
+        train_ids = pids_sb[:-2*idxs[0]] + pids_af[:-2*idxs[1]] + pids_gsvt[:-2*idxs[2]] + pids_sr[:-2*idxs[3]]
+        val_ids = pids_sb[-2*idxs[0]:-idxs[0]] + pids_af[-2*idxs[1]:-idxs[1]] + pids_gsvt[-2*idxs[2]:-idxs[2]] + pids_sr[-2*idxs[3]:-idxs[3]]
+        test_ids = pids_sb[-idxs[0]:] + pids_af[-idxs[1]:] + pids_gsvt[-idxs[2]:] + pids_sr[-idxs[3]:]
+         
     elif name == "ptb":
         # 2 classes: healthy, MI
         pids_neg = list(labels[np.where(labels[:, 0]==0)][:, 1])
         pids_pos = list(labels[np.where(labels[:, 0]==1)][:, 1])
+        
+        print(f"=> Dataset {name} has {len(labels)} patients, with {len(pids_neg)} healthy, {len(pids_pos)} MI")
         
         train_ids = pids_neg[:-14] + pids_pos[:-42]
         val_ids = pids_neg[-14:-7] + pids_pos[-42:-21]   # 28 patients, 7 healthy and 21 positive
         test_ids = pids_neg[-7:] + pids_pos[-21:]  # # 28 patients, 7 healthy and 21 positive
         
     elif name == "ptbxl":
-        # 5 classes: normal, MI, STTC, CD, Hyp
+        # 5 classes: normal, MI, STTC, CD, HYP
         pids_norm = list(labels[np.where(labels[:, 0]==0)][:, 1])
         pids_mi = list(labels[np.where(labels[:, 0]==1)][:, 1])
         pids_sttc = list(labels[np.where(labels[:, 0]==2)][:, 1])
         pids_cd = list(labels[np.where(labels[:, 0]==3)][:, 1])
         pids_hyp = list(labels[np.where(labels[:, 0]==3)][:, 1])
         
-        train_ids = pids_norm[:-1200] + pids_mi[:-600] + pids_sttc[:-600] + pids_cd[:-400] + pids_hyp[:-200]
-        val_ids = pids_norm[-1200:-600] + pids_mi[-600:-300] + pids_sttc[-600:-300] + pids_cd[-400:-200] + pids_hyp[-200:-100] # 1500 patients
-        test_ids = pids_norm[-600:] + pids_mi[-300:] + pids_sttc[-300:] + pids_cd[-200:] + pids_hyp[-100:] # 1500 patients
-    
+        print(f"=> Dataset {name} has {len(labels)} patients, with {len(pids_norm)} normal, {len(pids_mi)} MI, {len(pids_sttc)} STTC, {len(pids_cd)} CD, {len(pids_hyp)} HYP")
+        
+        folds = np.load(os.path.join(root, name, "label", "fold.npy"))
+        
+        train_ids = list(folds[np.where((folds[:, 0] != 9) & (folds[:, 0] != 10))][:, 1])
+        val_ids = list(folds[np.where(folds[:, 0] == 9)][:, 1])
+        test_ids = list(folds[np.where(folds[:, 0] == 10)][:, 1])
+        
     elif name == "cpsc2018":
         # 9 classes: Normal, AF, IAVB, LBBB, RBBB, PAC, PVC, STD, STE
         labels[:, 0] -= 1 # original labels start from 1
@@ -160,25 +170,18 @@ def load_split_ids(root="dataset", name="chapman"):
         pids_STD = list(labels[np.where(labels[:, 0] == 7)][:, 1])
         pids_STE = list(labels[np.where(labels[:, 0] == 8)][:, 1])
 
-        train_ids = pids_Normal[:-300] + pids_AF[:-300] + pids_IAVB[:-300] + pids_LBBB[:-100] + pids_RBBB[:-300] + pids_PAC[:-300] + pids_PVC[:-300] + pids_STD[:-300] + pids_STE[:-100]
-        # 1150 patients
-        val_ids = pids_Normal[-300:-150] + pids_AF[-300:-150] + pids_IAVB[-300:-150] + pids_LBBB[-100:-50] + pids_RBBB[-300:-150] + pids_PAC[-300:-150] + pids_PVC[-300:-150] + pids_STD[-300:-150] + pids_STE[-100:-50]
-        # 1150 patients
-        test_ids = pids_Normal[-150:] + pids_AF[-150:] + pids_IAVB[-150:] + pids_LBBB[-50:] + pids_RBBB[-150:] + pids_PAC[-150:] + pids_PVC[-150:] + pids_STD[-150:] + pids_STE[-50:]
-    
-    elif name == "cinc2017": # no longer supported
-        # 3 classes: N, A, O (Normal, AF, Other), we drop ~ (Noise) class
-        pids_n = list(labels[np.where(labels[:, 0]==0)][:, 1])
-        pids_a = list(labels[np.where(labels[:, 0]==1)][:, 1])
-        pids_o = list(labels[np.where(labels[:, 0]==2)][:, 1])
+        print(f"=> Dataset {name} has {len(labels)} patients, with {len(pids_Normal)} Normal, {len(pids_AF)} AF, {len(pids_IAVB)} IAVB, {len(pids_LBBB)} LBBB, {len(pids_RBBB)} RBBB, {len(pids_PAC)} PAC, {len(pids_PVC)} PVC, {len(pids_STD)} STD, {len(pids_STE)} STE")
         
-        train_ids = pids_n[:-900] + pids_a[:-300] + pids_o[:-800]
-        val_ids = pids_n[-900:-450] + pids_a[-300:-150] + pids_o[-800:-400] # 1000 patients
-        test_ids = pids_n[-450:] + pids_a[-150:] + pids_o[-400:] # 1000 patients
+        idxs = np.rint([0.1*len(pids_Normal), 0.1*len(pids_AF), 0.1*len(pids_IAVB), 0.1*len(pids_LBBB), 0.1*len(pids_RBBB), 0.1*len(pids_PAC), 0.1*len(pids_PVC), 0.1*len(pids_STD), 0.1*len(pids_STE)]).astype(int)
+        train_ids = pids_Normal[:-2*idxs[0]] + pids_AF[:-2*idxs[1]] + pids_IAVB[:-2*idxs[2]] + pids_LBBB[:-2*idxs[3]] + pids_RBBB[:-2*idxs[4]] + pids_PAC[:-2*idxs[5]] + pids_PVC[:-2*idxs[6]] + pids_STD[:-2*idxs[7]] + pids_STE[:-2*idxs[8]]
+        val_ids = pids_Normal[-2*idxs[0]:-idxs[0]] + pids_AF[-2*idxs[1]:-idxs[1]] + pids_IAVB[-2*idxs[2]:-idxs[2]] + pids_LBBB[-2*idxs[3]:-idxs[3]] + pids_RBBB[-2*idxs[4]:-idxs[4]] + pids_PAC[-2*idxs[5]:-idxs[5]] + pids_PVC[-2*idxs[6]:-idxs[6]] + pids_STD[-2*idxs[7]:-idxs[7]] + pids_STE[-2*idxs[8]:-idxs[8]]
+        test_ids = pids_Normal[-idxs[0]:] + pids_AF[-idxs[1]:] + pids_IAVB[-idxs[2]:] + pids_LBBB[-idxs[3]:] + pids_RBBB[-idxs[4]:] + pids_PAC[-idxs[5]:] + pids_PVC[-idxs[6]:] + pids_STD[-idxs[7]:] + pids_STE[-idxs[8]:]
         
     else:
         raise ValueError(f"Unknown dataset: {name}")
-        
+    
+    print(f"=> Split the dataset into {len(train_ids)}/{len(val_ids)}/{len(test_ids)}")
+    
     return labels, train_ids, val_ids, test_ids
 
 
