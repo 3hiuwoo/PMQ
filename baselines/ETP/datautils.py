@@ -265,7 +265,7 @@ def split_data_label(X_trial, y_trial, t_trial, sample_timestamps, overlapping, 
         t_sample = t_trial
     else:
         y_sample = np.repeat(y_trial, repeats=sample_num, axis=0)
-        t_sample = [t for t in t_trial for _ in range(sample_num)]
+        t_sample = [t for t in t_trial for _ in range(int(sample_num))]
     # append trial ids. Segments split from same trial should have same trial ids
     label_num = y_sample.shape[0]
     y_sample = np.hstack((y_sample.reshape((label_num, -1)), trial_ids.reshape((label_num, -1))))

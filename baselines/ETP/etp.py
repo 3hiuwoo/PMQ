@@ -70,7 +70,7 @@ class ECGTextDataset(Dataset):
         """
         join_texts = [" [SEP] ".join(text) for text in self.train_texts]
         
-        tokenizer = AutoTokenizer("emilyalsentzer/Bio_ClinicalBERT")
+        tokenizer = AutoTokenizer.from_pretrained("emilyalsentzer/Bio_ClinicalBERT")
         
         tokenized_texts = []
         for text in tqdm(join_texts, desc="=> Tokenizing ECG statements", leave=False):
@@ -198,7 +198,7 @@ class ETP:
         update SWA models
         """
         self.net.update_parameters(self._net)
-        self.proj.update_parameters(self._proj)
+        # self.proj.update_parameters(self._proj)
 
         
     def _get_optimizer(self, optim, params, lr, wd):
