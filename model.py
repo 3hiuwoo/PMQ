@@ -304,7 +304,9 @@ class PMQ:
             optimizer(torch.optim.Optimizer): optimizer
         """
         if optim == "adamw":
-            optimizer = torch.optim.AdamW(params, lr)
+            optimizer = torch.optim.AdamW(params, lr, weight_decay=wd)
+        elif optim == "adam":
+            optimizer = torch.optim.Adam(params, lr, weight_decay=wd)
         elif optim == "lars":
             optimizer = LARS(params, lr, weight_decay=wd)
         else:
@@ -771,7 +773,9 @@ class PMB:
             optimizer(torch.optim.Optimizer): optimizer
         """
         if optim == "adamw":
-            optimizer = torch.optim.AdamW(params, lr)
+            optimizer = torch.optim.AdamW(params, lr, weight_decay=wd)
+        elif optim == "adam":
+            optimizer = torch.optim.Adam(params, lr, weight_decay=wd)
         elif optim == "lars":
             optimizer = LARS(params, lr, weight_decay=wd)
         else:

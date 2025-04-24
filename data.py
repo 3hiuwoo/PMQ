@@ -68,9 +68,9 @@ def load_data(root="dataset", name="chapman", length=None, overlap=0, norm=True,
     y_val = np.array(valid_labels)
     y_test = np.array(test_labels)
     
-    X_train, y_train = shuffle(X_train, y_train, random_state=42)
-    X_val, y_val = shuffle(X_val, y_val, random_state=42)
-    X_test, y_test = shuffle(X_test, y_test, random_state=42)
+    # X_train, y_train = shuffle(X_train, y_train, random_state=42)
+    # X_val, y_val = shuffle(X_val, y_val, random_state=42)
+    # X_test, y_test = shuffle(X_test, y_test, random_state=42)
 
     # only use first 12 leads for PTB dataset, which is the same as other datasets
     if name == "ptb":

@@ -19,7 +19,7 @@ from data import load_data
 from encoder import MLP, TSEncoder
 
 class ECGDataset(Dataset):
-    def __init__(self, root="/root/autodl-tmp/dataset", name="chapman", length=300, overlap=0., norm=True, neighbor=False):
+    def __init__(self, root="/root/autodl-tmp/dataset", name="chapman", length=300, overlap=0., norm=True):
         """ retrieve pairs from each patient.
 
         Args:
@@ -28,10 +28,9 @@ class ECGDataset(Dataset):
             length (int): Segment length.
             overlap (float): Overlap ratio for splitting trials into segments.
             norm (bool): Whether to normalize the data.
-            neighbor (bool): Whether to split the data into two halves.
         """
         # Load the data using the provided load_data function
-        X_train, _, _, y_train, _, _ = load_data(root=root, name=name, length=length, overlap=overlap, norm=norm, neighbor=neighbor)
+        X_train, _, _, y_train, _, _ = load_data(root=root, name=name, length=length, overlap=overlap, norm=norm, neighbor=False)
         
         self.X_train = X_train
         self.y_train = y_train
@@ -206,7 +205,9 @@ class PCLR:
             optimizer(torch.optim.Optimizer): optimizer
         """
         if optim == "adamw":
-            optimizer = torch.optim.AdamW(params, lr)
+            optimizer = torch.optim.AdamW(params, lr, weight_decay=wd)
+        elif optim == "adam":
+            optimizer = torch.optim.Adam(params, lr, weight_decay=wd)
         elif optim == "lars":
             optimizer = LARS(params, lr, weight_decay=wd)
         else:

@@ -41,5 +41,3 @@ python finetune.py -h
 
 1. CLOCS [paper](https://proceedings.mlr.press/v139/kiyasseh21a/kiyasseh21a.pdf)
 2. CLOCS [repo](https://github.com/danikiyasseh/CLOCS.git)
-
-

@@ -27,4 +27,4 @@ See [finetune.py](https://github.com/3hiuwoo/PMQ?tab=readme-ov-file#fine-tuning)
 
 ## Reference
 
-1. PCLR [paper](https://github.com/3hiuwoo/PMQ?tab=readme-ov-file#fine-tuning)
+1. PCLR [paper](https://arxiv.org/abs/2104.04569)

@@ -1,3 +1,6 @@
+"""
+Pretrain with CMSC from CLOCS.
+"""
 import argparse
 import os
 import sys
@@ -13,7 +16,7 @@ parser = argparse.ArgumentParser(description="CLOCS Training")
 parser.add_argument("--seed", type=int, default=42, help="random seed")
 # data
 parser.add_argument("--root", type=str, default="/root/autodl-tmp/dataset", help="root directory of datasets")
-parser.add_argument("--data", type=str, default="ptbxl", help="pretraining dataset: [chapman, ptb, ptbxl]")
+parser.add_argument("--data", type=str, default="ptbxl", help="pretraining dataset: [chapman, ptb, ptbxl, cpsc2018]")
 parser.add_argument("--length", type=int, default=600, help="length of each sample")
 parser.add_argument("--overlap", type=float, default=0., help="overlap of each sample")
 # model
@@ -23,8 +26,8 @@ parser.add_argument("--output_dim", type=int, default=320, help="output dimensio
 parser.add_argument("--tau", type=float, default=0.1, help="temperature for cosine similarity")
 # training
 parser.add_argument("--lr", type=float, default=1e-4, help="learning rate")
-parser.add_argument("--wd", type=float, default=1.5e-6, help="weight decay")
-parser.add_argument("--optim", type=str, default="adamw", help="optimizer: [adamw, lars]")
+parser.add_argument("--wd", type=float, default=1e-5, help="weight decay")
+parser.add_argument("--optim", type=str, default="adamw", help="optimizer: [adamw, adam, lars]")
 parser.add_argument("--schedule", type=str, default=None, help="scheduler: [plateau, step, cosine, warmup, exp]")
 parser.add_argument("--batch_size", type=int, default=256, help="batch size")
 parser.add_argument("--epochs", type=int, default=100, help="number of epochs")
@@ -62,7 +65,7 @@ def main():
     X_train, _, _, y_train, _, _ = load_data(args.root, args.data, length=args.length, overlap=args.overlap)
     
     if (X_train.shape[-1] > 1) and not args.all_leads:
-        print("=> Using only II, V2, aVL, aVR leads")
+        print("=> Using only II, V2, aVL, aVR leads") # following the original paper
         X_train = X_train[..., [1, 3, 4, 7]]
     
     X_train, y_train = cmsc_split(X_train, y_train)

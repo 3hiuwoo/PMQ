@@ -99,8 +99,10 @@ def run(logdir, seed, fraction):
                                        overlap=args.overlap)
     
     if (X_train.shape[-1] > 1) and not args.all_leads:
-        print("=> Using only II, V2, aVL, aVR leads")
+        print("=> Using only II, V2, aVL, aVR leads") # following the original paper
         X_train = X_train[..., [1, 3, 4, 7]]
+        X_val = X_val[..., [1, 3, 4, 7]]
+        X_test = X_test[..., [1, 3, 4, 7]]
     
     # only use fraction of training samples.
     if fraction < 1:

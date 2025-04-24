@@ -140,7 +140,9 @@ class CLOCS:
             optimizer(torch.optim.Optimizer): optimizer
         """
         if optim == "adamw":
-            optimizer = torch.optim.AdamW(params, lr)
+            optimizer = torch.optim.AdamW(params, lr, weight_decay=wd)
+        elif optim == "adam":
+            optimizer = torch.optim.Adam(params, lr, weight_decay=wd)
         elif optim == "lars":
             optimizer = LARS(params, lr, weight_decay=wd)
         else:
@@ -176,6 +178,9 @@ class CLOCS:
     
     
     def loss_fn(self, z1, z2, id):
+        """
+        See CLOCS official repository for details.
+        """
         id = id.cpu().detach().numpy()
 
         interest_matrix = np.equal.outer(id, id).astype(int) # B x B

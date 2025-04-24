@@ -1,6 +1,6 @@
-# PCLR Unofficial Implementation
+# ETP Unofficial Implementation
 
-We implement the PCLR following the paper in order to better align with our experiments.
+We implement the ETP following the paper in order to better align with our experiments.
 
 ## Preparation
 
@@ -27,4 +27,4 @@ See [finetune.py](https://github.com/3hiuwoo/PMQ?tab=readme-ov-file#fine-tuning)
 
 ## Reference
 
-1. PCLR [paper](https://github.com/3hiuwoo/PMQ?tab=readme-ov-file#fine-tuning)
+1. ETP [paper](https://arxiv.org/abs/2309.07145)

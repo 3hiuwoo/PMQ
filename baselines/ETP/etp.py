@@ -1,5 +1,5 @@
 """
-See the PMQ and PCLR paper for more details.
+See the PMQ and ETP paper for more details.
 """
 import os
 import sys
@@ -12,14 +12,16 @@ from flash.core.optimizers import LARS, LinearWarmupCosineAnnealingLR
 from torch import nn
 from torch.utils.data import DataLoader, Dataset
 from tqdm import tqdm
+from transformers import AutoModel, AutoTokenizer
+
+from datautils import load_data
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../")))
+from encoder import TSEncoder
 
-from data import load_data
-from encoder import MLP, TSEncoder
 
-class ECGDataset(Dataset):
-    def __init__(self, root="/root/autodl-tmp/dataset", name="chapman", length=300, overlap=0., norm=True, neighbor=False):
+class ECGTextDataset(Dataset):
+    def __init__(self, root="/root/autodl-tmp/dataset", name="ptbxl", length=300, overlap=0., norm=True):
         """ retrieve pairs from each patient.
 
         Args:
@@ -28,34 +30,22 @@ class ECGDataset(Dataset):
             length (int): Segment length.
             overlap (float): Overlap ratio for splitting trials into segments.
             norm (bool): Whether to normalize the data.
-            neighbor (bool): Whether to split the data into two halves.
         """
         # Load the data using the provided load_data function
-        X_train, _, _, y_train, _, _ = load_data(root=root, name=name, length=length, overlap=overlap, norm=norm, neighbor=neighbor)
+        X_train, _, _, y_train, _, _, train_texts, _, _ = load_data(root=root, name=name, length=length, overlap=overlap, norm=norm)
         
         self.X_train = X_train
         self.y_train = y_train
+        self.train_texts = train_texts
 
-        # Group segments by trial ID
-        self.patient_segemtns = {}
-        for i, label in enumerate(y_train):
-            pid = label[1]  # Assuming the third column is the trial ID
-            if pid not in self.patient_segemtns:
-                self.patient_segemtns[pid] = []
-            self.patient_segemtns[pid].append(self.X_train[i])
-
-        # Convert trial segments to numpy arrays for efficient indexing
-        for pid in self.patient_segemtns:
-            self.patient_segemtns[pid] = np.array(self.patient_segemtns[pid])
-
-        self.pids = list(self.patient_segemtns.keys())
+        self.tokenize()
 
 
     def __len__(self):
         """
         Return the number of trials.
         """
-        return len(self.pids)
+        return len(self.y_train)
 
 
     def __getitem__(self, idx):
@@ -68,24 +58,29 @@ class ECGDataset(Dataset):
         Returns:
             segment (torch.Tensor): A tensor containing two segments from the same trial with shape (2, length, feature).
         """
-        pid = self.pids[idx]
-        segments = self.patient_segemtns[pid]
-
-        # Randomly select two segments from the trial
-        indices = np.random.choice(len(segments), size=2, replace=True)
-        segment1 = segments[indices[0]]
-        segment2 = segments[indices[1]]
-
-        # Convert to PyTorch tensors
-        segment1 = torch.tensor(segment1, dtype=torch.float32)
-        segment2 = torch.tensor(segment2, dtype=torch.float32)
-
-        segment = torch.stack((segment1, segment2), dim=0)
+        x = self.X_train[idx]
+        text = self.train_texts[idx]
         
-        return segment
+        return torch.tensor(x, dtype=torch.float32), torch.tensor(text, dtype=torch.long)
     
-
-class PCLR:
+    
+    def tokenize(self):
+        """
+        Tokenize the text data using the Bio_ClinicalBERT tokenizer.
+        """
+        join_texts = [" [SEP] ".join(text) for text in self.train_texts]
+        
+        tokenizer = AutoTokenizer("emilyalsentzer/Bio_ClinicalBERT")
+        
+        tokenized_texts = []
+        for text in tqdm(join_texts, desc="=> Tokenizing ECG statements", leave=False):
+            encoded = tokenizer(text, padding="max_length", max_length=128)
+            tokenized_texts.append([encoded["input_ids"], encoded["attention_mask"]])
+            
+        self.train_texts = np.array(tokenized_texts) # [N, 2, 128]
+            
+        
+class ETP:
     def __init__(
         self,
         input_dims=12,
@@ -107,25 +102,33 @@ class PCLR:
         self.multi_gpu = multi_gpu
         
         self._net = TSEncoder(input_dims=input_dims, output_dims=output_dims, hidden_dims=hidden_dims, depth=depth)
-        self._proj = MLP(input_dims=output_dims, output_dims=output_dims, nlayers=2, hidden_dims=output_dims)
+        self._proj = nn.Linear(output_dims, output_dims)
+        
+        self.text_encoder = AutoModel.from_pretrained("emilyalsentzer/Bio_ClinicalBERT")
+        for param in self.text_encoder.parameters():
+            param.requires_grad = False
+        self.proj = nn.Linear(768, output_dims)
+            
         
         device = torch.device(device)
         if device == torch.device("cuda") and self.multi_gpu:
             # self.net_q = nn.DataParallel(self.net_q, device_ids=gpu_idx_list)
             self._net = nn.DataParallel(self._net)
             self._proj = nn.DataParallel(self._proj)
+            self.text_encoder = nn.DataParallel(self.text_encoder)
+            self.proj = nn.DataParallel(self.proj)
         self._net.to(device)
         self._proj.to(device)
+        self.text_encoder.to(device)
+        self.proj.to(device)
         # stochastic weight averaging
         # https://pytorch.org/blog/pytorch-1.6-now-includes-stochastic-weight-averaging/
         # self.net = self._net
         self.net = torch.optim.swa_utils.AveragedModel(self._net)
         self.net.update_parameters(self._net)
-        self.proj = torch.optim.swa_utils.AveragedModel(self._proj)
-        self.proj.update_parameters(self._proj)
         
         
-    def fit(self, train_dataset, epochs=None, batch_size=256, lr=1e-4, wd=1.5e-6, optim="adamw", schedule=None, logdir="", checkpoint=1, verbose=1):
+    def fit(self, train_dataset, epochs=None, batch_size=256, lr=2e-3, wd=1e-5, optim="adam", schedule=None, logdir="", checkpoint=1, verbose=1):
         train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, drop_last=True)
         
         params = list(self._net.parameters()) + list(self._proj.parameters())
@@ -136,24 +139,27 @@ class PCLR:
         start_time = datetime.now()           
         for epoch in range(epochs):
             cum_loss = 0
-            for x in tqdm(train_loader, desc=f"=> Epoch {epoch+1}", leave=False):
+            for x, text in tqdm(train_loader, desc=f"=> Epoch {epoch+1}", leave=False):
                 # count by iterations
-                x = x.to(self.device)
+                x, text = x.to(self.device), text.to(self.device)
 
                 optimizer.zero_grad()
                 
-                x1, x2 = x[:, 0], x[:, 1]
+                # text features
+                with torch.no_grad():
+                    output = self.text_encoder(input_ids=text[:, 0], attention_mask=text[:, 1])
+                    ht = output.pooler_output
+                zt = self.proj(ht)
                 
-                h1 = self._net(x1)
-                z1 = self._proj(h1)
-                h2 = self._net(x2)
-                z2 = self._proj(h2)
+                # ECG features
+                hx = self._net(x)
+                zx = self._proj(hx)
                 
-                z1 = F.normalize(z1, dim=-1)
-                z2 = F.normalize(z2, dim=-1)
+                zt = F.normalize(zt, dim=-1)
+                zx = F.normalize(zx, dim=-1)
                 
-                loss1 = self.loss_fn(z1, z2)
-                loss2 = self.loss_fn(z2, z1)
+                loss1 = self.loss_fn(zt, zx)
+                loss2 = self.loss_fn(zx, zt)
                 loss = (loss1 + loss2) / 2
                 
                 loss.backward()
@@ -206,7 +212,9 @@ class PCLR:
             optimizer(torch.optim.Optimizer): optimizer
         """
         if optim == "adamw":
-            optimizer = torch.optim.AdamW(params, lr)
+            optimizer = torch.optim.AdamW(params, lr, weight_decay=wd)
+        elif optim == "adam":
+            optimizer = torch.optim.Adam(params, lr, weight_decay=wd)
         elif optim == "lars":
             optimizer = LARS(params, lr, weight_decay=wd)
         else:
@@ -241,21 +249,10 @@ class PCLR:
         return scheduler
     
     
-    def loss_fn(self, z1, z2):
-        eps = 1e-12
-        sim1 = torch.mm(z1, z2.t())  # [N, N] pairs
-        sim1 /= self.tau
-        sim1 = torch.exp(sim1)
-        
-        sim2 = torch.mm(z1, z1.t())
-        sim2 /= self.tau
-        sim2 = torch.exp(sim2)
-        sim2 = torch.triu(sim2, 1) + torch.tril(sim2, -1)
-        
-        denominator = torch.sum(sim1, 1) + torch.sum(sim2, 1)
-        diags = torch.diag(sim1)
-        
-        loss = -torch.mean(torch.log((diags + eps) / (denominator + eps)))
+    def loss_fn(self, q, k):
+        logits = torch.mm(q, k.t())  # [N, N] pairs
+        labels = torch.arange(logits.size(0), device=logits.device)  # positives are in diagonal
+        loss = F.cross_entropy(logits / self.tau, labels)
         return loss
     
     

@@ -118,7 +118,7 @@ def run(logdir, seed, fraction):
     if fraction < 1:
         X_train = X_train[:int(X_train.shape[0] * fraction)]
         y_train = y_train[:int(y_train.shape[0] * fraction)]
-        print(f"=> Using {fraction}% of training data")
+        print(f"=> Using {fraction*100}% of training data")
     
     train_dataset = TensorDataset(torch.from_numpy(X_train).to(torch.float),
                                   torch.from_numpy(y_train[:, 0]).to(torch.long))

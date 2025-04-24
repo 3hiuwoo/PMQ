@@ -1,11 +1,5 @@
 """
-Pretrain with TFP-B or TFP-Q.
-
-TODO: moco without use_id loss and use random shuffle -> omit --use_id
-TODO: time mask probability 0, 0.25, 0.5(now), 0.75, 1(NA) -> pass mask_t=*
-TODO: freq mask ratio 0, 0.1(now), 0.2, 0.5, ... -> pass mask_f=*
-TODO: no temporal neighbor -> omit --neighbor and pass --length=300
-
+Pretrain with PMQ or PMB.
 """
 import argparse
 import os
@@ -19,11 +13,11 @@ from utils import get_device, seed_everything
 
 warnings.filterwarnings("ignore")
 
-parser = argparse.ArgumentParser(description="TFP training")
+parser = argparse.ArgumentParser(description="PMQ training")
 parser.add_argument("--seed", type=int, default=42, help="random seed")
 # data
 parser.add_argument("--root", type=str, default="/root/autodl-tmp/dataset", help="root directory of datasets")
-parser.add_argument("--data", type=str, default="ptbxl", help="pretraining dataset: [chapman, ptb, ptbxl]")
+parser.add_argument("--data", type=str, default="ptbxl", help="pretraining dataset: [chapman, ptb, ptbxl, cpsc2018]")
 parser.add_argument("--length", type=int, default=600, help="length of each sample")
 parser.add_argument("--overlap", type=float, default=0., help="overlap of each sample")
 parser.add_argument("--neighbor", action="store_true", help="whether to segment sample into neighbors")
@@ -32,7 +26,7 @@ parser.add_argument("--depth", type=int, default=10, help="number of hidden dila
 parser.add_argument("--hidden_dim", type=int, default=64, help="output dimension of input projector")
 parser.add_argument("--output_dim", type=int, default=320, help="output dimension of input projector")
 parser.add_argument("--momentum", type=float, default=0.999, help="momentum update parameter")
-parser.add_argument("--tau", type=float, default=0.1, help="temperature for cosine similarity")
+parser.add_argument("--tau", type=float, default=1.0, help="temperature for cosine similarity")
 parser.add_argument("--alpha", type=float, default=2.0, help="scaling factor of positive pairs in multi-similarity loss")
 parser.add_argument("--beta", type=float, default=50.0, help="scaling factor of negative pairs in multi-similarity loss")
 parser.add_argument("--thresh", type=float, default=0.5, help="bias for pairs in multi-similarity loss")
@@ -45,8 +39,8 @@ parser.add_argument("--use_id", action="store_true", help="whether to use patien
 parser.add_argument("--loss_func", type=str, default="nce", help="contrastive loss function (add a/s to the end to compute loss (a)symmetrically in PMB): [ms, nce](a/s)")
 # training
 parser.add_argument("--lr", type=float, default=1e-3, help="learning rate")
-parser.add_argument("--wd", type=float, default=1.5e-6, help="weight decay")
-parser.add_argument("--optim", type=str, default="adamw", help="optimizer: [adamw, lars]")
+parser.add_argument("--wd", type=float, default=1e-5, help="weight decay")
+parser.add_argument("--optim", type=str, default="adamw", help="optimizer: [adamw, adam, lars]")
 parser.add_argument("--schedule", type=str, default=None, help="scheduler: [plateau, step, cosine, warmup, exp]")
 parser.add_argument("--batch_size", type=int, default=256, help="batch size")
 parser.add_argument("--epochs", type=int, default=100, help="number of epochs")
