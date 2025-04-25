@@ -59,7 +59,7 @@ def main():
         
     print("=> Arguments:", vars(args))
             
-    logdir = os.path.join(args.logdir, f"{task}_{args.data}")
+    logdir = os.path.join(args.logdir, f"{task}")
     if not os.path.exists(logdir):
         os.makedirs(logdir)
     
@@ -72,28 +72,29 @@ def main():
     
     print(f"=> Running cross {len(args.datas)} dataset, {len(args.seeds)} seeds and {len(args.fractions)} fractions")
     for data in args.datas:
+        subdir = os.path.join(logdir, f"{data}")
         for seed in args.seeds:
             for fraction in args.fractions:
-                run(logdir, data, seed, fraction)
+                run(subdir, data, seed, fraction)
 
-    print(f"==================== Calculating total metrics ====================")
-    start_logging("total", logdir) # simultaneously save the print out to file
-    for fraction in args.fractions:
-        print(f"=> Fraction: {fraction}, Seeds: {args.seeds}")
-        val_path = os.path.join(logdir, f"val_{fraction}.csv")
-        test_path = os.path.join(logdir, f"test_{fraction}.csv")
-        val_df = pd.read_csv(val_path, index_col=0)
-        test_df = pd.read_csv(test_path, index_col=0)
-        val_mean = val_df.mean().to_dict()
-        test_mean = test_df.mean().to_dict()
-        val_std = val_df.std().to_dict()
-        test_std = test_df.std().to_dict()
-        
-        val_out = (f"{k}: {m:.6f}±{s:.6f}" for k, m, s in zip(val_mean.keys(), val_mean.values(), val_std.values()))
-        test_out = (f"{k}: {m:.6f}±{s:.6f}" for k, m, s in zip(test_mean.keys(), test_mean.values(), test_std.values()))
-        print("=> Metrics for validation set\n", "\n".join(val_out))
-        print("=> Metrics for test set\n", "\n".join(test_out))
-    stop_logging()
+        print(f"==================== Calculating total metrics ====================")
+        start_logging("total", subdir) # simultaneously save the print out to file
+        for fraction in args.fractions:
+            print(f"=> Fraction: {fraction}, Seeds: {args.seeds}")
+            val_path = os.path.join(logdir, f"val_{fraction}.csv")
+            test_path = os.path.join(logdir, f"test_{fraction}.csv")
+            val_df = pd.read_csv(val_path, index_col=0)
+            test_df = pd.read_csv(test_path, index_col=0)
+            val_mean = val_df.mean().to_dict()
+            test_mean = test_df.mean().to_dict()
+            val_std = val_df.std().to_dict()
+            test_std = test_df.std().to_dict()
+            
+            val_out = (f"{k}: {m:.6f}±{s:.6f}" for k, m, s in zip(val_mean.keys(), val_mean.values(), val_std.values()))
+            test_out = (f"{k}: {m:.6f}±{s:.6f}" for k, m, s in zip(test_mean.keys(), test_mean.values(), test_std.values()))
+            print("=> Metrics for validation set\n", "\n".join(val_out), "\n")
+            print("=> Metrics for test set\n", "\n".join(test_out), "\n")
+        stop_logging()
 
 
 def run(logdir, data, seed, fraction):
