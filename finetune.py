@@ -83,8 +83,8 @@ def main():
         start_logging("total", subdir) # simultaneously save the print out to file
         for fraction in args.fractions:
             print(f"=> Fraction: {fraction}, Seeds: {args.seeds}")
-            val_path = os.path.join(logdir, f"val_{fraction}.csv")
-            test_path = os.path.join(logdir, f"test_{fraction}.csv")
+            val_path = os.path.join(subdir, f"val_{fraction}.csv")
+            test_path = os.path.join(subdir, f"test_{fraction}.csv")
             val_df = pd.read_csv(val_path, index_col=0)
             test_df = pd.read_csv(test_path, index_col=0)
             val_mean = val_df.mean().to_dict()
