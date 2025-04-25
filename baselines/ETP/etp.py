@@ -131,7 +131,8 @@ class ETP:
     def fit(self, train_dataset, epochs=None, batch_size=256, lr=2e-3, wd=1e-5, optim="adam", schedule=None, logdir="", checkpoint=1, verbose=1):
         train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, drop_last=True)
         
-        params = list(self._net.parameters()) + list(self._proj.parameters())
+        params = list(self._net.parameters()) + list(self._proj.parameters()) + list(self.proj.parameters())
+        params = list(filter(lambda p: p.requires_grad, params))
         optimizer = self._get_optimizer(optim, params, lr, wd)
         scheduler = self._get_scheduler(schedule, optimizer, epochs, len(train_loader))
         

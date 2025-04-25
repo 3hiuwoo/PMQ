@@ -27,7 +27,7 @@ parser.add_argument("--hidden_dim", type=int, default=64, help="output dimension
 parser.add_argument("--output_dim", type=int, default=320, help="output dimension of input projector")
 parser.add_argument("--tau", type=float, default=0.1, help="temperature for cosine similarity")
 # training
-parser.add_argument("--lr", type=float, default=1e-3, help="learning rate")
+parser.add_argument("--lr", type=float, default=1e-2, help="learning rate")
 parser.add_argument("--wd", type=float, default=0, help="weight decay")
 parser.add_argument("--optim", type=str, default="adam", help="optimizer: [adamw, adam, lars]")
 parser.add_argument("--schedule", type=str, default=None, help="scheduler: [plateau, step, cosine, warmup, exp]")

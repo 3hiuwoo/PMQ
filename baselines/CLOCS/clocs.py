@@ -235,52 +235,8 @@ class CLOCS:
     
     def load(self, fn):
         raise NotImplementedError("Loading a model is not implemented yet.")
-    
-
-class FTClassifier(nn.Module):
-    """
-    Modified version of the original FTClassifier class, to support CLOCS finetuning.
-    """
-    def __init__(self, input_dims, output_dims, depth, p_output_dims, hidden_dims=64, p_hidden_dims=128,
-                 device="cuda", multi_gpu=True):
-        super().__init__()
-        self.input_dims = input_dims  # Ci
-        self.output_dims = output_dims  # Co
-        self.hidden_dims = hidden_dims  # Ch
-        self.p_hidden_dims = p_hidden_dims  # Cph
-        self.p_output_dims = p_output_dims  # Cp
-        self._net = TSEncoder(input_dims=input_dims, output_dims=output_dims, hidden_dims=hidden_dims, depth=depth)
-        # projection head for finetune
-        self.proj_head = ProjectionHead(output_dims, p_output_dims, p_hidden_dims)
-        device = torch.device(device)
-        if device == torch.device("cuda") and multi_gpu:
-            self._net = nn.DataParallel(self._net)
-            self.proj_head = nn.DataParallel(self.proj_head)
-        self._net.to(device)
-        self.proj_head.to(device)
-
-        # stochastic weight averaging, see link:
-        # https://pytorch.org/blog/pytorch-1.6-now-includes-stochastic-weight-averaging/
-        self.net = torch.optim.swa_utils.AveragedModel(self._net)
-        self.net.update_parameters(self._net)
-
-
-    def forward(self, x):
-        sum = None
-        # ensemble
-        for i in range(x.size(-1)):
-            out = self.net(x[..., i].unsqueeze(-1))  # B x O x Co
-            if sum is None:
-                sum = out
-            else:
-                sum += out
-        x = self.proj_head(sum)  # B x Cp
-        if self.p_output_dims == 2:  # binary or multi-class
-            return torch.sigmoid(x)
-        else:
-            return x
         
-        
+              
 def cmsc_split(x, y):
     length = x.shape[1]
     nleads = x.shape[-1]

@@ -163,6 +163,7 @@ class PMQ:
             train_loader = DataLoader(train_dataset, batch_sampler=my_sampler)
         
         params = list(self._net.parameters()) + list(self._proj.parameters()) + list(self._pred.parameters())
+        params = list(filter(lambda p: p.requires_grad, params))
         optimizer = self._get_optimizer(optim, params, lr, wd)
         scheduler = self._get_scheduler(schedule, optimizer, epochs, len(train_loader))
                   
@@ -643,6 +644,7 @@ class PMB:
             train_loader = DataLoader(train_dataset, batch_sampler=my_sampler)
         
         params = list(self._net.parameters()) + list(self._proj.parameters()) + list(self._pred.parameters())
+        params = list(filter(lambda p: p.requires_grad, params))
         optimizer = self._get_optimizer(optim, params, lr, wd)
         scheduler = self._get_scheduler(schedule, optimizer, epochs, len(train_loader))
                   

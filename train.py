@@ -38,7 +38,7 @@ parser.add_argument("--queue_size", type=int, default=16384, help="queue size fo
 parser.add_argument("--use_id", action="store_true", help="whether to use patient-infoNCE loss")
 parser.add_argument("--loss_func", type=str, default="nce", help="contrastive loss function (add a/s to the end to compute loss (a)symmetrically in PMB): [ms, nce](a/s)")
 # training
-parser.add_argument("--lr", type=float, default=1e-3, help="learning rate")
+parser.add_argument("--lr", type=float, default=1e-2, help="learning rate")
 parser.add_argument("--wd", type=float, default=1e-2, help="weight decay")
 parser.add_argument("--optim", type=str, default="adamw", help="optimizer: [adamw, adam, lars]")
 parser.add_argument("--schedule", type=str, default=None, help="scheduler: [plateau, step, cosine, warmup, exp]")
