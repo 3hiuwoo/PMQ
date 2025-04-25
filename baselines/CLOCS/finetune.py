@@ -247,7 +247,7 @@ def evaluate(model, loader, metrics, device):
         for x, y in tqdm(loader, desc=f"=> Evaluating", leave=False):
             x, y = x.to(device), y.to(device)
             B, S, T, F = x.shape
-            x = x.transpose(-2, -1).view(-1, T, 1)
+            x = x.transpose(-2, -1).reshape(-1, T, 1)
             logits = model(x)
             y_pred = logits.view(B, S*F, -1).mean(dim=1)
             metrics.update(y_pred, y)
