@@ -29,7 +29,7 @@ parser.add_argument("--tau", type=float, default=0.07, help="temperature for cos
 # training
 parser.add_argument("--lr", type=float, default=2e-3, help="learning rate")
 parser.add_argument("--wd", type=float, default=1e-5, help="weight decay")
-parser.add_argument("--optim", type=str, default="adamw", help="optimizer: [adamw, adam, lars]")
+parser.add_argument("--optim", type=str, default="adam", help="optimizer: [adamw, adam, lars]")
 parser.add_argument("--schedule", type=str, default=None, help="scheduler: [plateau, step, cosine, warmup, exp]")
 parser.add_argument("--batch_size", type=int, default=128, help="batch size")
 parser.add_argument("--epochs", type=int, default=100, help="number of epochs")
