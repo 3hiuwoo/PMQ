@@ -73,6 +73,8 @@ def main():
     print(f"=> Running cross {len(args.datas)} dataset, {len(args.seeds)} seeds and {len(args.fractions)} fractions")
     for data in args.datas:
         subdir = os.path.join(logdir, f"{data}")
+        if not os.path.exists(logdir):
+            os.makedirs(logdir)
         for seed in args.seeds:
             for fraction in args.fractions:
                 run(subdir, data, seed, fraction)
