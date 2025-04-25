@@ -44,6 +44,7 @@ parser.add_argument("--fractions", type=float, nargs="+", default=[1.0, 0.1, 0.0
 parser.add_argument("--logdir", type=str, default="log", help="directory to save logs")
 parser.add_argument("--multi_gpu", action="store_true", help="whether to use multiple GPUs")
 parser.add_argument("--verbose", type=int, default=1, help="control how much information to print out")
+parser.add_argument("--all_leads", action="store_true", help="whether to use all leads")
 
 args = parser.parse_args()
 
