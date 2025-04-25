@@ -40,7 +40,8 @@ parser.add_argument("--pretrain", type=str, default="", help="encoder weight fil
 parser.add_argument("--lr", type=float, default=1e-4, help="learning rate")
 parser.add_argument("--batch_size", type=int, default=256, help="batch size")
 parser.add_argument("--epochs", type=int, default=50, help="number of epochs")
-parser.add_argument("--fractions", type=float, nargs="+", default=[1.0, 0.1, 0.01], help="list of fractions of training data")
+parser.add_argument("--fractions", type=float, nargs="+", default=[0.3, 0.1, 0.01], help="list of fractions of training data")
+parser.add_argument("--freeze", action="store_true", help="whether to partial fine-tuning")
 parser.add_argument("--logdir", type=str, default="log", help="directory to save logs")
 parser.add_argument("--multi_gpu", action="store_true", help="whether to use multiple GPUs")
 parser.add_argument("--verbose", type=int, default=1, help="control how much information to print out")
@@ -51,7 +52,10 @@ args = parser.parse_args()
 def main():
     # figure out the task
     if args.pretrain:
-        task = "finetune"
+        if args.freeze:
+            task = "pft"
+        else:
+            task = "fft"
     else:
         task = "scratch"
         
@@ -165,12 +169,22 @@ def run(logdir, data, seed, fraction):
             print("=>", msg)
         else:
             print(f"=> Find nothing in {args.pretrain}")
+            
+        if args.freeze:
+            model.proj_head = nn.Linear(args.output_dim, num_classes).to(device)
+            for name, param in model.net.named_parameters():
+                param.requires_grad = False
+            for name, param in model._net.named_parameters():
+                param.requires_grad = False
+            print(f"=> Freeze the encoder and append a linear layer")
     else:
         print(f"=> Training from scratch")
             
-    # params = list(filter(lambda p: p.requires_grad, model.parameters()))
-    # optimizer = torch.optim.AdamW(params, lr=args.lr)
-    optimizer = torch.optim.AdamW(model.parameters(), lr=args.lr)
+    params = list(filter(lambda p: p.requires_grad, model.parameters()))
+    if args.pretrain and args.freeze:
+        assert len(params) == 2 # weight, bias
+    optimizer = torch.optim.AdamW(params, lr=args.lr)
+    # optimizer = torch.optim.AdamW(model.parameters(), lr=args.lr)
 
     criterion = nn.CrossEntropyLoss()
 
