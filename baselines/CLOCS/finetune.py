@@ -1,3 +1,6 @@
+"""
+Full fine-tuning or training from scratch and testing cross multiple dataset under multiple seeds and fractions of training data.
+"""
 import argparse
 import os
 import sys
@@ -24,7 +27,7 @@ parser = argparse.ArgumentParser(description="Fine-tuning/Training from scratch"
 parser.add_argument("--seeds", type=int, nargs="+", default=[41, 42, 43, 44, 45], help="list of random seeds")
 # data
 parser.add_argument("--root", type=str, default="/root/autodl-tmp/dataset", help="root directory of datasets")
-parser.add_argument("--data", type=str, default="ptbxl", help="select pre-training dataset")
+parser.add_argument("--datas", type=str, nargs="+", default=["ptb", "chapman", "cpsc2018"], help="downstream dataset: [ptb, ptbxl, chapman, cpsc2018]")
 parser.add_argument("--length", type=int, default=300, help="length of each sample")
 parser.add_argument("--overlap", type=float, default=0., help="overlap of each sample")
 # model
@@ -63,10 +66,11 @@ def main():
         for key, value in vars(args).items():
             f.write(f"{key}: {value}\n")
     
-    print(f"=> Running cross {len(args.seeds)} seeds and {len(args.fractions)} fractions")
-    for seed in args.seeds:
-        for fraction in args.fractions:
-            run(logdir, seed, fraction)
+    print(f"=> Running cross {len(args.datas)} dataset, {len(args.seeds)} seeds and {len(args.fractions)} fractions")
+    for data in args.datas:
+        for seed in args.seeds:
+            for fraction in args.fractions:
+                run(logdir, data, seed, fraction)
 
     print(f"==================== Calculating total metrics ====================")
     start_logging("total", logdir) # simultaneously save the print out to file
@@ -88,13 +92,13 @@ def main():
     stop_logging()
 
 
-def run(logdir, seed, fraction):
+def run(logdir, data, seed, fraction):
     seed_everything(seed)
     print(f"=> Set seed to {seed}")
     
     X_train, X_val, X_test,\
-    y_train, y_val, y_test = load_data(args.root,
-                                       args.data,
+    y_train, y_val, y_test = load_data(root=args.root,
+                                       name=data,
                                        length=args.length,
                                        overlap=args.overlap)
     
