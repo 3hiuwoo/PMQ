@@ -10,7 +10,7 @@ from datetime import datetime
 import numpy as np
 import pandas as pd
 import torch
-from clocs import cmsc_split
+from clocs import cmsc_finetune_split
 from torch import nn
 from torch.utils.data import DataLoader, TensorDataset
 from tqdm import tqdm
@@ -118,7 +118,7 @@ def run(logdir, data, seed, fraction):
         y_train = y_train[:int(y_train.shape[0] * fraction)]
         print(f"=> Using {fraction}% of training data")
         
-    X_train, y_train = cmsc_split(X_train, y_train)
+    X_train, y_train = cmsc_finetune_split(X_train, y_train)
     
     train_dataset = TensorDataset(torch.from_numpy(X_train).to(torch.float),
                                   torch.from_numpy(y_train[:, 0]).to(torch.long))

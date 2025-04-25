@@ -6,7 +6,7 @@ import os
 import sys
 
 import numpy as np
-from clocs import CLOCS, cmsc_split
+from clocs import CLOCS, cmsc_pretrain_split
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../")))
 from data import load_data
@@ -68,7 +68,7 @@ def main():
         print("=> Using only II, V2, aVL, aVR leads") # following the original paper
         X_train = X_train[..., [1, 3, 4, 7]]
     
-    X_train, y_train = cmsc_split(X_train, y_train)
+    X_train, y_train = cmsc_pretrain_split(X_train, y_train)
     
     device = get_device()
     print(f"=> Running on {device}")
