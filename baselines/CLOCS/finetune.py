@@ -46,6 +46,7 @@ parser.add_argument("--logdir", type=str, default="log", help="directory to save
 parser.add_argument("--multi_gpu", action="store_true", help="whether to use multiple GPUs")
 parser.add_argument("--verbose", type=int, default=1, help="control how much information to print out")
 parser.add_argument("--all_leads", action="store_true", help="whether to use all leads")
+parser.add_argument("--ensemble", action="store_true", help="whether to ensemble the predictions")
 
 args = parser.parse_args()
 
@@ -80,7 +81,10 @@ def main():
         y_train, y_val, y_test = load_data(root=args.root,
                                            name=data,
                                            length=args.length,
-                                           overlap=args.overlap)
+                                           overlap=args.overlap,
+                                           ensemble=args.ensemble,
+                                           shuffle_seed=args.seeds[1])
+        print(f"=> Data shape: {X_train.shape}, {X_val.shape}, {X_test.shape}")
         if (X_train.shape[-1] > 1) and not args.all_leads:
             print("=> Using only II, V2, aVL, aVR leads") # following the original paper
             X_train = X_train[..., [1, 3, 4, 7]]
@@ -130,7 +134,7 @@ def run(logdir, fraction, seed, X_train, X_val, X_test, y_train, y_val, y_test):
     if fraction < 1:
         X_train = X_train[:int(X_train.shape[0] * fraction)]
         y_train = y_train[:int(y_train.shape[0] * fraction)]
-        print(f"=> Using {fraction}% of training data")
+        print(f"=> Using {fraction*100}% of training data")
         
     X_train, y_train = cmsc_finetune_split(X_train, y_train)
     
@@ -208,7 +212,7 @@ def run(logdir, fraction, seed, X_train, X_val, X_test, y_train, y_val, y_test):
         epoch_lost_list.append(loss)
         
         # validation
-        val_metrics_dict = evaluate(model, val_loader, metrics, device)
+        val_metrics_dict = evaluate(model, val_loader, metrics, device, ensemble=args.ensemble)
         f1 = val_metrics_dict["f1"]
         epoch_f1_list.append(f1)
         
@@ -233,17 +237,18 @@ def run(logdir, fraction, seed, X_train, X_val, X_test, y_train, y_val, y_test):
     print(f"=> Testing on {test_path}")
     model.load_state_dict(torch.load(test_path))
     
-    val_metrics_dict = evaluate(model, val_loader, metrics, device)
+    val_metrics_dict = evaluate(model, val_loader, metrics, device, ensemble=args.ensemble)
     if args.verbose > 1:
         print("=> Metrics for validation set\n", val_metrics_dict)
     
-    test_metrics_dict = evaluate(model, test_loader, metrics, device)
+    test_metrics_dict = evaluate(model, test_loader, metrics, device, ensemble=args.ensemble)
     if args.verbose > 1:
         print("=> Metrics for test set\n", test_metrics_dict)
     stop_logging(logdir, seed, fraction, val_metrics_dict, test_metrics_dict)
 
     del model, optimizer, criterion, metrics, train_loader, val_loader, test_loader
     torch.cuda.empty_cache()
+
 
 def train(model, loader, optimizer, criterion, epoch, device):
     """
@@ -264,7 +269,7 @@ def train(model, loader, optimizer, criterion, epoch, device):
     return cum_loss
     
     
-def evaluate(model, loader, metrics, device):
+def evaluate(model, loader, metrics, device, ensemble=False):
     """
     do validation or test
     """
@@ -272,10 +277,16 @@ def evaluate(model, loader, metrics, device):
     with torch.no_grad():
         for x, y in tqdm(loader, desc=f"=> Evaluating", leave=False):
             x, y = x.to(device), y.to(device)
-            B, S, T, F = x.shape
-            x = x.transpose(-2, -1).reshape(-1, T, 1)
-            logits = model(x)
-            y_pred = logits.view(B, S*F, -1).mean(dim=1)
+            if ensemble:
+                B, S, T, F = x.shape
+                x = x.transpose(-2, -1).reshape(-1, T, 1)
+                logits = model(x)
+                y_pred = logits.view(B, S*F, -1).mean(dim=1)
+            else:
+                B, T, F = x.shape
+                x = x.transpose(-2, -1).reshape(-1, T, 1)
+                logits = model(x)
+                y_pred = logits.view(B, F, -1).mean(dim=1)
             metrics.update(y_pred, y)
     metrics_dict = metrics.compute()
     metrics.reset()

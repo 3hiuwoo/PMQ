@@ -145,7 +145,7 @@ class PMQ:
             epoch_loss_list (list): a list containing the training losses on each epoch.
         """
         assert y.shape[1] == 3
-        print("=> Number of dimension of training data:", X.ndim)
+        print("=> Training data shape:", X.shape)
         
         if shuffle_function == "trial": # shuffle the data in trial level
             X, y = shuffle_feature_label(X, y, shuffle_function=shuffle_function, batch_size=batch_size)
@@ -625,7 +625,7 @@ class PMB:
             epoch_loss_list (list): a list containing the training losses on each epoch.
         """
         assert y.shape[1] == 3
-        print("=> Number of dimension of training data:", X.ndim)
+        print("=> Training data shape:", X.shape)
         
         if shuffle_function == "trial":
             X, y = shuffle_feature_label(X, y, shuffle_function=shuffle_function, batch_size=batch_size)

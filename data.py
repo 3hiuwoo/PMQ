@@ -13,7 +13,7 @@ from sklearn.preprocessing import StandardScaler
 from scipy.signal import butter, lfilter
 from itertools import repeat
     
-def load_data(root="dataset", name="chapman", length=None, overlap=0, norm=True, neighbor=False):
+def load_data(root="dataset", name="chapman", length=None, overlap=0, norm=True, neighbor=False, ensemble=False, shuffle_seed=None):
     """ load, segment and preprocess train/val/test data
     
     Args:
@@ -23,6 +23,7 @@ def load_data(root="dataset", name="chapman", length=None, overlap=0, norm=True,
         overlap (float): segment overlapping ratio
         norm (bool): whether to normalize the data
         neighbor (bool): whether to split the data into two halves
+        ensemble (bool): whether to keep the dimension of the data after splitting
         
     Returns:
         X_train (numpy.ndarray): train data
@@ -68,9 +69,10 @@ def load_data(root="dataset", name="chapman", length=None, overlap=0, norm=True,
     y_val = np.array(valid_labels)
     y_test = np.array(test_labels)
     
-    # X_train, y_train = shuffle(X_train, y_train, random_state=42)
-    # X_val, y_val = shuffle(X_val, y_val, random_state=42)
-    # X_test, y_test = shuffle(X_test, y_test, random_state=42)
+    if shuffle_seed:
+        X_train, y_train = shuffle(X_train, y_train, random_state=shuffle_seed)
+        X_val, y_val = shuffle(X_val, y_val, random_state=shuffle_seed)
+        X_test, y_test = shuffle(X_test, y_test, random_state=shuffle_seed)
 
     # only use first 12 leads for PTB dataset, which is the same as other datasets
     if name == "ptb":
@@ -85,8 +87,8 @@ def load_data(root="dataset", name="chapman", length=None, overlap=0, norm=True,
       
     if length:
         X_train, y_train = split_data_label(X_train, y_train, sample_timestamps=length, overlapping=overlap)
-        X_val, y_val = split_data_label(X_val, y_val, sample_timestamps=length, overlapping=overlap, keep_dim=True)
-        X_test, y_test = split_data_label(X_test, y_test, sample_timestamps=length, overlapping=overlap, keep_dim=True)
+        X_val, y_val = split_data_label(X_val, y_val, sample_timestamps=length, overlapping=overlap, keep_dim=ensemble)
+        X_test, y_test = split_data_label(X_test, y_test, sample_timestamps=length, overlapping=overlap, keep_dim=ensemble)
         
     if neighbor:
         length = X_train.shape[1]
