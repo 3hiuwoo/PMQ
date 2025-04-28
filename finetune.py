@@ -75,9 +75,16 @@ def main():
         subdir = os.path.join(logdir, f"{data}")
         if not os.path.exists(subdir):
             os.makedirs(subdir)
+        X_train, X_val, X_test,\
+        y_train, y_val, y_test = load_data(root=args.root,
+                                           name=data,
+                                           length=args.length,
+                                           overlap=args.overlap)
         for seed in args.seeds:
+            seed_everything(seed)
+            print(f"=> Set seed to {seed}")
             for fraction in args.fractions:
-                run(subdir, data, seed, fraction)
+                run(subdir, fraction, seed, X_train, X_val, X_test, y_train, y_val, y_test)
 
         print(f"==================== Calculating total metrics ====================")
         start_logging("total", subdir) # simultaneously save the print out to file
@@ -99,23 +106,20 @@ def main():
         stop_logging()
 
 
-def run(logdir, data, seed, fraction):
+def run(logdir, fraction, seed, X_train, X_val, X_test, y_train, y_val, y_test):
     """ Run for one random seed and one fraction of training data
     
     Args:
         logdir (str): directory to save logs
+        fraction (float): fraction of training data
         seed (int): random seed
-        fraction (float): fraction of training data 
+        X_train (np.ndarray): training data
+        X_val (np.ndarray): validation data
+        X_test (np.ndarray): test data
+        y_train (np.ndarray): training labels
+        y_val (np.ndarray): validation labels
+        y_test (np.ndarray): test labels
     """
-    seed_everything(seed)
-    print(f"=> Set seed to {seed}")
-    
-    X_train, X_val, X_test,\
-    y_train, y_val, y_test = load_data(root=args.root,
-                                       name=data,
-                                       length=args.length,
-                                       overlap=args.overlap)
-    
     # only use fraction of training samples.
     if fraction < 1:
         X_train = X_train[:int(X_train.shape[0] * fraction)]
@@ -229,6 +233,9 @@ def run(logdir, data, seed, fraction):
     if args.verbose > 1:
         print("=> Metrics for test set\n", test_metrics_dict)
     stop_logging(logdir, seed, fraction, val_metrics_dict, test_metrics_dict)
+    
+    del model, optimizer, criterion, metrics, train_loader, val_loader, test_loader
+    torch.cuda.empty_cache()
 
 
 def train(model, loader, optimizer, criterion, epoch, device):
