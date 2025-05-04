@@ -21,7 +21,7 @@ from encoder import TSEncoder
 
 
 class ECGTextDataset(Dataset):
-    def __init__(self, root="/root/autodl-tmp/dataset", name="ptbxl", length=300, overlap=0., norm=True):
+    def __init__(self, root="/root/autodl-tmp/dataset", name="ptbxl", length=300, overlap=0., norm=True, max_patients=0):
         """ retrieve pairs from each patient.
 
         Args:
@@ -32,7 +32,7 @@ class ECGTextDataset(Dataset):
             norm (bool): Whether to normalize the data.
         """
         # Load the data using the provided load_data function
-        X_train, _, _, y_train, _, _, train_texts, _, _ = load_data(root=root, name=name, length=length, overlap=overlap, norm=norm)
+        X_train, _, _, y_train, _, _, train_texts, _, _ = load_data(root=root, name=name, length=length, overlap=overlap, norm=norm, max_patients=max_patients)
         
         self.X_train = X_train
         self.y_train = y_train

@@ -6,14 +6,15 @@ Supporting dataset includes chapman, ptb, ptbxl, cpsc2018, currently.
 If want to add more datasets, you may construct the dataset and implement splits information in load_split_ids().
 """
 import os
+import torch
 import numpy as np
 from sklearn.utils import shuffle
 from tqdm import tqdm
 from sklearn.preprocessing import StandardScaler
 from scipy.signal import butter, lfilter
 from itertools import repeat
-    
-def load_data(root="dataset", name="chapman", length=None, overlap=0, norm=True, neighbor=False, ensemble=False, shuffle_seed=None):
+   
+def load_data(root="dataset", name="chapman", length=None, overlap=0, norm=True, neighbor=False, ensemble=False, shuffle_seed=None, max_patients=None):
     """ load, segment and preprocess train/val/test data
     
     Args:
@@ -24,6 +25,8 @@ def load_data(root="dataset", name="chapman", length=None, overlap=0, norm=True,
         norm (bool): whether to normalize the data
         neighbor (bool): whether to split the data into two halves
         ensemble (bool): whether to keep the dimension of the data after splitting
+        shuffle_seed (int): random seed for shuffling the data
+        max_patients (int): maximum number of patients to load, if None, load all patients
         
     Returns:
         X_train (numpy.ndarray): train data
@@ -40,6 +43,9 @@ def load_data(root="dataset", name="chapman", length=None, overlap=0, norm=True,
     for fn in os.listdir(data_path):
         filenames.append(fn)
     filenames.sort()
+    if max_patients:
+        print(f"=> Using the first {max_patients} patients")
+        filenames = filenames[:max_patients]
     
     train_trials = []
     train_labels = []
@@ -81,14 +87,17 @@ def load_data(root="dataset", name="chapman", length=None, overlap=0, norm=True,
         X_test = X_test[:, :, :12]
 
     if norm:
-        X_train = process_batch_ts(X_train, normalized=True, bandpass_filter=False)
-        X_val = process_batch_ts(X_val, normalized=True, bandpass_filter=False)
-        X_test = process_batch_ts(X_test, normalized=True, bandpass_filter=False)
+        # X_train = process_batch_ts(X_train, normalized=True, bandpass_filter=False)
+        # X_val = process_batch_ts(X_val, normalized=True, bandpass_filter=False) if X_val.size else np.array([])
+        # X_test = process_batch_ts(X_test, normalized=True, bandpass_filter=False) if X_test.size else np.array([])
+        X_train = np_normalize(X_train, axis=1)
+        X_val = np_normalize(X_val, axis=1) if X_val.size else np.array([])
+        X_test = np_normalize(X_test, axis=1) if X_test.size else np.array([])
       
     if length:
         X_train, y_train = split_data_label(X_train, y_train, sample_timestamps=length, overlapping=overlap)
-        X_val, y_val = split_data_label(X_val, y_val, sample_timestamps=length, overlapping=overlap, keep_dim=ensemble)
-        X_test, y_test = split_data_label(X_test, y_test, sample_timestamps=length, overlapping=overlap, keep_dim=ensemble)
+        X_val, y_val = split_data_label(X_val, y_val, sample_timestamps=length, overlapping=overlap, keep_dim=ensemble) if X_val.size else (np.array([]), np.array([]))
+        X_test, y_test = split_data_label(X_test, y_test, sample_timestamps=length, overlapping=overlap, keep_dim=ensemble) if X_test.size else (np.array([]), np.array([]))
         
     if neighbor:
         length = X_train.shape[1]
@@ -178,6 +187,12 @@ def load_split_ids(root="dataset", name="chapman"):
         train_ids = pids_Normal[:-2*idxs[0]] + pids_AF[:-2*idxs[1]] + pids_IAVB[:-2*idxs[2]] + pids_LBBB[:-2*idxs[3]] + pids_RBBB[:-2*idxs[4]] + pids_PAC[:-2*idxs[5]] + pids_PVC[:-2*idxs[6]] + pids_STD[:-2*idxs[7]] + pids_STE[:-2*idxs[8]]
         val_ids = pids_Normal[-2*idxs[0]:-idxs[0]] + pids_AF[-2*idxs[1]:-idxs[1]] + pids_IAVB[-2*idxs[2]:-idxs[2]] + pids_LBBB[-2*idxs[3]:-idxs[3]] + pids_RBBB[-2*idxs[4]:-idxs[4]] + pids_PAC[-2*idxs[5]:-idxs[5]] + pids_PVC[-2*idxs[6]:-idxs[6]] + pids_STD[-2*idxs[7]:-idxs[7]] + pids_STE[-2*idxs[8]:-idxs[8]]
         test_ids = pids_Normal[-idxs[0]:] + pids_AF[-idxs[1]:] + pids_IAVB[-idxs[2]:] + pids_LBBB[-idxs[3]:] + pids_RBBB[-idxs[4]:] + pids_PAC[-idxs[5]:] + pids_PVC[-idxs[6]:] + pids_STD[-idxs[7]:] + pids_STE[-idxs[8]:]
+    
+    elif name == "mimic":
+        print(f"=> Mimic subset has {len(labels)} patients, all used for training")
+        train_ids = list(labels[np.where(labels[:, 0] == 0)][:, 1])
+        val_ids = []
+        test_ids = []
         
     else:
         raise ValueError(f"Unknown dataset: {name}")
@@ -315,4 +330,10 @@ def split_data(X_trial, sample_timestamps=256, overlapping=0.5, keep_dim=False):
     X_sample, trial_ids = np.array(sample_feature_list), np.array(trial_id_list)
 
     return X_sample, trial_ids, sample_num
-        
+
+
+def np_normalize(X, axis=1):
+    mean = np.mean(X, axis=axis, keepdims=True)
+    std = np.std(X, axis=axis, keepdims=True)
+    std[std == 0] = 1e-8
+    return (X - mean) / std

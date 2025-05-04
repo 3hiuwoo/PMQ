@@ -9,3 +9,4 @@ training*/
 log*/
 .vscode/
 .DS_Store
+.ipynb*

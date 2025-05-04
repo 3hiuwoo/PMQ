@@ -19,7 +19,7 @@ from data import load_data
 from encoder import MLP, TSEncoder
 
 class ECGDataset(Dataset):
-    def __init__(self, root="/root/autodl-tmp/dataset", name="chapman", length=300, overlap=0., norm=True):
+    def __init__(self, root="/root/autodl-tmp/dataset", name="chapman", length=300, overlap=0., norm=True, max_patients=0):
         """ retrieve pairs from each patient.
 
         Args:
@@ -30,24 +30,25 @@ class ECGDataset(Dataset):
             norm (bool): Whether to normalize the data.
         """
         # Load the data using the provided load_data function
-        X_train, _, _, y_train, _, _ = load_data(root=root, name=name, length=length, overlap=overlap, norm=norm, neighbor=False)
+        X_train, _, _, y_train, _, _ = load_data(root=root, name=name, length=length, overlap=overlap, norm=norm, neighbor=False, max_patients=max_patients)
         
         self.X_train = X_train
         self.y_train = y_train
 
         # Group segments by trial ID
-        self.patient_segemtns = {}
-        for i, label in enumerate(y_train):
-            pid = label[1]  # Assuming the third column is the trial ID
-            if pid not in self.patient_segemtns:
-                self.patient_segemtns[pid] = []
-            self.patient_segemtns[pid].append(self.X_train[i])
+        # self.patient_segemtns = {}
+        # for i, label in enumerate(y_train):
+        #     pid = label[1]  # Assuming the third column is the trial ID
+        #     if pid not in self.patient_segemtns:
+        #         self.patient_segemtns[pid] = []
+        #     self.patient_segemtns[pid].append(self.X_train[i])
 
-        # Convert trial segments to numpy arrays for efficient indexing
-        for pid in self.patient_segemtns:
-            self.patient_segemtns[pid] = np.array(self.patient_segemtns[pid])
+        # # Convert trial segments to numpy arrays for efficient indexing
+        # for pid in self.patient_segemtns:
+        #     self.patient_segemtns[pid] = np.array(self.patient_segemtns[pid])
 
-        self.pids = list(self.patient_segemtns.keys())
+        # self.pids = list(self.patient_segemtns.keys())
+        self.pids = list(np.unique(y_train[:, 1]))
 
 
     def __len__(self):
@@ -68,7 +69,8 @@ class ECGDataset(Dataset):
             segment (torch.Tensor): A tensor containing two segments from the same trial with shape (2, length, feature).
         """
         pid = self.pids[idx]
-        segments = self.patient_segemtns[pid]
+        # segments = self.patient_segemtns[pid]
+        segments = self.X_train[self.y_train[:, 1] == pid]
 
         # Randomly select two segments from the trial
         indices = np.random.choice(len(segments), size=2, replace=True)

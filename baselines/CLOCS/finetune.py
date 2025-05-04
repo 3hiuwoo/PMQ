@@ -27,7 +27,7 @@ parser = argparse.ArgumentParser(description="Fine-tuning/Training from scratch"
 parser.add_argument("--seeds", type=int, nargs="+", default=[41, 42, 43, 44, 45], help="list of random seeds")
 # data
 parser.add_argument("--root", type=str, default="/root/autodl-tmp/dataset", help="root directory of datasets")
-parser.add_argument("--datas", type=str, nargs="+", default=["ptb", "chapman", "cpsc2018"], help="downstream dataset: [ptb, ptbxl, chapman, cpsc2018]")
+parser.add_argument("--datas", type=str, nargs="+", default=["ptbxl", "chapman", "cpsc2018"], help="downstream dataset: [ptb, ptbxl, chapman, cpsc2018]")
 parser.add_argument("--length", type=int, default=300, help="length of each sample")
 parser.add_argument("--overlap", type=float, default=0., help="overlap of each sample")
 # model

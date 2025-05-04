@@ -19,6 +19,7 @@ parser.add_argument("--root", type=str, default="/root/autodl-tmp/dataset", help
 parser.add_argument("--data", type=str, default="ptbxl", help="pretraining dataset: [chapman, ptb, ptbxl, cpsc2018]")
 parser.add_argument("--length", type=int, default=600, help="length of each sample")
 parser.add_argument("--overlap", type=float, default=0., help="overlap of each sample")
+parser.add_argument("--max_patients", type=int, default=0, help="maximum number of patients to load, set 0 to load all patients")
 # model
 parser.add_argument("--depth", type=int, default=10, help="number of hidden dilated convolutional blocks")
 parser.add_argument("--hidden_dim", type=int, default=64, help="output dimension of input projector")
@@ -62,7 +63,7 @@ def main():
     seed_everything(args.seed)
     print(f"=> Set seed to {args.seed}")
     
-    X_train, _, _, y_train, _, _ = load_data(args.root, args.data, length=args.length, overlap=args.overlap)
+    X_train, _, _, y_train, _, _ = load_data(args.root, args.data, length=args.length, overlap=args.overlap, max_patients=args.max_patients)
     
     if (X_train.shape[-1] > 1) and not args.all_leads:
         print("=> Using only II, V2, aVL, aVR leads") # following the original paper
