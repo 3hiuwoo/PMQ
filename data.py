@@ -67,6 +67,8 @@ def load_data(root="dataset", name="chapman", length=None, overlap=0, norm=True,
             elif i+1 in test_ids:
                 test_trials.append(trial)
                 test_labels.append(label)
+            else:
+                raise IndexError(f"Patient {i+1} not in train/val/test set")
                 
     X_train = np.array(train_trials)
     X_val = np.array(valid_trials)

@@ -74,7 +74,7 @@ class ECGTextDataset(Dataset):
         
         tokenized_texts = []
         for text in tqdm(join_texts, desc="=> Tokenizing ECG statements", leave=False):
-            encoded = tokenizer(text, padding="max_length", max_length=128)
+            encoded = tokenizer(text, padding="max_length", max_length=128, truncation=True)
             tokenized_texts.append([encoded["input_ids"], encoded["attention_mask"]])
             
         self.train_texts = np.array(tokenized_texts) # [N, 2, 128]
