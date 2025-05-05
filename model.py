@@ -84,8 +84,12 @@ class PMQ:
         self.queue_size = queue_size
         
         self._net = TSEncoder(input_dims=input_dims, output_dims=output_dims, hidden_dims=hidden_dims, depth=depth, mask_t=mask_t, mask_f=mask_f, pool=pool)
-        self._proj = MLP(input_dims=output_dims, output_dims=output_dims, nlayers=2, hidden_dims=output_dims)
-        self._pred = MLP(input_dims=output_dims, output_dims=output_dims, nlayers=1, hidden_dims=output_dims)
+        
+        if self.loss_func == "moco":
+            self._proj = MLP(input_dims=output_dims, output_dims=output_dims, nlayers=1, hidden_dims=output_dims, bn=False)
+        else:
+            self._proj = MLP(input_dims=output_dims, output_dims=output_dims, nlayers=2, hidden_dims=output_dims)
+            self._pred = MLP(input_dims=output_dims, output_dims=output_dims, nlayers=1, hidden_dims=output_dims)
         
         self.momentum_net = TSEncoder(input_dims=input_dims, output_dims=output_dims, hidden_dims=hidden_dims, depth=depth, mask_t=mask_t, mask_f=mask_f, pool=pool)
         self.momentum_proj = MLP(input_dims=output_dims, output_dims=output_dims, hidden_dims=output_dims)
@@ -112,8 +116,9 @@ class PMQ:
         self.net.update_parameters(self._net)
         self.proj = torch.optim.swa_utils.AveragedModel(self._proj)
         self.proj.update_parameters(self._proj)
-        self.pred = torch.optim.swa_utils.AveragedModel(self._pred)
-        self.pred.update_parameters(self._pred)
+        if self.loss_func != "moco":
+            self.pred = torch.optim.swa_utils.AveragedModel(self._pred)
+            self.pred.update_parameters(self._pred)
         
         # patient representation queue
         self.queue = torch.randn(queue_size, output_dims, device=device, requires_grad=False)
@@ -162,7 +167,9 @@ class PMQ:
             my_sampler = MyBatchSampler(range(len(train_dataset)), batch_size=batch_size, drop_last=True)
             train_loader = DataLoader(train_dataset, batch_sampler=my_sampler)
         
-        params = list(self._net.parameters()) + list(self._proj.parameters()) + list(self._pred.parameters())
+        params = list(self._net.parameters()) + list(self._proj.parameters())
+        if self.loss_func != "moco":
+            params += list(self._pred.parameters())
         params = list(filter(lambda p: p.requires_grad, params))
         optimizer = self._get_optimizer(optim, params, lr, wd)
         scheduler = self._get_scheduler(schedule, optimizer, epochs, len(train_loader))
@@ -252,7 +259,8 @@ class PMQ:
         """
         self.net.update_parameters(self._net)
         self.proj.update_parameters(self._proj)
-        self.pred.update_parameters(self._pred)
+        if self.loss_func != "moco":
+            self.pred.update_parameters(self._pred)
         
     
     def _momentum_update(self):
@@ -364,7 +372,7 @@ class PMQ:
         Returns:
             loss (torch.Tensor): loss
         """
-        if id is None:
+        if id is None or self.loss_func == "moco":
             return self.infoNCE_loss(q, k)
         elif self.loss_func == "ms":
             return self.ms_loss(q, k, id)

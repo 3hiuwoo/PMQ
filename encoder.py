@@ -118,7 +118,7 @@ class ProjectionHead(nn.Module):
             return x
 
 
-def MLP(input_dims, output_dims, nlayers=1, hidden_dims=320):
+def MLP(input_dims, output_dims, nlayers=1, hidden_dims=320, bn=True):
     """ Projection head or Prediction head for pretraining
     Args:
         input_dims (int): number of input dimensions
@@ -129,11 +129,13 @@ def MLP(input_dims, output_dims, nlayers=1, hidden_dims=320):
     layers = []
     for i in range(nlayers):
         layers.append(nn.Linear(input_dims, hidden_dims))
-        layers.append(nn.BatchNorm1d(hidden_dims))
+        if bn:
+            layers.append(nn.BatchNorm1d(hidden_dims))
         layers.append(nn.ReLU())
         input_dims = hidden_dims
     layers.append(nn.Linear(hidden_dims, output_dims))
-    layers.append(nn.BatchNorm1d(output_dims))
+    if bn:
+        layers.append(nn.BatchNorm1d(output_dims))
     return nn.Sequential(*layers)
     
 
