@@ -694,6 +694,7 @@ class PMB:
                 # the last character of loss_func is used to indicate whether to compute loss symmetrically
                 if self.loss_func[-1] == "s":
                     loss += self.loss_fn(q2, k1, pid)
+                    loss /= 2
                 
                 loss.backward()
                 optimizer.step()
@@ -834,9 +835,12 @@ class PMB:
         Returns:
             loss (torch.Tensor): loss
         """
-        if id is None:
-            return self.infoNCE_loss(q, k)
         # the last character of loss_func is used to indicate whether to compute loss symmetrically
+        if id is None:
+            if self.loss_func[:-1] == "nce": 
+                return self.infoNCE_loss(q, k)
+            elif self.loss_func[:-1] == "mse":
+                return self.MSE_loss(q, k)
         elif self.loss_func[:-1] == "ms":
             return self.ms_loss(q, k, id)
         elif self.loss_func[:-1] == "nce":
@@ -859,6 +863,18 @@ class PMB:
         return 2 * self.tau * loss
     
       
+    def MSE_loss(self, q, k):
+        """ compute the MSE loss
+        Args:
+            q (torch.Tensor): query representations
+            k (torch.Tensor): key representations
+        Returns:
+            loss (torch.Tensor): loss
+        """
+        loss = torch.mean(2 - 2 * torch.mean(q * k, dim=-1))  # [N, N] pair
+        return loss
+    
+    
     def patient_infoNCE_loss(self, q, k, id):
         """ compute the patient infoNCE loss
         Args:
