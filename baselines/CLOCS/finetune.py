@@ -87,9 +87,12 @@ def main():
         print(f"=> Data shape: {X_train.shape}, {X_val.shape}, {X_test.shape}")
         if (X_train.shape[-1] > 1) and not args.all_leads:
             print("=> Using only II, V2, aVL, aVR leads") # following the original paper
-            X_train = X_train[..., [1, 3, 4, 7]]
-            X_val = X_val[..., [1, 3, 4, 7]]
-            X_test = X_test[..., [1, 3, 4, 7]]
+            # X_train = X_train[..., [1, 3, 4, 7]]
+            # X_val = X_val[..., [1, 3, 4, 7]]
+            # X_test = X_test[..., [1, 3, 4, 7]]
+            X_train = X_train[..., 1]
+            X_val = X_val[..., 1]
+            X_test = X_test[..., 1]
         for seed in args.seeds:
             seed_everything(seed)
             print(f"=> Set seed to {seed}")
@@ -136,7 +139,7 @@ def run(logdir, fraction, seed, X_train, X_val, X_test, y_train, y_val, y_test):
         y_train = y_train[:int(y_train.shape[0] * fraction)]
         print(f"=> Using {fraction*100}% of training data")
         
-    X_train, y_train = cmsc_finetune_split(X_train, y_train)
+    # X_train, y_train = cmsc_finetune_split(X_train, y_train)
     
     train_dataset = TensorDataset(torch.from_numpy(X_train).to(torch.float),
                                   torch.from_numpy(y_train[:, 0]).to(torch.long))
@@ -269,7 +272,7 @@ def train(model, loader, optimizer, criterion, epoch, device):
     return cum_loss
     
     
-def evaluate(model, loader, metrics, device, ensemble=False):
+def evaluate(model, loader, metrics, device):
     """
     do validation or test
     """
@@ -277,16 +280,7 @@ def evaluate(model, loader, metrics, device, ensemble=False):
     with torch.no_grad():
         for x, y in tqdm(loader, desc=f"=> Evaluating", leave=False):
             x, y = x.to(device), y.to(device)
-            if ensemble:
-                B, S, T, F = x.shape
-                x = x.transpose(-2, -1).reshape(-1, T, 1)
-                logits = model(x)
-                y_pred = logits.view(B, S*F, -1).mean(dim=1)
-            else:
-                B, T, F = x.shape
-                x = x.transpose(-2, -1).reshape(-1, T, 1)
-                logits = model(x)
-                y_pred = logits.view(B, F, -1).mean(dim=1)
+            y_pred = model(x)
             metrics.update(y_pred, y)
     metrics_dict = metrics.compute()
     metrics.reset()
