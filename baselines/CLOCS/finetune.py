@@ -272,7 +272,7 @@ def train(model, loader, optimizer, criterion, epoch, device):
     return cum_loss
     
     
-def evaluate(model, loader, metrics, device):
+def evaluate(model, loader, metrics, device, ensemble=False):
     """
     do validation or test
     """
