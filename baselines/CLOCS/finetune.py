@@ -90,9 +90,9 @@ def main():
             # X_train = X_train[..., [1, 3, 4, 7]]
             # X_val = X_val[..., [1, 3, 4, 7]]
             # X_test = X_test[..., [1, 3, 4, 7]]
-            X_train = X_train[..., 1]
-            X_val = X_val[..., 1]
-            X_test = X_test[..., 1]
+            X_train = X_train[..., 1:2]
+            X_val = X_val[..., 1:2]
+            X_test = X_test[..., 1:2]
         for seed in args.seeds:
             seed_everything(seed)
             print(f"=> Set seed to {seed}")
