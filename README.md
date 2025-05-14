@@ -22,11 +22,11 @@ pip install -r requirement.txt
 
 ### Download
 
+- **MIMIC-IV-ECG**: Download the zip file from [here](https://physionet.org/content/mimic-iv-ecg/1.0/#files-panel) and extract the data.
+
 - **PTB-XL**: Download the zip file from [here](https://physionet.org/content/ptb-xl/1.0.3/) and extract the data.
 
 - **Chapman**: Download the *ECGDataDenoised.zip* and *Diagnostics.xlsx* files from [here](https://figshare.com/collections/ChapmanECG/4560497/1) and extract the data from the .zip file.
-
-- **PTB**: Download the zip file from [here](https://physionet.org/content/ptbdb/1.0.0/) and extract the data.
 
 - **CPSC2018**: Download the zip file from [here](https://www.kaggle.com/datasets/bjoernjostein/china-12lead-ecg-challenge-database) and extract the data.
 
@@ -90,12 +90,4 @@ python finetune.py -h
 
 - COMET [Repo](https://github.com/DL4mHealth/COMET)
 
-- MS-Loss [Repo](https://github.com/msight-tech/research-ms-loss.git)
-
 - MoCo [Repo](https://github.com/facebookresearch/moco.git)
-
-## TODO
-
-- [x] Add annotation and README to CLOCS and PCLR.
-
-- [ ] Implement ETP.
