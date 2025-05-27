@@ -4,7 +4,7 @@
 
 The official implementation of **PMQ**.
 
-![The overall framework](pic/framwork.jpg)
+![The overall framework](img/framwork.jpg)
 
 <!-- [![arXiv](https://img.shields.io/badge/arXiv-2502.12478-red)](https://arxiv.org/abs/2502.12478) -->
 
@@ -12,7 +12,7 @@ The official implementation of **PMQ**.
 
 Run the following to prepare all required modules.
 
-```shell
+```zsh
 conda create -n pmq_env python=3.10
 conda activate pmq_env
 
@@ -60,7 +60,7 @@ The "destination path specified in notebook" will be used by all scripts to load
 
 To pre-train with the same setting as in the paper, just run:
 
-```shell
+```zsh
 python train.py --root [folder containing all datasets]\
                 --logdir [folder to save weights and training loss]\
                 --schedule warmup\
@@ -70,7 +70,7 @@ python train.py --root [folder containing all datasets]\
 
 If you want to try different settings, run the following for details:
 
-```shell
+```zsh
 python train.py -h
 ```
 
@@ -78,7 +78,7 @@ python train.py -h
 
 To fine-tune and test following our paper, run:
 
-```shell
+```zsh
 python finetune.py --root [folder containing all datasets]\
                    --logdir [folder to save fine-tuned weights and logs]\
                    --pretrain [path of the pre-trained weight file]
@@ -86,7 +86,7 @@ python finetune.py --root [folder containing all datasets]\
 
 To fine-tune with any amount of datasets and any combinations of fractions with other settings, run the following for details:
 
-```shell
+```zsh
 python finetune.py -h
 ```
 
