@@ -1,12 +1,12 @@
 # Enhancing Contrastive Learning-based Electrocardiogram Pretrained Model with Patient Memory Queue
 
+[![arXiv](https://img.shields.io/badge/arXiv-2506.06310-red)](https://arxiv.org/abs/2506.06310)
+
 ## Introduction
 
 The official implementation of **PMQ**.
 
 ![The overall framework](img/framwork.jpg)
-
-<!-- [![arXiv](https://img.shields.io/badge/arXiv-2502.12478-red)](https://arxiv.org/abs/2502.12478) -->
 
 ## Requirements
 
