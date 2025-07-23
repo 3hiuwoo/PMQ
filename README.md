@@ -13,10 +13,6 @@ Run the following to prepare all required modules.
 ```zsh
 conda create -n pmq_env python=3.10
 conda activate pmq_env
-
-git clone https://github.com/3hiuwoo/PMQ.git
-cd PMQ
-
 pip install -r requirement.txt
 ```
 
@@ -87,9 +83,3 @@ To fine-tune with any amount of datasets and any combinations of fractions with 
 ```zsh
 python finetune.py -h
 ```
-
-## Reference
-
-- COMET [Repo](https://github.com/DL4mHealth/COMET)
-
-- MoCo [Repo](https://github.com/facebookresearch/moco.git)
