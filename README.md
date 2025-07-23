@@ -1,7 +1,5 @@
 # Enhancing Contrastive Learning-based Electrocardiogram Pretrained Model with Patient Memory Queue
 
-[![arXiv](https://img.shields.io/badge/arXiv-2506.06310-red)](https://arxiv.org/abs/2506.06310)
-
 ## Introduction
 
 The official implementation of **PMQ**.
@@ -26,17 +24,17 @@ pip install -r requirement.txt
 
 ### Download
 
-- **MIMIC-IV-ECG**: Download the zip file from [here](https://physionet.org/content/mimic-iv-ecg/1.0/#files-panel) and extract the data.
+- **MIMIC-IV-ECG**: Download the zip file from [the official site](https://physionet.org/content/mimic-iv-ecg/1.0/#files-panel) and extract the data.
 
-- **PTB-XL**: Download the zip file from [here](https://physionet.org/content/ptb-xl/1.0.3/) and extract the data.
+- **PTB-XL**: Download the zip file from [the official site](https://physionet.org/content/ptb-xl/1.0.3/) and extract the data.
 
-- **Chapman**: Download the *ECGDataDenoised.zip* and *Diagnostics.xlsx* files from [here](https://figshare.com/collections/ChapmanECG/4560497/1) and extract the data from the .zip file.
+- **Chapman**: Download the *ECGDataDenoised.zip* and *Diagnostics.xlsx* files from [the official site](https://figshare.com/collections/ChapmanECG/4560497/1) and extract the data from the .zip file.
 
-- **CPSC2018**: Download the zip file from [here](https://www.kaggle.com/datasets/bjoernjostein/china-12lead-ecg-challenge-database) and extract the data.
+- **CPSC2018**: Download the zip file from [the official site](https://www.kaggle.com/datasets/bjoernjostein/china-12lead-ecg-challenge-database) and extract the data.
 
 ### Preprocessing
 
-Run jupyter notebooks corresponding to each dataset from this [folder](https://github.com/3hiuwoo/MCP/blob/main/data_preprocessing) to preprocess the raw data, remember to modify the path in notebooks to load your downloaded dataset and to save processed dataset.
+Run jupyter notebooks corresponding to each dataset from this [folder](./data_preprocessing) to preprocess the raw data, remember to modify the path in notebooks to load your downloaded dataset and to save processed dataset.
 
 ### Training data organization
 

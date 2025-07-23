@@ -2,7 +2,7 @@
 
 You might always import only load_data from this file since other files are sub-functions of load_data.
 Please construct the dataset of our format following the README file.
-Supporting dataset includes chapman, ptb, ptbxl, cpsc2018, currently.
+Supporting dataset includes mimic, chapman, ptb, ptbxl, cpsc2018, currently.
 If want to add more datasets, you may construct the dataset and implement splits information in load_split_ids().
 """
 import os
@@ -214,10 +214,6 @@ def butter_bandpass(lowcut, highcut, fs, order=5):
 
 
 def butter_bandpass_filter(data, lowcut, highcut, fs, order=5):
-    """
-    see https://stackoverflow.com/questions/12093594/how-to-implement-band-pass-butterworth-filter-with-scipy-signal-butter
-    """
-    
     b, a = butter_bandpass(lowcut, highcut, fs, order=order)
     y = lfilter(b, a, data, axis=0)
     return y

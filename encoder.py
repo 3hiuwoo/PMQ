@@ -108,11 +108,12 @@ class ProjectionHead(nn.Module):
             nn.Linear(hidden_dims, output_dims)
         )
 
-        self.repr_dropout = nn.Dropout(p=0.1)
+        # self.repr_dropout = nn.Dropout(p=0.1)
 
 
     def forward(self, x):
-        x = self.repr_dropout(self.proj_head(x))
+        x = self.proj_head(x)
+        # x = self.repr_dropout(self.proj_head(x))
         if self.output_dims == 2:  # binary or multi-class
             return torch.sigmoid(x)
         else:
